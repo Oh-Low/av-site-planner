@@ -1,0 +1,32 @@
+{
+  "folders": [],
+  "gear": [
+    {
+      "id": "example-company-switcher",
+      "label": "Example HD Switcher",
+      "category": "Video",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "HDMI In 3",
+        "HDMI In 4"
+      ],
+      "outputs": [
+        "PGM HDMI",
+        "PVW HDMI",
+        "Aux HDMI"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "HDMI",
+        "HDMI"
+      ],
+      "outputTypes": [
+        "HDMI",
+        "HDMI",
+        "HDMI"
+      ]
+    }
+  ]
+}

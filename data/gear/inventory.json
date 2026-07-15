@@ -1,0 +1,1627 @@
+{
+  "folders": [],
+  "gear": [
+    {
+      "id": "bmd-atem-2me-production-studio-4k",
+      "label": "ATEM 2 M/E Production Studio 4K",
+      "category": "Video",
+      "inputs": [
+        "SDI In 1",
+        "SDI In 2",
+        "SDI In 3",
+        "SDI In 4",
+        "SDI In 5",
+        "SDI In 6",
+        "SDI In 7",
+        "SDI In 8",
+        "SDI In 9",
+        "SDI In 10",
+        "SDI In 11",
+        "SDI In 12",
+        "SDI In 13",
+        "SDI In 14",
+        "SDI In 15",
+        "SDI In 16",
+        "SDI In 17",
+        "SDI In 18",
+        "SDI In 19",
+        "SDI In 20",
+        "XLR Audio L",
+        "XLR Audio R",
+        "Timecode In",
+        "Ref In",
+        "Ethernet"
+      ],
+      "outputs": [
+        "ME 1 PGM",
+        "HD ME 1 PGM",
+        "ME 2 PGM",
+        "HD ME 2 PGM",
+        "HDMI PGM",
+        "ME 1 PVW",
+        "ME 1 MVW",
+        "ME 2 MVW",
+        "HDMI ME 1 MVW",
+        "HDMI ME 2 MVW",
+        "Aux 1",
+        "Aux 2",
+        "Aux 3",
+        "Aux 4",
+        "Aux 5",
+        "Aux 6",
+        "—",
+        "—",
+        "—",
+        "XLR Monitor R Out",
+        "XLR Monitor L Out",
+        "XLR Ch 1 Out",
+        "XLR Ch 2 Out",
+        "Timecode Out",
+        "—"
+      ],
+      "inputTypes": [
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "XLR",
+        "XLR",
+        null,
+        null,
+        "ETH"
+      ],
+      "outputTypes": [
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "HDMI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "HDMI",
+        "HDMI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        null,
+        null,
+        null,
+        "XLR",
+        "XLR",
+        "XLR",
+        "XLR",
+        null,
+        null
+      ]
+    },
+    {
+      "id": "inv-pixelhue-p20",
+      "label": "PixelHue P20",
+      "category": "Video",
+      "inputs": [
+        "In 1",
+        "In 2",
+        "In 3",
+        "In 4",
+        "In 5",
+        "In 6",
+        "In 7",
+        "In 8",
+        "In 9",
+        "In 10",
+        "In 11",
+        "In 12",
+        "In 13",
+        "In 14",
+        "In 15",
+        "In 16",
+        "In 17",
+        "In 18",
+        "In 19",
+        "In 20",
+        "In 21",
+        "In 22",
+        "In 23",
+        "In 24",
+        "In 25",
+        "In 26",
+        "In 27",
+        "In 28",
+        "In 29",
+        "In 30",
+        "In 31",
+        "In 32",
+        "In 33",
+        "In 34",
+        "In 35",
+        "In 36",
+        "In 37",
+        "In 38",
+        "In 39",
+        "In 40",
+        "Audio In L (1/4\" TRS)",
+        "Audio In R (1/4\" TRS)"
+      ],
+      "outputs": [
+        "Out 1",
+        "Out 2",
+        "Out 3",
+        "Out 4",
+        "Out 5",
+        "Out 6",
+        "Out 7",
+        "Out 8",
+        "Out 9",
+        "Out 10",
+        "Out 11",
+        "Out 12",
+        "Out 13",
+        "Out 14",
+        "Out 15",
+        "Out 16",
+        "Out 17",
+        "Out 18",
+        "Out 19",
+        "Out 20",
+        "Out 21",
+        "Out 22",
+        "Out 23",
+        "Out 24",
+        "16x Multiview 1",
+        "16x Multiview 2",
+        "16x Multiview 3",
+        "16x Multiview 4",
+        "Audio Out L (1/4\" TRS)",
+        "Audio Out R (1/4\" TRS)"
+      ]
+    },
+    {
+      "id": "inv-aw-aquilon-rs4",
+      "label": "Analog Way Aquilon RS4",
+      "category": "Video",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "SDI In 1",
+        "SDI In 2",
+        "DP In 1",
+        "DP In 2"
+      ],
+      "outputs": [
+        "HDMI Out 1",
+        "HDMI Out 2",
+        "HDMI Out 3",
+        "HDMI Out 4",
+        "MVW 1",
+        "MVW 2"
+      ]
+    },
+    {
+      "id": "inv-atem-1me-production-studio-4k",
+      "label": "ATEM 1 M/E Production Studio 4K (Flypack)",
+      "category": "Video",
+      "inputs": [
+        "SDI 1",
+        "SDI 2",
+        "SDI 3",
+        "SDI 4",
+        "SDI 5",
+        "SDI 6",
+        "SDI 7",
+        "SDI 8",
+        "HDMI 1",
+        "XLR 1",
+        "XLR 2"
+      ],
+      "outputs": [
+        "PGM SDI",
+        "PGM HDMI",
+        "PGM HD",
+        "Multi SDI",
+        "Multi HDMI",
+        "AUX 1",
+        "AUX 2",
+        "AUX 3",
+        "PVW",
+        "REF",
+        "XLR 1",
+        "XLR 2"
+      ]
+    },
+    {
+      "id": "inv-atem-tv-studio-pro-4k",
+      "label": "ATEM Television Studio Pro 4K",
+      "category": "Video",
+      "inputs": [
+        "SDI 1",
+        "SDI 2",
+        "SDI 3",
+        "SDI 4",
+        "SDI 5",
+        "SDI 6",
+        "SDI 7",
+        "SDI 8",
+        "REF",
+        "XLR L",
+        "XLR R"
+      ],
+      "outputs": [
+        "SDI 1",
+        "SDI 2",
+        "SDI 3",
+        "SDI 4",
+        "SDI 5",
+        "SDI 6",
+        "SDI 7",
+        "SDI 8",
+        "AUX",
+        "PGM SDI",
+        "Multi SDI",
+        "Multi HDMI",
+        "1/4\" Headphone",
+        "1/4\" Output"
+      ]
+    },
+    {
+      "id": "inv-atem-production-studio-4k",
+      "label": "ATEM Production Studio 4K (Yellow/Blue)",
+      "category": "Video",
+      "inputs": [
+        "HDMI 1",
+        "HDMI 2",
+        "HDMI 3",
+        "HDMI 4",
+        "SDI 5",
+        "SDI 6",
+        "SDI 7",
+        "SDI 8",
+        "REF",
+        "XLR L",
+        "XLR R",
+        "1/4\" Mic"
+      ],
+      "outputs": [
+        "HDMI MultiView",
+        "SDI MultiView",
+        "HDMI PGM",
+        "SDI PGM",
+        "AUX",
+        "XLR L",
+        "XLR R",
+        "1/4\" Headphone"
+      ]
+    },
+    {
+      "id": "inv-atem-studio-hd",
+      "label": "ATEM Studio HD Switch",
+      "category": "Video",
+      "inputs": [
+        "HDMI 1",
+        "HDMI 2",
+        "HDMI 3",
+        "HDMI 4",
+        "SDI 5",
+        "SDI 6",
+        "SDI 7",
+        "SDI 8",
+        "REF",
+        "XLR L",
+        "XLR R",
+        "1/4\" Mic"
+      ],
+      "outputs": [
+        "HDMI MultiViewer",
+        "SDI MultiView",
+        "PGM",
+        "AUX",
+        "SDI 5 Talkback",
+        "SDI 6 Talkback",
+        "SDI 7 Talkback",
+        "SDI 8 Talkback",
+        "1/4\" Headphone"
+      ]
+    },
+    {
+      "id": "inv-atem-mini",
+      "label": "ATEM Mini",
+      "category": "Video",
+      "inputs": [
+        "HDMI 1",
+        "HDMI 2",
+        "HDMI 3",
+        "HDMI 4",
+        "1/4\" Mic"
+      ],
+      "outputs": [
+        "HDMI Out",
+        "USB-C",
+        "1/4\" Headphone"
+      ]
+    },
+    {
+      "id": "inv-bmd-constellation-8k",
+      "label": "Blackmagic Constellation 8K",
+      "category": "Video",
+      "inputs": [
+        "SDI In 1",
+        "SDI In 2",
+        "SDI In 3",
+        "SDI In 4",
+        "SDI In 5",
+        "SDI In 6",
+        "SDI In 7",
+        "SDI In 8",
+        "SDI In 9",
+        "SDI In 10",
+        "SDI In 11",
+        "SDI In 12",
+        "SDI In 13",
+        "SDI In 14",
+        "SDI In 15",
+        "SDI In 16",
+        "SDI In 17",
+        "SDI In 18",
+        "SDI In 19",
+        "SDI In 20",
+        "SDI In 21",
+        "SDI In 22",
+        "SDI In 23",
+        "SDI In 24",
+        "SDI In 25",
+        "SDI In 26",
+        "SDI In 27",
+        "SDI In 28",
+        "SDI In 29",
+        "SDI In 30",
+        "SDI In 31",
+        "SDI In 32",
+        "SDI In 33",
+        "SDI In 34",
+        "SDI In 35",
+        "SDI In 36",
+        "SDI In 37",
+        "SDI In 38",
+        "SDI In 39",
+        "SDI In 40",
+        "Audio In L (1/4\" TRS)",
+        "Audio In R (1/4\" TRS)"
+      ],
+      "outputs": [
+        "SDI Out 1",
+        "SDI Out 2",
+        "SDI Out 3",
+        "SDI Out 4",
+        "SDI Out 5",
+        "SDI Out 6",
+        "SDI Out 7",
+        "SDI Out 8",
+        "SDI Out 9",
+        "SDI Out 10",
+        "SDI Out 11",
+        "SDI Out 12",
+        "SDI Out 13",
+        "SDI Out 14",
+        "SDI Out 15",
+        "SDI Out 16",
+        "SDI Out 17",
+        "SDI Out 18",
+        "SDI Out 19",
+        "SDI Out 20",
+        "SDI Out 21",
+        "SDI Out 22",
+        "SDI Out 23",
+        "SDI Out 24",
+        "16x Multiview 1",
+        "16x Multiview 2",
+        "16x Multiview 3",
+        "16x Multiview 4",
+        "Audio Out L (1/4\" TRS)",
+        "Audio Out R (1/4\" TRS)"
+      ]
+    },
+    {
+      "id": "inv-bmd-web-presenter",
+      "label": "Blackmagic Web Presenter",
+      "category": "Video",
+      "inputs": [
+        "SDI In",
+        "HDMI In",
+        "XLR In",
+        "RCA In"
+      ],
+      "outputs": [
+        "SDI PGM",
+        "SDI Loop",
+        "HDMI Loop",
+        "USB Webcam"
+      ]
+    },
+    {
+      "id": "inv-barco-e2",
+      "label": "E2",
+      "category": "Video",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "HDMI In 3",
+        "HDMI In 4",
+        "HDMI In 5",
+        "HDMI In 6",
+        "HDMI In 7",
+        "HDMI In 8",
+        "DP In 1",
+        "DP In 2",
+        "DP In 3",
+        "DP In 4",
+        "DP In 5",
+        "DP In 6",
+        "DP In 7",
+        "DP In 8",
+        "TC1 DP In",
+        "TC1 HDMI In",
+        "TC1 SDI In 1",
+        "TC1 SDI In 2",
+        "TC1 SDI In 3",
+        "TC1 SDI In 4",
+        "TC2 DP In",
+        "TC2 HDMI In",
+        "TC2 SDI In 1",
+        "TC2 SDI In 2",
+        "TC2 SDI In 3",
+        "TC2 SDI In 4",
+        "HDMI/DP Gen1 In (DL only)"
+      ],
+      "outputs": [
+        "TC1 DP Out",
+        "TC1 HDMI Out",
+        "TC1 SDI Out 1",
+        "TC1 SDI Out 2",
+        "TC1 SDI Out 3",
+        "TC1 SDI Out 4",
+        "TC2 DP Out",
+        "TC2 HDMI Out",
+        "TC2 SDI Out 1",
+        "TC2 SDI Out 2",
+        "TC2 SDI Out 3",
+        "TC2 SDI Out 4",
+        "TC3 DP Out",
+        "TC3 HDMI Out",
+        "TC3 SDI Out 1",
+        "TC3 SDI Out 2",
+        "TC3 SDI Out 3",
+        "TC3 SDI Out 4",
+        "TC4 DP Out",
+        "TC4 HDMI Out",
+        "TC4 SDI Out 1",
+        "TC4 SDI Out 2",
+        "TC4 SDI Out 3",
+        "TC4 SDI Out 4",
+        "MVW HDMI 1",
+        "MVW HDMI 2",
+        "MVW HDMI 3",
+        "MVW HDMI 4"
+      ]
+    },
+    {
+      "id": "inv-vmix",
+      "label": "vMix PC",
+      "category": "Video",
+      "inputs": [
+        "HDMI 1",
+        "HDMI 2",
+        "HDMI 3",
+        "HDMI 4",
+        "3.5mm Analogue"
+      ],
+      "outputs": [
+        "MiniDP 1",
+        "MiniDP 2",
+        "MiniDP 3",
+        "MiniDP 4",
+        "MiniDP 5",
+        "MiniDP 6",
+        "USB"
+      ]
+    },
+    {
+      "id": "inv-novastar-cvt4k-s",
+      "label": "NovaStar CVT4K-S Optical Fiber Converter",
+      "category": "Video",
+      "inputs": [
+        "Master Opt 1 (1-8)",
+        "Master Opt 2 (9-16)",
+        "Backup Opt 1 (1-8)",
+        "Backup Opt 2 (9-16)"
+      ],
+      "outputs": [
+        "Out 1",
+        "Out 2",
+        "Out 3",
+        "Out 4",
+        "Out 5",
+        "Out 6",
+        "Out 7",
+        "Out 8",
+        "Out 9",
+        "Out 10",
+        "Out 11",
+        "Out 12",
+        "Out 13",
+        "Out 14",
+        "Out 15",
+        "Out 16"
+      ],
+      "outputTypes": [
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH"
+      ]
+    },
+    {
+      "id": "inv-novastar-mctrl4k",
+      "label": "NovaStar MCTRL 4K",
+      "category": "Video",
+      "inputs": [
+        "DisplayPort",
+        "HDMI 2.0",
+        "Dual DVI 1",
+        "Dual DVI 2"
+      ],
+      "outputs": [
+        "Master Opt 1 (1-8)",
+        "Master Opt 2 (9-16)",
+        "Backup Opt 1 (1-8)",
+        "Backup Opt 2 (9-16)"
+      ]
+    },
+    {
+      "id": "inv-tessera-sx40",
+      "label": "Tessera SX40",
+      "category": "Video",
+      "inputs": [
+        "HDMI 2.0 In",
+        "SDI In"
+      ],
+      "outputs": [
+        "HDMI Loop",
+        "SDI Loop",
+        "Out A",
+        "Out B",
+        "Out C",
+        "Out D"
+      ],
+      "outputTypes": [
+        "HDMI",
+        "SDI",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH"
+      ]
+    },
+    {
+      "id": "inv-tessera-xd",
+      "label": "Tessera XD",
+      "category": "Video",
+      "inputs": [
+        "X1",
+        "X2"
+      ],
+      "outputs": [
+        "Out 1",
+        "Out 2",
+        "Out 3",
+        "Out 4",
+        "Out 5",
+        "Out 6",
+        "Out 7",
+        "Out 8",
+        "Out 9",
+        "Out 10"
+      ],
+      "outputTypes": [
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH"
+      ]
+    },
+    {
+      "id": "inv-decimator-12g-cross",
+      "label": "12G Decimator Cross Converter",
+      "category": "Video",
+      "inputs": [
+        "HDMI 2.0 In",
+        "12G SDI In",
+        "Genlock",
+        "USB"
+      ],
+      "outputs": [
+        "HDMI 2.0 Out",
+        "12G SDI 1 Out A",
+        "12G SDI 1 Out B",
+        "12G SDI 2 Out A",
+        "12G SDI 2 Out B"
+      ]
+    },
+    {
+      "id": "inv-decimator-dmon",
+      "label": "Decimator DMON Multiviewer",
+      "category": "Video",
+      "inputs": [
+        "SDI 1",
+        "SDI 2",
+        "SDI 3",
+        "SDI 4",
+        "SDI 5",
+        "SDI 6"
+      ],
+      "outputs": [
+        "SDI 1 Loop",
+        "SDI 2 Loop",
+        "SDI 3 Loop",
+        "SDI 4 Loop",
+        "SDI 5 Loop",
+        "SDI 6 Loop",
+        "MVW HDMI 1",
+        "MVW SDI 1",
+        "MVW SDI 2"
+      ]
+    },
+    {
+      "id": "inv-bmd-teranex-scaler",
+      "label": "Blackmagic Teranex Scaler",
+      "category": "Video",
+      "inputs": [
+        "HDMI In",
+        "SDI In A",
+        "SDI In B",
+        "Audio In L",
+        "Audio In R",
+        "Ref In"
+      ],
+      "outputs": [
+        "HDMI Loop",
+        "SDI Loop A",
+        "SDI Loop B",
+        "HDMI Out",
+        "SDI Out A",
+        "SDI Out B",
+        "SDI Out C",
+        "SDI Out D",
+        "Ref Out"
+      ]
+    },
+    {
+      "id": "inv-bmd-sdi-da",
+      "label": "Blackmagic Distribution Amplifier",
+      "category": "Video",
+      "inputs": [
+        "SDI In"
+      ],
+      "outputs": [
+        "SDI Loop Out 1",
+        "SDI Loop Out 2",
+        "SDI Loop Out 3",
+        "SDI Loop Out 4",
+        "SDI Loop Out 5",
+        "SDI Loop Out 6"
+      ]
+    },
+    {
+      "id": "inv-hdmi-da",
+      "label": "HDMI Distribution Amplifier",
+      "category": "Video",
+      "inputs": [
+        "HDMI In"
+      ],
+      "outputs": [
+        "HDMI Out 1",
+        "HDMI Out 2"
+      ]
+    },
+    {
+      "id": "inv-hdmi-splitter",
+      "label": "HDMI Splitter",
+      "category": "Video",
+      "inputs": [
+        "HDMI In"
+      ],
+      "outputs": [
+        "HDMI Out 1",
+        "HDMI Out 2"
+      ]
+    },
+    {
+      "id": "inv-bmd-bidirectional",
+      "label": "Blackmagic Bi-Directional Converter",
+      "category": "Video",
+      "inputs": [
+        "SDI In",
+        "HDMI In"
+      ],
+      "outputs": [
+        "SDI Out",
+        "HDMI Out"
+      ]
+    },
+    {
+      "id": "inv-bmd-updowncross",
+      "label": "Blackmagic UpDownCross HD",
+      "category": "Video",
+      "inputs": [
+        "SDI In",
+        "HDMI In",
+        "Ref In"
+      ],
+      "outputs": [
+        "HDMI Out",
+        "SDI Out 1",
+        "SDI Out 2",
+        "SDI Loop Out"
+      ]
+    },
+    {
+      "id": "inv-bmd-fiber-sdi",
+      "label": "Blackmagic Fiber to SDI Converter",
+      "category": "Video",
+      "inputs": [
+        "SDI In",
+        "Fiber In"
+      ],
+      "outputs": [
+        "SDI Out",
+        "Fiber Out"
+      ]
+    },
+    {
+      "id": "inv-camplex-fiber-tx",
+      "label": "Camplex HDMI to Fiber TX",
+      "category": "Video",
+      "inputs": [
+        "HDMI In"
+      ],
+      "outputs": [
+        "Fiber Out"
+      ]
+    },
+    {
+      "id": "inv-camplex-fiber-rx",
+      "label": "Camplex HDMI to Fiber RX",
+      "category": "Video",
+      "inputs": [
+        "Fiber In"
+      ],
+      "outputs": [
+        "HDMI Out"
+      ]
+    },
+    {
+      "id": "inv-geffen-4k-tx",
+      "label": "Geffen 4K Transmitter",
+      "category": "Video",
+      "inputs": [
+        "HDMI In"
+      ],
+      "outputs": [
+        "Ethernet Out"
+      ]
+    },
+    {
+      "id": "inv-geffen-4k-rx",
+      "label": "Geffen 4K Receiver",
+      "category": "Video",
+      "inputs": [
+        "Ethernet In"
+      ],
+      "outputs": [
+        "HDMI Out"
+      ]
+    },
+    {
+      "id": "inv-oceanmatrix-tx",
+      "label": "Ocean Matrix Transmitter",
+      "category": "Video",
+      "inputs": [
+        "HDMI In"
+      ],
+      "outputs": [
+        "Ethernet Out"
+      ]
+    },
+    {
+      "id": "inv-oceanmatrix-rx",
+      "label": "Ocean Matrix Receiver",
+      "category": "Video",
+      "inputs": [
+        "Ethernet In"
+      ],
+      "outputs": [
+        "HDMI Out"
+      ]
+    },
+    {
+      "id": "inv-startech-eth-fiber",
+      "label": "StarTech Ethernet to Fiber",
+      "category": "Network",
+      "inputs": [
+        "Ethernet In"
+      ],
+      "outputs": [
+        "Fiber P1",
+        "Fiber P2"
+      ]
+    },
+    {
+      "id": "inv-bmd-router-20x20",
+      "label": "Blackmagic 20x20 Router",
+      "category": "Video",
+      "inputs": [
+        "SDI In 1",
+        "SDI In 2",
+        "SDI In 3",
+        "SDI In 4",
+        "SDI In 5",
+        "SDI In 6",
+        "SDI In 7",
+        "SDI In 8",
+        "SDI In 9",
+        "SDI In 10",
+        "SDI In 11",
+        "SDI In 12",
+        "SDI In 13",
+        "SDI In 14",
+        "SDI In 15",
+        "SDI In 16",
+        "SDI In 17",
+        "SDI In 18",
+        "SDI In 19",
+        "SDI In 20"
+      ],
+      "outputs": [
+        "SDI Out 1",
+        "SDI Out 2",
+        "SDI Out 3",
+        "SDI Out 4",
+        "SDI Out 5",
+        "SDI Out 6",
+        "SDI Out 7",
+        "SDI Out 8",
+        "SDI Out 9",
+        "SDI Out 10",
+        "SDI Out 11",
+        "SDI Out 12",
+        "SDI Out 13",
+        "SDI Out 14",
+        "SDI Out 15",
+        "SDI Out 16",
+        "SDI Out 17",
+        "SDI Out 18",
+        "SDI Out 19",
+        "SDI Out 20"
+      ]
+    },
+    {
+      "id": "inv-bmd-router-40x40",
+      "label": "Blackmagic 40x40 Router",
+      "category": "Video",
+      "inputs": [
+        "SDI In 1",
+        "SDI In 2",
+        "SDI In 3",
+        "SDI In 4",
+        "SDI In 5",
+        "SDI In 6",
+        "SDI In 7",
+        "SDI In 8",
+        "SDI In 9",
+        "SDI In 10",
+        "SDI In 11",
+        "SDI In 12",
+        "SDI In 13",
+        "SDI In 14",
+        "SDI In 15",
+        "SDI In 16",
+        "SDI In 17",
+        "SDI In 18",
+        "SDI In 19",
+        "SDI In 20",
+        "SDI In 21",
+        "SDI In 22",
+        "SDI In 23",
+        "SDI In 24",
+        "SDI In 25",
+        "SDI In 26",
+        "SDI In 27",
+        "SDI In 28",
+        "SDI In 29",
+        "SDI In 30",
+        "SDI In 31",
+        "SDI In 32",
+        "SDI In 33",
+        "SDI In 34",
+        "SDI In 35",
+        "SDI In 36",
+        "SDI In 37",
+        "SDI In 38",
+        "SDI In 39",
+        "SDI In 40"
+      ],
+      "outputs": [
+        "SDI Out 1",
+        "SDI Out 2",
+        "SDI Out 3",
+        "SDI Out 4",
+        "SDI Out 5",
+        "SDI Out 6",
+        "SDI Out 7",
+        "SDI Out 8",
+        "SDI Out 9",
+        "SDI Out 10",
+        "SDI Out 11",
+        "SDI Out 12",
+        "SDI Out 13",
+        "SDI Out 14",
+        "SDI Out 15",
+        "SDI Out 16",
+        "SDI Out 17",
+        "SDI Out 18",
+        "SDI Out 19",
+        "SDI Out 20",
+        "SDI Out 21",
+        "SDI Out 22",
+        "SDI Out 23",
+        "SDI Out 24",
+        "SDI Out 25",
+        "SDI Out 26",
+        "SDI Out 27",
+        "SDI Out 28",
+        "SDI Out 29",
+        "SDI Out 30",
+        "SDI Out 31",
+        "SDI Out 32",
+        "SDI Out 33",
+        "SDI Out 34",
+        "SDI Out 35",
+        "SDI Out 36",
+        "SDI Out 37",
+        "SDI Out 38",
+        "SDI Out 39",
+        "SDI Out 40"
+      ]
+    },
+    {
+      "id": "inv-b2b-hdmi-8x8",
+      "label": "B2B 8x8 HDMI Router",
+      "category": "Video",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "HDMI In 3",
+        "HDMI In 4",
+        "HDMI In 5",
+        "HDMI In 6",
+        "HDMI In 7",
+        "HDMI In 8"
+      ],
+      "outputs": [
+        "HDMI Out 1",
+        "HDMI Out 2",
+        "HDMI Out 3",
+        "HDMI Out 4",
+        "HDMI Out 5",
+        "HDMI Out 6",
+        "HDMI Out 7",
+        "HDMI Out 8"
+      ]
+    },
+    {
+      "id": "inv-bmd-16x-multiviewer",
+      "label": "Blackmagic 16x Multiviewer",
+      "category": "Video",
+      "inputs": [
+        "SDI In 1",
+        "SDI In 2",
+        "SDI In 3",
+        "SDI In 4",
+        "SDI In 5",
+        "SDI In 6",
+        "SDI In 7",
+        "SDI In 8",
+        "SDI In 9",
+        "SDI In 10",
+        "SDI In 11",
+        "SDI In 12",
+        "SDI In 13",
+        "SDI In 14",
+        "SDI In 15",
+        "SDI In 16"
+      ],
+      "outputs": [
+        "SDI Loop 1",
+        "SDI Loop 2",
+        "SDI Loop 3",
+        "SDI Loop 4",
+        "SDI Loop 5",
+        "SDI Loop 6",
+        "SDI Loop 7",
+        "SDI Loop 8",
+        "SDI Loop 9",
+        "SDI Loop 10",
+        "SDI Loop 11",
+        "SDI Loop 12",
+        "SDI Loop 13",
+        "SDI Loop 14",
+        "SDI Loop 15",
+        "SDI Loop 16",
+        "HDMI Out",
+        "6G SDI Out 1",
+        "6G SDI Out 2",
+        "3G SDI Out 1",
+        "3G SDI Out 2"
+      ]
+    },
+    {
+      "id": "inv-bmd-router-panel",
+      "label": "Blackmagic Router Panel",
+      "category": "Control",
+      "inputs": [
+        "Ethernet"
+      ],
+      "outputs": []
+    },
+    {
+      "id": "inv-hyperdeck-mini",
+      "label": "HyperDeck Mini",
+      "category": "Video",
+      "inputs": [
+        "SDI In",
+        "Ref In"
+      ],
+      "outputs": [
+        "SDI Out A",
+        "SDI Out B"
+      ]
+    },
+    {
+      "id": "inv-hyperdeck-studio-pro-4k",
+      "label": "HyperDeck Studio Pro 4K",
+      "category": "Video",
+      "inputs": [
+        "SDI In A (6G)",
+        "SDI In B (6G)",
+        "SDI In C (6G)",
+        "SDI In D (6G)",
+        "HDMI In",
+        "XLR Audio In L",
+        "XLR Audio In R",
+        "Timecode In"
+      ],
+      "outputs": [
+        "SDI Out A (6G)",
+        "SDI Out B (6G)",
+        "SDI Out C (6G)",
+        "SDI Out D (6G)",
+        "HDMI Out",
+        "XLR Audio Out L",
+        "XLR Audio Out R",
+        "Timecode Out",
+        "Monitor Out"
+      ]
+    },
+    {
+      "id": "inv-shogun-studio-2",
+      "label": "Shogun Studio II",
+      "category": "Video",
+      "inputs": [
+        "SDI In 1 (12G)",
+        "SDI In 2 (12G)",
+        "SDI In 3 (3G)",
+        "SDI In 4 (3G)",
+        "HDMI In",
+        "XLR Audio In L",
+        "XLR Audio In R",
+        "LTC In",
+        "Genlock In"
+      ],
+      "outputs": [
+        "SDI Out 1",
+        "SDI Out 2",
+        "HDMI Out",
+        "XLR Audio Out L",
+        "XLR Audio Out R",
+        "LTC Out",
+        "Genlock Out"
+      ]
+    },
+    {
+      "id": "inv-teradek-encoder",
+      "label": "Teradek Encoder",
+      "category": "Video",
+      "inputs": [
+        "SDI In",
+        "HDMI In",
+        "Ethernet In"
+      ],
+      "outputs": []
+    },
+    {
+      "id": "inv-sony-brc-x1000",
+      "label": "Sony 4K BRC-X1000",
+      "category": "Video",
+      "inputs": [
+        "Sync In"
+      ],
+      "outputs": [
+        "MON 1 SDI (3G)",
+        "MON 2 SDI (3G)",
+        "Line 1",
+        "Line 2",
+        "HDMI 4K Out"
+      ]
+    },
+    {
+      "id": "inv-sony-evi-h100s",
+      "label": "Sony EVI-H100S Robo Camera",
+      "category": "Video",
+      "inputs": [],
+      "outputs": [
+        "SDI Out"
+      ]
+    },
+    {
+      "id": "inv-sony-fr7",
+      "label": "Sony FR7 (Robo)",
+      "category": "Video",
+      "inputs": [
+        "VISCA In",
+        "TC In",
+        "Genlock In",
+        "Audio In L",
+        "Audio In R",
+        "LAN"
+      ],
+      "outputs": [
+        "VISCA Out",
+        "HDMI Out",
+        "SDI Out 1 (12G)",
+        "SDI Out 2",
+        "Optical Out"
+      ]
+    },
+    {
+      "id": "inv-panasonic-aw-ue150",
+      "label": "Panasonic AW-UE150 (Robo)",
+      "category": "Video",
+      "inputs": [
+        "RS-422",
+        "Genlock In",
+        "Audio 1/8\" In",
+        "LAN"
+      ],
+      "outputs": [
+        "HDMI Out",
+        "SDI Monitor Out",
+        "SDI Out 1 (12G)",
+        "SDI Out 2 (3G)",
+        "Optical Out"
+      ]
+    },
+    {
+      "id": "inv-bzb-ndi-camera",
+      "label": "BZB NDI Brick Camera",
+      "category": "Video",
+      "inputs": [],
+      "outputs": [
+        "SDI",
+        "HDMI",
+        "POE Ethernet"
+      ]
+    },
+    {
+      "id": "inv-lenovo-e15",
+      "label": "Lenovo E15 (PPT)",
+      "category": "Video",
+      "inputs": [],
+      "outputs": [
+        "HDMI Out",
+        "Ethernet"
+      ]
+    },
+    {
+      "id": "inv-macbook-2018-retina",
+      "label": "2018 Retina MacBook (PBP)",
+      "category": "Video",
+      "inputs": [],
+      "outputs": [
+        "HDMI Out",
+        "MiniDP Out",
+        "Ethernet"
+      ]
+    },
+    {
+      "id": "inv-macbook-m3",
+      "label": "M3 MacBook (Mitti)",
+      "category": "Video",
+      "inputs": [],
+      "outputs": [
+        "HDMI",
+        "USB-C 1",
+        "USB-C 2",
+        "USB-C 3"
+      ]
+    },
+    {
+      "id": "inv-millumin-mac-studio",
+      "label": "Millumin Mac Studio Server",
+      "category": "Video",
+      "inputs": [],
+      "outputs": [
+        "HDMI Out",
+        "USB",
+        "USB-C Out 1",
+        "USB-C Out 2",
+        "USB-C Out 3",
+        "USB-C Out 4"
+      ]
+    },
+    {
+      "id": "inv-datapath-fx4",
+      "label": "Datapath Fx4",
+      "category": "Video",
+      "inputs": [
+        "HDMI 1",
+        "HDMI 2",
+        "HDMI 3",
+        "USB",
+        "Sync"
+      ],
+      "outputs": [
+        "HDMI 1",
+        "HDMI 2",
+        "HDMI 3",
+        "HDMI 4",
+        "HDMI Loop Out"
+      ]
+    },
+    {
+      "id": "inv-panasonic-17-rackmount",
+      "label": "Panasonic 17\" Rackmount",
+      "category": "Video",
+      "inputs": [
+        "SDI In 1",
+        "SDI In 2"
+      ],
+      "outputs": [
+        "Switched SDI Out"
+      ]
+    },
+    {
+      "id": "inv-liliput-156-4k",
+      "label": "Liliput 15.6\" 4K Rackmount",
+      "category": "Video",
+      "inputs": [
+        "VGA In",
+        "DVI In",
+        "HDMI 1",
+        "HDMI 2",
+        "HDMI 3",
+        "HDMI 4",
+        "SDI In"
+      ],
+      "outputs": [
+        "SDI Out"
+      ]
+    },
+    {
+      "id": "inv-bmd-dual-8-monitors",
+      "label": "Blackmagic Dual 8\" Monitors",
+      "category": "Video",
+      "inputs": [
+        "Monitor 1 SDI In",
+        "Monitor 2 SDI In"
+      ],
+      "outputs": [
+        "Monitor 1 SDI Out",
+        "Monitor 2 SDI Out"
+      ]
+    },
+    {
+      "id": "inv-leader-lv770",
+      "label": "Leader LV770 Multi SDI Rasterizer",
+      "category": "Video",
+      "inputs": [
+        "SDI In A",
+        "SDI In B",
+        "Ref In"
+      ],
+      "outputs": [
+        "DVI Rasterizer Out",
+        "SDI Out",
+        "Ref Out"
+      ]
+    },
+    {
+      "id": "inv-timecode-master-5010",
+      "label": "TimeCode Master 5010-VITC",
+      "category": "Other",
+      "inputs": [
+        "LTC In",
+        "Ref In A",
+        "Ref In B",
+        "Reader VITC In A",
+        "Reader VITC In B",
+        "PGM Input"
+      ],
+      "outputs": [
+        "LTC Out",
+        "VITC Gen Out A",
+        "VITC Gen Out B",
+        "Video Char Gen Out"
+      ]
+    },
+    {
+      "id": "inv-focusrite-2i2",
+      "label": "Focusrite Scarlett 2i2",
+      "category": "Audio",
+      "inputs": [
+        "XLR In L",
+        "XLR In R"
+      ],
+      "outputs": [
+        "1/4\" Out L",
+        "1/4\" Out R",
+        "USB"
+      ]
+    },
+    {
+      "id": "inv-focusrite-18i8",
+      "label": "Focusrite Scarlett 18i8",
+      "category": "Audio",
+      "inputs": [
+        "XLR 1",
+        "XLR 2",
+        "XLR 3",
+        "XLR 4",
+        "1/4\" In 5",
+        "1/4\" In 6",
+        "1/4\" In 7",
+        "1/4\" In 8",
+        "MIDI In",
+        "Optical In",
+        "SPDIF In"
+      ],
+      "outputs": [
+        "1/4\" Out 1",
+        "1/4\" Out 2",
+        "1/4\" Out 3",
+        "1/4\" Out 4",
+        "1/4\" Headphone L",
+        "1/4\" Headphone R",
+        "MIDI Out",
+        "SPDIF Out",
+        "USB"
+      ]
+    },
+    {
+      "id": "inv-whirlwind-split6",
+      "label": "Whirlwind Split 6",
+      "category": "Audio",
+      "inputs": [
+        "XLR In 1",
+        "XLR In 2",
+        "XLR In 3",
+        "XLR In 4",
+        "XLR In 5",
+        "XLR In 6"
+      ],
+      "outputs": [
+        "XLR Out 1",
+        "XLR Out 2",
+        "XLR Out 3",
+        "XLR Out 4",
+        "XLR Out 5",
+        "XLR Out 6"
+      ]
+    },
+    {
+      "id": "inv-tac-12",
+      "label": "TAC-12",
+      "category": "Other",
+      "inputs": [
+        "Ch 1",
+        "Ch 2",
+        "Ch 3",
+        "Ch 4",
+        "Ch 5",
+        "Ch 6",
+        "Ch 7",
+        "Ch 8",
+        "Ch 9",
+        "Ch 10",
+        "Ch 11",
+        "Ch 12"
+      ],
+      "outputs": []
+    },
+    {
+      "id": "inv-netgear-16port",
+      "label": "Netgear 16-Port Gigabit Switch",
+      "category": "Network",
+      "inputs": [
+        "Port 1",
+        "Port 2",
+        "Port 3",
+        "Port 4",
+        "Port 5",
+        "Port 6",
+        "Port 7",
+        "Port 8"
+      ],
+      "outputs": [
+        "Port 9",
+        "Port 10",
+        "Port 11",
+        "Port 12",
+        "Port 13",
+        "Port 14",
+        "Port 15",
+        "Port 16"
+      ],
+      "inputTypes": [
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH"
+      ],
+      "outputTypes": [
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH"
+      ]
+    },
+    {
+      "id": "inv-netgear-24port",
+      "label": "Netgear 24-Port Gigabit Switch",
+      "category": "Network",
+      "inputs": [
+        "Port 1",
+        "Port 2",
+        "Port 3",
+        "Port 4",
+        "Port 5",
+        "Port 6",
+        "Port 7",
+        "Port 8",
+        "Port 9",
+        "Port 10",
+        "Port 11",
+        "Port 12"
+      ],
+      "outputs": [
+        "Port 13",
+        "Port 14",
+        "Port 15",
+        "Port 16",
+        "Port 17",
+        "Port 18",
+        "Port 19",
+        "Port 20",
+        "Port 21",
+        "Port 22",
+        "Port 23",
+        "Port 24"
+      ],
+      "inputTypes": [
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH"
+      ],
+      "outputTypes": [
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH"
+      ]
+    },
+    {
+      "id": "inv-netgear-wireless-router",
+      "label": "Netgear Wireless Router",
+      "category": "Network",
+      "inputs": [
+        "WAN"
+      ],
+      "outputs": [
+        "Port 1",
+        "Port 2",
+        "Port 3",
+        "Port 4"
+      ],
+      "inputTypes": [
+        "ETH"
+      ],
+      "outputTypes": [
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH"
+      ]
+    },
+    {
+      "id": "inv-poe-injector",
+      "label": "POE Injector",
+      "category": "Network",
+      "inputs": [
+        "Ethernet In"
+      ],
+      "outputs": [
+        "POE Ethernet Out"
+      ]
+    }
+  ]
+}

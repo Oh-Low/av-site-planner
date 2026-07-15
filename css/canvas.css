@@ -1,0 +1,189 @@
+/* Canvas */
+.led-canvas-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  min-height: 400px;
+}
+
+.canvas-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.canvas-toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.view-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.wall-empty-state {
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  max-width: 28rem;
+}
+
+.wall-empty-state p {
+  margin: 0;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+#grid-stale-hint {
+  color: var(--power-color);
+}
+
+.wall-canvas-container.has-grid .wall-empty-state,
+.calc-viewport--svg.has-grid .wall-empty-state {
+  display: none;
+}
+
+.wall-canvas-container.has-grid #wall-svg,
+.calc-viewport--svg.has-grid #wall-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+
+#canvas-status {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.wall-canvas-container,
+.calc-viewport--svg {
+  background: #0a0e14;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-height: 360px;
+  height: min(70vh, 560px);
+  position: relative;
+}
+
+.wall-canvas-container:not(.has-grid),
+.calc-viewport--svg:not(.has-proj):not(.has-grid) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wall-canvas-container.is-panning,
+.calc-viewport--svg.is-panning {
+  cursor: grabbing;
+}
+
+.wall-canvas-container.is-panning #wall-svg,
+.calc-viewport--svg.is-panning #wall-svg {
+  cursor: grabbing;
+}
+
+#wall-svg {
+  display: none;
+}
+
+.wall-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.swatch {
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.legend-item.data .swatch {
+  background: var(--data-color);
+}
+
+.legend-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.legend-item.power .swatch {
+  background: var(--power-color);
+}
+
+.tile-swatch {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #64748b;
+  background: transparent;
+}
+
+/* SVG tile styles (applied via JS classes) */
+.tile-rect {
+  cursor: pointer;
+  transition: fill 0.15s;
+}
+
+.tile-rect:hover {
+  filter: brightness(1.2);
+}
+
+.tile-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  fill: var(--text-muted);
+  pointer-events: none;
+}
+
+.line-path {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.endpoint-circle {
+  pointer-events: none;
+}
+
+.endpoint-label {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  fill: #fff;
+  pointer-events: none;
+}
+
+.endpoint-label-bg {
+  pointer-events: none;
+}

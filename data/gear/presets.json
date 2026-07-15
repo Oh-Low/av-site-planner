@@ -1,0 +1,972 @@
+{
+  "folders": [
+    {
+      "id": "fld-library",
+      "name": "Library",
+      "parentId": null
+    },
+    {
+      "id": "fld-brands",
+      "name": "Brands",
+      "parentId": "fld-library"
+    },
+    {
+      "id": "fld-brand-barco",
+      "name": "Barco",
+      "parentId": "fld-brands"
+    },
+    {
+      "id": "fld-brand-novastar",
+      "name": "NovaStar",
+      "parentId": "fld-brands"
+    },
+    {
+      "id": "fld-brand-blackmagic",
+      "name": "Blackmagic",
+      "parentId": "fld-brands"
+    },
+    {
+      "id": "fld-brand-analogway",
+      "name": "Analog Way",
+      "parentId": "fld-brands"
+    }
+  ],
+  "gear": [
+    {
+      "id": "source",
+      "label": "Source",
+      "category": "Video",
+      "inputs": [
+        "\u2014",
+        "\u2014"
+      ],
+      "outputs": [
+        "HDMI Out",
+        "SDI Out"
+      ],
+      "inputTypes": [
+        null,
+        null
+      ],
+      "outputTypes": [
+        "HDMI",
+        "SDI"
+      ]
+    },
+    {
+      "id": "matrix",
+      "label": "Matrix",
+      "category": "Video",
+      "inputs": [
+        "In 1",
+        "In 2",
+        "In 3",
+        "In 4"
+      ],
+      "outputs": [
+        "Out 1",
+        "Out 2",
+        "Out 3",
+        "Out 4"
+      ],
+      "inputTypes": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "outputTypes": [
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": "switcher",
+      "label": "Switcher",
+      "category": "Video",
+      "inputs": [
+        "In 1",
+        "In 2",
+        "In 3"
+      ],
+      "outputs": [
+        "PGM",
+        "PVW",
+        "Aux"
+      ],
+      "inputTypes": [
+        null,
+        null,
+        null
+      ],
+      "outputTypes": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": "dsp",
+      "label": "DSP",
+      "category": "Audio",
+      "inputs": [
+        "In 1",
+        "In 2"
+      ],
+      "outputs": [
+        "Out 1",
+        "Out 2"
+      ],
+      "inputTypes": [
+        null,
+        null
+      ],
+      "outputTypes": [
+        null,
+        null
+      ]
+    },
+    {
+      "id": "amplifier",
+      "label": "Amplifier",
+      "category": "Audio",
+      "inputs": [
+        "In L",
+        "In R"
+      ],
+      "outputs": [
+        "Speaker L",
+        "Speaker R"
+      ],
+      "inputTypes": [
+        null,
+        null
+      ],
+      "outputTypes": [
+        null,
+        null
+      ]
+    },
+    {
+      "id": "display",
+      "label": "Display",
+      "category": "Video",
+      "inputs": [
+        "HDMI In",
+        "DP In"
+      ],
+      "outputs": [
+        "\u2014",
+        "\u2014"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "DP"
+      ],
+      "outputTypes": [
+        null,
+        null
+      ]
+    },
+    {
+      "id": "projector",
+      "label": "Projector",
+      "category": "Video",
+      "inputs": [
+        "HDMI In",
+        "HDMI Loop"
+      ],
+      "outputs": [
+        "\u2014",
+        "\u2014"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI"
+      ],
+      "outputTypes": [
+        null,
+        null
+      ]
+    },
+    {
+      "id": "generic",
+      "label": "Generic",
+      "category": "Other",
+      "inputs": [
+        "In 1",
+        "In 2"
+      ],
+      "outputs": [
+        "Out 1",
+        "Out 2"
+      ],
+      "inputTypes": [
+        null,
+        null
+      ],
+      "outputTypes": [
+        null,
+        null
+      ]
+    },
+    {
+      "id": "barco-e2",
+      "label": "Barco E2",
+      "category": "Video",
+      "folderId": "fld-brand-barco",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "HDMI In 3",
+        "HDMI In 4",
+        "SDI In 1",
+        "SDI In 2",
+        "SDI In 3",
+        "SDI In 4",
+        "DP In 1",
+        "DP In 2"
+      ],
+      "outputs": [
+        "PGM HDMI",
+        "PGM SDI",
+        "PVW HDMI",
+        "Aux 1",
+        "Aux 2",
+        "MVR Out",
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "HDMI",
+        "HDMI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "DP",
+        "DP"
+      ],
+      "outputTypes": [
+        "HDMI",
+        "SDI",
+        "HDMI",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": "barco-imagepro-ii",
+      "label": "Barco ImagePRO-II",
+      "category": "Video",
+      "folderId": "fld-brand-barco",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "SDI In 1",
+        "SDI In 2",
+        "DP In"
+      ],
+      "outputs": [
+        "HDMI Out 1",
+        "HDMI Out 2",
+        "SDI Out 1",
+        "SDI Out 2",
+        "Loop Out"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "SDI",
+        "SDI",
+        "DP"
+      ],
+      "outputTypes": [
+        "HDMI",
+        "HDMI",
+        "SDI",
+        "SDI",
+        null
+      ]
+    },
+    {
+      "id": "barco-udx-4k22",
+      "label": "Barco UDX-4K22",
+      "category": "Video",
+      "folderId": "fld-brand-barco",
+      "inputs": [
+        "HDMI 2.0 In",
+        "DP 1.2 In",
+        "SDI In",
+        "HDBaseT In"
+      ],
+      "outputs": [
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "DP",
+        "SDI",
+        "ETH"
+      ],
+      "outputTypes": [
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": "barco-g62-w14",
+      "label": "Barco G62-W14",
+      "category": "Video",
+      "folderId": "fld-brand-barco",
+      "inputs": [
+        "HDMI In",
+        "DP In",
+        "SDI In"
+      ],
+      "outputs": [
+        "\u2014",
+        "\u2014",
+        "\u2014"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "DP",
+        "SDI"
+      ],
+      "outputTypes": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": "novastar-mctrl4k",
+      "label": "NovaStar MCTRL4K",
+      "category": "Video",
+      "folderId": "fld-brand-novastar",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "DP In",
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014"
+      ],
+      "outputs": [
+        "ETH 1",
+        "ETH 2",
+        "ETH 3",
+        "ETH 4",
+        "ETH 5",
+        "ETH 6",
+        "ETH 7",
+        "ETH 8"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "DP",
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "outputTypes": [
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH"
+      ]
+    },
+    {
+      "id": "novastar-mctrl660-pro",
+      "label": "NovaStar MCTRL660 PRO",
+      "category": "Video",
+      "folderId": "fld-brand-novastar",
+      "inputs": [
+        "HDMI In",
+        "DVI In",
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014"
+      ],
+      "outputs": [
+        "ETH 1",
+        "ETH 2",
+        "ETH 3",
+        "ETH 4",
+        "ETH 5",
+        "ETH 6"
+      ],
+      "inputTypes": [
+        "HDMI",
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "outputTypes": [
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH"
+      ]
+    },
+    {
+      "id": "novastar-vx1000",
+      "label": "NovaStar VX1000",
+      "category": "Video",
+      "folderId": "fld-brand-novastar",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "HDMI In 3",
+        "HDMI In 4",
+        "DP In",
+        "SDI In 1",
+        "SDI In 2",
+        "SDI In 3"
+      ],
+      "outputs": [
+        "ETH 1",
+        "ETH 2",
+        "ETH 3",
+        "ETH 4",
+        "ETH 5",
+        "ETH 6",
+        "ETH 7",
+        "ETH 8"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "HDMI",
+        "HDMI",
+        "DP",
+        "SDI",
+        "SDI",
+        "SDI"
+      ],
+      "outputTypes": [
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH"
+      ]
+    },
+    {
+      "id": "novastar-h9",
+      "label": "NovaStar H9",
+      "category": "Video",
+      "folderId": "fld-brand-novastar",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "DP In 1",
+        "DP In 2",
+        "SDI In 1",
+        "SDI In 2",
+        "SDI In 3",
+        "SDI In 4"
+      ],
+      "outputs": [
+        "ETH 1",
+        "ETH 2",
+        "ETH 3",
+        "ETH 4",
+        "ETH 5",
+        "ETH 6",
+        "ETH 7",
+        "ETH 8"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "DP",
+        "DP",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI"
+      ],
+      "outputTypes": [
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH",
+        "ETH"
+      ]
+    },
+    {
+      "id": "novastar-novapro-uhd-jr",
+      "label": "NovaStar NovaPro UHD Jr",
+      "category": "Video",
+      "folderId": "fld-brand-novastar",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "DP In",
+        "SDI In"
+      ],
+      "outputs": [
+        "HDMI Out",
+        "ETH 1",
+        "ETH 2",
+        "ETH 3"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "DP",
+        "SDI"
+      ],
+      "outputTypes": [
+        "HDMI",
+        "ETH",
+        "ETH",
+        "ETH"
+      ]
+    },
+    {
+      "id": "bmd-atem-mini-pro-iso",
+      "label": "ATEM Mini Pro ISO",
+      "category": "Video",
+      "folderId": "fld-brand-blackmagic",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "HDMI In 3",
+        "HDMI In 4"
+      ],
+      "outputs": [
+        "HDMI PGM",
+        "USB-C Stream",
+        "\u2014",
+        "\u2014"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "HDMI",
+        "HDMI"
+      ],
+      "outputTypes": [
+        "HDMI",
+        "USB-C",
+        null,
+        null
+      ]
+    },
+    {
+      "id": "bmd-atem-tv-studio-hd8-iso",
+      "label": "ATEM Television Studio HD8 ISO",
+      "category": "Video",
+      "folderId": "fld-brand-blackmagic",
+      "inputs": [
+        "SDI In 1",
+        "SDI In 2",
+        "SDI In 3",
+        "SDI In 4",
+        "SDI In 5",
+        "SDI In 6",
+        "SDI In 7",
+        "SDI In 8"
+      ],
+      "outputs": [
+        "SDI PGM",
+        "SDI Aux 1",
+        "SDI Aux 2",
+        "HDMI Aux",
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014"
+      ],
+      "inputTypes": [
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI"
+      ],
+      "outputTypes": [
+        "SDI",
+        "SDI",
+        "SDI",
+        "HDMI",
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": "bmd-atem-constellation-8x4",
+      "label": "ATEM Constellation 8K",
+      "category": "Video",
+      "folderId": "fld-brand-blackmagic",
+      "inputs": [
+        "SDI In 1",
+        "SDI In 2",
+        "SDI In 3",
+        "SDI In 4",
+        "SDI In 5",
+        "SDI In 6",
+        "SDI In 7",
+        "SDI In 8"
+      ],
+      "outputs": [
+        "SDI PGM",
+        "SDI PVW",
+        "SDI Aux 1",
+        "SDI Aux 2",
+        "MADI Out",
+        "\u2014",
+        "\u2014",
+        "\u2014"
+      ],
+      "inputTypes": [
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI"
+      ],
+      "outputTypes": [
+        "SDI",
+        "SDI",
+        "SDI",
+        "SDI",
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": "bmd-hyperdeck-studio-hd-plus",
+      "label": "HyperDeck Studio HD Plus",
+      "category": "Video",
+      "folderId": "fld-brand-blackmagic",
+      "inputs": [
+        "SDI In",
+        "HDMI In",
+        "ETH"
+      ],
+      "outputs": [
+        "SDI Out",
+        "HDMI Out",
+        "\u2014"
+      ],
+      "inputTypes": [
+        "SDI",
+        "HDMI",
+        "ETH"
+      ],
+      "outputTypes": [
+        "SDI",
+        "HDMI",
+        null
+      ]
+    },
+    {
+      "id": "bmd-smart-videohub-12x12",
+      "label": "Smart Videohub 12\u00d712",
+      "category": "Video",
+      "folderId": "fld-brand-blackmagic",
+      "inputs": [
+        "In 1",
+        "In 2",
+        "In 3",
+        "In 4",
+        "In 5",
+        "In 6",
+        "In 7",
+        "In 8",
+        "In 9",
+        "In 10",
+        "In 11",
+        "In 12"
+      ],
+      "outputs": [
+        "Out 1",
+        "Out 2",
+        "Out 3",
+        "Out 4",
+        "Out 5",
+        "Out 6",
+        "Out 7",
+        "Out 8",
+        "Out 9",
+        "Out 10",
+        "Out 11",
+        "Out 12"
+      ],
+      "inputTypes": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "outputTypes": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": "bmd-teranex-mini-sdi-hdmi-12g",
+      "label": "Teranex Mini SDI to HDMI 12G",
+      "category": "Video",
+      "folderId": "fld-brand-blackmagic",
+      "inputs": [
+        "SDI In",
+        "\u2014"
+      ],
+      "outputs": [
+        "HDMI Out",
+        "SDI Loop"
+      ],
+      "inputTypes": [
+        "SDI",
+        null
+      ],
+      "outputTypes": [
+        "HDMI",
+        "SDI"
+      ]
+    },
+    {
+      "id": "analogway-livepremier-awj-200f",
+      "label": "LivePremier AWJ-200F",
+      "category": "Video",
+      "folderId": "fld-brand-analogway",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "HDMI In 3",
+        "HDMI In 4",
+        "DP In 1",
+        "DP In 2",
+        "SDI In 1",
+        "SDI In 2"
+      ],
+      "outputs": [
+        "4K Out 1",
+        "4K Out 2",
+        "4K Out 3",
+        "4K Out 4",
+        "Preview Out",
+        "\u2014",
+        "\u2014",
+        "\u2014"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "HDMI",
+        "HDMI",
+        "DP",
+        "DP",
+        "SDI",
+        "SDI"
+      ],
+      "outputTypes": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": "analogway-pulse-p200",
+      "label": "Pulse P200",
+      "category": "Video",
+      "folderId": "fld-brand-analogway",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "DP In 1",
+        "DP In 2"
+      ],
+      "outputs": [
+        "HDMI Out 1",
+        "HDMI Out 2",
+        "SDI Out 1",
+        "SDI Out 2"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "DP",
+        "DP"
+      ],
+      "outputTypes": [
+        "HDMI",
+        "HDMI",
+        "SDI",
+        "SDI"
+      ]
+    },
+    {
+      "id": "analogway-aquilon-rs4",
+      "label": "Aquilon RS4",
+      "category": "Video",
+      "folderId": "fld-brand-analogway",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "DP In 1",
+        "DP In 2",
+        "SDI In 1",
+        "SDI In 2"
+      ],
+      "outputs": [
+        "4K Out 1",
+        "4K Out 2",
+        "4K Out 3",
+        "4K Out 4",
+        "\u2014",
+        "\u2014"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "DP",
+        "DP",
+        "SDI",
+        "SDI"
+      ],
+      "outputTypes": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": "analogway-midra-4k",
+      "label": "Midra 4K",
+      "category": "Video",
+      "folderId": "fld-brand-analogway",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "DP In"
+      ],
+      "outputs": [
+        "HDMI Out 1",
+        "HDMI Out 2",
+        "SDI Out"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "DP"
+      ],
+      "outputTypes": [
+        "HDMI",
+        "HDMI",
+        "SDI"
+      ]
+    },
+    {
+      "id": "analogway-zenith-200",
+      "label": "Zenith 200",
+      "category": "Video",
+      "folderId": "fld-brand-analogway",
+      "inputs": [
+        "HDMI In 1",
+        "HDMI In 2",
+        "HDMI In 3",
+        "HDMI In 4",
+        "DP In"
+      ],
+      "outputs": [
+        "PGM Out",
+        "PVW Out",
+        "Aux Out",
+        "\u2014",
+        "\u2014"
+      ],
+      "inputTypes": [
+        "HDMI",
+        "HDMI",
+        "HDMI",
+        "HDMI",
+        "DP"
+      ],
+      "outputTypes": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    }
+  ]
+}

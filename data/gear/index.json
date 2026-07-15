@@ -1,0 +1,7 @@
+{
+  "catalogs": [
+    "presets.json",
+    "example-company.json",
+    "inventory.json"
+  ]
+}

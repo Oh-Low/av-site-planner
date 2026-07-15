@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PORT=8080
+URL="http://localhost:${PORT}"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+
+cd "$ROOT"
+
+if curl -sf -o /dev/null "$URL" 2>/dev/null; then
+  echo "Server already running at $URL"
+  open "$URL"
+  exit 0
+fi
+
+echo "Starting server at $URL"
+python3 -m http.server "$PORT" &
+SERVER_PID=$!
+
+cleanup() {
+  kill "$SERVER_PID" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+sleep 0.3
+open "$URL"
+
+echo "Press Ctrl+C to stop the server."
+wait "$SERVER_PID"

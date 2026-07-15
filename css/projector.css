@@ -1,0 +1,362 @@
+.throw-params {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.throw-param-row {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, auto) 1.65rem 1fr;
+  align-items: end;
+  gap: 0.45rem;
+}
+
+.throw-param-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding-bottom: 0.35rem;
+}
+
+.throw-lock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.65rem;
+  height: 1.65rem;
+  margin-bottom: 0.2rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.throw-lock-btn:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.throw-lock-btn.is-locked {
+  color: var(--accent);
+}
+
+.throw-param-row input {
+  width: 100%;
+}
+
+.throw-input-with-unit {
+  position: relative;
+  min-width: 0;
+}
+
+.throw-input-with-unit input {
+  width: 100%;
+  padding-right: 1.85rem;
+}
+
+.throw-input-unit {
+  position: absolute;
+  right: 0.45rem;
+  bottom: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  pointer-events: none;
+  user-select: none;
+}
+
+.throw-image-dims {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.throw-image-dim-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.throw-image-dim-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.throw-image-dim-field input.is-computed,
+.throw-image-dim-field input:read-only {
+  opacity: 0.72;
+}
+
+.hint-warning {
+  color: var(--power-color);
+}
+
+.suggested-lens-wrap {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.suggested-lens-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.suggested-lens-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.suggested-lens-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+#canvas-status.status-error,
+#proj-canvas-status.status-error {
+  color: var(--danger);
+}
+
+.projector-list-row {
+  cursor: grab;
+}
+
+.projector-list-row:active {
+  cursor: grabbing;
+}
+
+.projector-list-row.is-dragging {
+  opacity: 0.45;
+}
+
+.projector-group-header-row {
+  cursor: grab;
+}
+
+.projector-group-header-row.is-dragging {
+  opacity: 0.45;
+}
+
+.projector-list-row.is-drop-before,
+.projector-group-header-row.is-drop-before {
+  box-shadow: inset 0 2px 0 0 var(--accent);
+}
+
+.projector-list-row.is-drop-after,
+.projector-group-header-row.is-drop-after {
+  box-shadow: inset 0 -2px 0 0 var(--accent);
+}
+
+.projector-list-ungrouped.is-drop-target,
+.projector-group-members.is-drop-target {
+  outline: 1px dashed var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.projector-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  width: 100%;
+  margin-bottom: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.projector-list-item:hover {
+  border-color: var(--text-muted);
+}
+
+.projector-list-item.selected {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.projector-list-item.throw-warn {
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+.projector-group-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.projector-group-header:first-child {
+  margin-top: 0;
+}
+
+.projector-group-block {
+  margin-top: 0.5rem;
+}
+
+.projector-group-block:first-child {
+  margin-top: 0;
+}
+
+.projector-group-header-row {
+  margin-bottom: 0.2rem;
+}
+
+.projector-group-members {
+  padding-left: 0.85rem;
+}
+
+.projector-group-members .projector-list-row {
+  margin-bottom: 0.35rem;
+}
+
+.projector-group-header:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.projector-group-header.selected {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--text);
+}
+
+.projector-group-icon {
+  display: flex;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--accent);
+}
+
+.projector-group-body {
+  min-width: 0;
+}
+
+.projector-group-name {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.projector-group-meta {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.7rem;
+}
+
+.projector-swatch {
+  flex-shrink: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-top: 0.2rem;
+  border-radius: 2px;
+}
+
+.projector-list-body {
+  min-width: 0;
+}
+
+.projector-list-name {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.projector-list-meta {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+#proj-svg {
+  display: none;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+}
+
+#proj-canvas-container.has-proj #proj-empty-state {
+  display: none;
+}
+
+#proj-canvas-container.has-proj #proj-svg {
+  display: block;
+}
+
+.proj-screen {
+  fill: rgba(148, 163, 184, 0.12);
+  stroke: var(--text-muted);
+  stroke-width: 2;
+}
+
+.proj-coverage {
+  stroke-width: 1.5;
+}
+
+.proj-coverage.is-active {
+  stroke-width: 2.5;
+}
+
+.throw-param-row input.is-computed,
+.throw-param-row input:read-only {
+  opacity: 0.72;
+  cursor: default;
+}
+
+.proj-coverage.throw-out {
+  stroke: var(--danger);
+  fill: rgba(239, 68, 68, 0.15);
+}
+
+.proj-overlap {
+  fill: rgba(245, 158, 11, 0.28);
+  stroke: none;
+  pointer-events: none;
+}
+
+.proj-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font);
+}
+
+.proj-label-title {
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--text);
+}
+
+.proj-screen-swatch {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+.proj-coverage-swatch {
+  background: rgba(59, 130, 246, 0.35);
+}
+
+.proj-overlap-swatch {
+  background: rgba(245, 158, 11, 0.45);
+}

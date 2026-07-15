@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AV Site Planner</title>
+  <link rel="stylesheet" href="css/main.css?v=55" />
+</head>
+<body>
+  <div class="app-chrome">
+    <nav class="tab-bar" role="tablist" aria-label="Planning tools">
+      <button class="tab active" role="tab" aria-selected="true" data-tab="led-calculator">LED Calculator</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="projector-calculator">Projector Calculator</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="signal-flow">Signal Flow Chart</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="groundplan">Groundplan</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="cable-calculator">Cable Calculator</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="labor-calculator">Labor Calculator</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="rigging-calculator">Rigging Calculator</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="paperwork-composer">Paperwork Composer</button>
+    </nav>
+    <div class="tab-bar-actions">
+      <p id="app-save-status" class="app-save-status" role="status" aria-live="polite"></p>
+      <button type="button" class="btn btn-secondary" id="export-btn">Export</button>
+      <label for="import-file-input" class="btn btn-secondary import-file-label" id="import-btn">Import</label>
+    </div>
+    <input type="file" id="import-file-input" class="import-file-input" accept=".avp,.AVP,.json,application/json" />
+  </div>
+
+  <main class="app-main">
+    <!-- LED Calculator -->
+    <section id="led-calculator" class="tab-panel active" role="tabpanel">
+      <div class="calc-layout">
+        <aside class="calc-sidebar" id="led-sidebar">
+          <div class="sidebar-toolbar">
+            <nav class="sidebar-tabs" role="tablist" aria-label="LED planner sections">
+              <button type="button" class="sidebar-tab active" role="tab" aria-selected="true" data-sidebar-tab="dimensions">Dimensions</button>
+              <button type="button" class="sidebar-tab" role="tab" aria-selected="false" data-sidebar-tab="cabling">Cabling</button>
+            </nav>
+            <div class="sidebar-section-actions">
+              <button type="button" class="btn btn-icon" id="expand-all-sections" aria-label="Expand all sections" title="Expand all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="7 13 12 18 17 13" />
+                  <polyline points="7 6 12 11 17 6" />
+                </svg>
+              </button>
+              <button type="button" class="btn btn-icon" id="collapse-all-sections" aria-label="Collapse all sections" title="Collapse all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="7 11 12 6 17 11" />
+                  <polyline points="7 18 12 13 17 18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="sidebar-tab-panels">
+            <div id="sidebar-dimensions" class="sidebar-tab-panel active" role="tabpanel">
+              <details class="panel-section" open>
+                <summary>Tile Source</summary>
+                <div class="panel-section-body">
+                  <div class="tile-source-toggle" role="group" aria-label="Tile source">
+                    <button type="button" class="btn btn-toggle active" data-tile-source="prebuilt" id="select-prebuilt-tile" aria-pressed="true">Prebuilt</button>
+                    <button type="button" class="btn btn-toggle" data-tile-source="custom" id="select-custom-tile" aria-pressed="false">Custom</button>
+                  </div>
+                  <div class="preset-row">
+                    <div class="preset-field" id="prebuilt-preset-wrap">
+                      <label for="prebuilt-tile">Preset</label>
+                      <select id="prebuilt-tile"></select>
+                    </div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="panel-section" id="tile-params">
+                <summary>Tile Parameters</summary>
+                <div class="panel-section-body">
+                  <div class="field-grid">
+                    <label>Processor Type <input type="text" id="tile-processor" /></label>
+                    <label>Wiring Type
+                      <select id="tile-wiring">
+                        <option value="Horizontal">Horizontal</option>
+                        <option value="Vertical">Vertical</option>
+                      </select>
+                    </label>
+                    <label>Pixel Width <input type="number" id="tile-pixel-w" min="1" /></label>
+                    <label>Pixel Height <input type="number" id="tile-pixel-h" min="1" /></label>
+                    <label>Total Pixels <input type="number" id="tile-total-pixels" min="1" /></label>
+                    <label>Max per Port <input type="number" id="tile-max-port" min="1" /></label>
+                    <label>Metric Width (mm) <input type="number" id="tile-metric-w" min="1" /></label>
+                    <label>Metric Height (mm) <input type="number" id="tile-metric-h" min="1" /></label>
+                    <label>Weight (lbs) <input type="number" id="tile-weight" min="0" step="0.1" /></label>
+                    <label>Wattage <input type="number" id="tile-wattage" min="1" /></label>
+                  </div>
+                </div>
+              </details>
+
+              <details class="panel-section" open>
+                <summary>Wall Size</summary>
+                <div class="panel-section-body">
+                  <div class="field-row">
+                    <label>Columns <input type="number" id="wall-cols" min="1" max="40" value="4" /></label>
+                    <label>Rows <input type="number" id="wall-rows" min="1" max="40" value="3" /></label>
+                  </div>
+                  <p class="hint" id="wall-summary"></p>
+                  <button type="button" class="btn btn-primary btn-block" id="generate-grid">Update LED Wall</button>
+                  <p class="hint" id="grid-stale-hint" hidden>Wall size changed — click Generate Grid to rebuild.</p>
+                </div>
+              </details>
+
+              <details class="panel-section" open>
+                <summary>LED Walls</summary>
+                <div class="panel-section-body">
+                  <div class="resource-toolbar">
+                    <div class="resource-toolbar-group">
+                      <button type="button" class="btn btn-icon" id="grid-new" aria-label="New grid" title="New grid">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                          <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                      </button>
+                      <button type="button" class="btn btn-icon btn-icon-danger" id="grid-remove" aria-label="Remove grid" title="Remove grid">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div id="grid-list"></div>
+                </div>
+              </details>
+            </div>
+
+            <div id="sidebar-cabling" class="sidebar-tab-panel" role="tabpanel" hidden>
+              <details class="panel-section" open>
+                <summary>Active Line Set</summary>
+                <div class="panel-section-body">
+                  <div class="line-type-toggle">
+                    <button type="button" class="btn btn-toggle active" data-line-type="data" id="select-data">Data</button>
+                    <button type="button" class="btn btn-toggle" data-line-type="power" id="select-power">Power</button>
+                  </div>
+                </div>
+              </details>
+
+              <details class="panel-section" open>
+                <summary>Resource Usage</summary>
+                <div class="panel-section-body">
+                  <div class="resource-toolbar">
+                    <div class="resource-toolbar-group">
+                      <button type="button" class="btn btn-icon" id="line-new" aria-label="New line" title="New line">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                          <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                      </button>
+                      <button type="button" class="btn btn-icon" id="line-edit" aria-label="Edit line" title="Edit line">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                        </svg>
+                      </button>
+                      <button type="button" class="btn btn-icon btn-icon-danger" id="line-remove" aria-label="Remove line" title="Remove line">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="resource-toolbar-group">
+                      <button type="button" class="btn btn-icon" id="place-start-label" aria-label="Place start label" title="Place start label">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                          <circle cx="7" cy="12" r="3" /><line x1="10" y1="12" x2="20" y2="12" />
+                        </svg>
+                      </button>
+                      <button type="button" class="btn btn-icon" id="place-end-label" aria-label="Place end label" title="Place end label">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                          <line x1="4" y1="12" x2="14" y2="12" /><circle cx="17" cy="12" r="3" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="hint" id="draw-hint">Click or drag tiles to draw. Click a label on the wall to edit it.</p>
+                  <div id="resource-bars"></div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </aside>
+
+        <div class="calc-canvas-wrap led-canvas-wrap">
+          <div class="canvas-toolbar">
+            <span id="canvas-status">Configure wall size to view grid</span>
+            <div class="canvas-toolbar-actions">
+              <span class="view-hint" id="view-hint">Scroll to zoom · right-drag to pan</span>
+              <button type="button" class="btn btn-secondary" id="reset-wall-view">Reset view</button>
+              <button type="button" class="btn btn-secondary" id="clear-active-line">Clear Active Line Tiles</button>
+            </div>
+          </div>
+          <div class="calc-viewport calc-viewport--svg" id="wall-canvas-container">
+            <div class="wall-empty-state" id="wall-empty-state">
+              <p>Set columns and rows, then click <strong>Generate Grid</strong> or add a grid below.</p>
+            </div>
+            <svg id="wall-svg" xmlns="http://www.w3.org/2000/svg" aria-label="LED wall grid" hidden></svg>
+          </div>
+          <div class="wall-legend">
+            <span class="legend-item data"><span class="swatch"></span> Data lines</span>
+            <span class="legend-item power"><span class="swatch"></span> Power lines</span>
+            <span class="legend-item"><span class="swatch tile-swatch"></span> Tile outline</span>
+            <span class="legend-hint">Switch Data / Power to change what is shown on the wall. Scroll to zoom, right-drag to pan.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="projector-calculator" class="tab-panel" role="tabpanel" hidden>
+      <div class="calc-layout">
+        <aside class="calc-sidebar" id="proj-sidebar">
+          <div class="sidebar-toolbar">
+            <nav class="sidebar-tabs" role="tablist" aria-label="Projector planner sections">
+              <button type="button" class="sidebar-tab active" role="tab" aria-selected="true" data-sidebar-tab="screen">Screen</button>
+              <button type="button" class="sidebar-tab" role="tab" aria-selected="false" data-sidebar-tab="projectors">Projectors</button>
+            </nav>
+            <div class="sidebar-section-actions">
+              <button type="button" class="btn btn-icon" id="proj-expand-all" aria-label="Expand all sections" title="Expand all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="7 13 12 18 17 13" /><polyline points="7 6 12 11 17 6" />
+                </svg>
+              </button>
+              <button type="button" class="btn btn-icon" id="proj-collapse-all" aria-label="Collapse all sections" title="Collapse all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="7 11 12 6 17 11" /><polyline points="7 18 12 13 17 18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="sidebar-tab-panels">
+            <div id="proj-sidebar-screen" class="sidebar-tab-panel active" role="tabpanel">
+              <details class="panel-section" open>
+                <summary>Screen Size</summary>
+                <div class="panel-section-body">
+                  <div class="field-row">
+                    <div class="unit-toggle-field">
+                      <span class="unit-toggle-label">Units</span>
+                      <div class="unit-toggle tile-source-toggle" role="group" aria-label="Screen units">
+                        <button type="button" class="btn btn-toggle active" id="select-screen-ft" aria-pressed="true">ft</button>
+                        <button type="button" class="btn btn-toggle" id="select-screen-m" aria-pressed="false">m</button>
+                      </div>
+                    </div>
+                    <label>Aspect
+                      <select id="screen-aspect">
+                        <option value="16:9">16:9</option>
+                        <option value="16:10">16:10</option>
+                        <option value="4:3">4:3</option>
+                        <option value="2.35:1">2.35:1</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="linked-dimensions" id="linked-dimensions">
+                    <label class="linked-dim-field">Width
+                      <input type="number" id="screen-width" min="0.1" step="0.1" />
+                    </label>
+                    <span class="dim-link-icon" id="dim-link-icon" title="Width and height stay linked to the selected aspect ratio" aria-label="Width and height linked">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                    </span>
+                    <label class="linked-dim-field">Height
+                      <input type="number" id="screen-height" min="0.1" step="0.1" />
+                    </label>
+                  </div>
+                  <p class="hint" id="screen-summary"></p>
+                </div>
+              </details>
+
+              <details class="panel-section" open>
+                <summary>Projection Screens</summary>
+                <div class="panel-section-body">
+                  <div class="resource-toolbar">
+                    <div class="resource-toolbar-group">
+                      <button type="button" class="btn btn-icon" id="screen-new" aria-label="New projection screen" title="New screen">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                          <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                      </button>
+                      <button type="button" class="btn btn-icon btn-icon-danger" id="screen-remove" aria-label="Remove projection screen" title="Remove screen">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div id="screen-list"></div>
+                </div>
+              </details>
+            </div>
+
+            <div id="proj-sidebar-projectors" class="sidebar-tab-panel" role="tabpanel" hidden>
+              <details class="panel-section" open>
+                <summary>Projectors</summary>
+                <div class="panel-section-body">
+                  <div class="field-row preset-row">
+                    <div class="preset-field">
+                      <label for="projector-make">Make</label>
+                      <select id="projector-make"></select>
+                    </div>
+                    <div class="preset-field">
+                      <label for="projector-model">Model</label>
+                      <select id="projector-model"></select>
+                    </div>
+                    <div class="preset-field preset-field-aspect" id="projector-aspect-wrap">
+                      <label for="projector-aspect">Aspect</label>
+                      <select id="projector-aspect">
+                        <option value="16:9">16:9</option>
+                        <option value="16:10">16:10</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div id="custom-projector-fields" hidden>
+                    <div class="field-grid">
+                      <label>Lumens <input type="number" id="custom-lumens" min="0" step="100" /></label>
+                      <label>Resolution W <input type="number" id="custom-res-w" min="1" step="1" /></label>
+                      <label>Resolution H <input type="number" id="custom-res-h" min="1" step="1" /></label>
+                    </div>
+                  </div>
+
+                  <div class="field-row role-orientation-row">
+                    <label class="role-field">Role
+                      <select id="projector-role">
+                        <option value="single">Single</option>
+                        <option value="blend">Blend</option>
+                        <option value="tile">Tile</option>
+                        <option value="stack">Stack</option>
+                      </select>
+                    </label>
+                    <div class="orientation-toggle tile-source-toggle" role="group" aria-label="Projector orientation">
+                      <button type="button" class="btn btn-toggle active" id="orientation-landscape" aria-pressed="true" title="Landscape orientation">Landscape</button>
+                      <button type="button" class="btn btn-toggle" id="orientation-portrait" aria-pressed="false" title="Portrait orientation (swap image width and height)">Portrait</button>
+                    </div>
+                  </div>
+
+                  <div id="grid-fields-wrap" hidden>
+                    <div class="field-row">
+                      <label>Columns <input type="number" id="projector-grid-cols" min="1" max="16" value="2" /></label>
+                      <label>Rows <input type="number" id="projector-grid-rows" min="1" max="16" value="1" /></label>
+                    </div>
+                    <div class="layout-mode-toggle tile-source-toggle" role="group" aria-label="Grid layout mode">
+                      <button type="button" class="btn btn-toggle active" id="layout-mode-fit" aria-pressed="true">Fit</button>
+                      <button type="button" class="btn btn-toggle" id="layout-mode-overlap" aria-pressed="false">Overlap</button>
+                    </div>
+                    <div id="overlap-fields-wrap" hidden>
+                      <div class="field-row">
+                        <label>Overlap H (px) <input type="number" id="projector-overlap-h" min="0" step="1" value="0" /></label>
+                        <label>Overlap V (px) <input type="number" id="projector-overlap-v" min="0" step="1" value="0" /></label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="placement-fields-wrap">
+                    <div class="placement-offset-row">
+                      <label class="placement-offset-field">
+                        <span>Offset X</span>
+                        <input type="number" id="projector-offset-x" step="0.1" value="0" />
+                      </label>
+                      <label class="placement-offset-field">
+                        <span>Offset Y</span>
+                        <input type="number" id="projector-offset-y" step="0.1" value="0" />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div id="stack-fields-wrap" hidden>
+                    <p class="hint">Stack projectors share the same screen area; use offsets to separate units on the diagram.</p>
+                  </div>
+
+                  <div class="projector-add-actions">
+                    <button type="button" class="btn btn-primary btn-block" id="projector-new">Add projectors</button>
+                  </div>
+                </div>
+              </details>
+
+              <details class="panel-section" open>
+                <summary>Lens Parameters</summary>
+                <div class="panel-section-body">
+                  <div id="custom-lens-fields" hidden>
+                    <div class="field-row">
+                      <label>Throw min (:1) <input type="number" id="custom-throw-min" min="0.1" step="0.01" value="1.2" /></label>
+                      <label>Throw max (:1) <input type="number" id="custom-throw-max" min="0.1" step="0.01" value="1.8" /></label>
+                    </div>
+                  </div>
+
+                  <div class="throw-params" id="throw-params">
+                    <div class="throw-param-row">
+                      <span class="throw-param-label">Throw distance</span>
+                      <button type="button" class="throw-lock-btn is-locked" id="throw-lock-throw" data-throw-lock="throw" aria-label="Lock throw distance" title="Keep throw distance fixed when other values change">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                      </button>
+                      <div class="throw-input-with-unit">
+                        <input type="number" id="projector-throw" min="0.1" step="0.1" />
+                        <span class="throw-input-unit" id="projector-throw-unit" aria-hidden="true">ft</span>
+                      </div>
+                    </div>
+                    <div class="throw-param-row throw-param-row-image">
+                      <span class="throw-param-label">Image</span>
+                      <button type="button" class="throw-lock-btn" id="throw-lock-image" data-throw-lock="image" aria-label="Lock image size" title="Keep image width and height fixed when other values change">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                      </button>
+                      <div class="throw-image-dims">
+                        <label class="throw-image-dim-field">
+                          <span class="throw-image-dim-label">Width</span>
+                          <input type="number" id="projector-image-width" min="0.1" step="0.1" />
+                        </label>
+                        <label class="throw-image-dim-field">
+                          <span class="throw-image-dim-label">Height</span>
+                          <input type="number" id="projector-image-height" min="0.1" step="0.1" />
+                        </label>
+                      </div>
+                    </div>
+                    <div class="throw-param-row">
+                      <span class="throw-param-label">Lens zoom (:1)</span>
+                      <button type="button" class="throw-lock-btn" id="throw-lock-zoom" data-throw-lock="zoom" aria-label="Lock lens zoom" title="Keep lens zoom fixed when other values change">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                      </button>
+                      <input type="number" id="projector-lens-ratio" min="0.1" step="0.01" />
+                    </div>
+                  </div>
+                  <p class="hint" id="throw-range-hint"></p>
+                  <div id="suggested-lens-wrap" class="suggested-lens-wrap">
+                    <div class="suggested-lens-row">
+                      <span class="suggested-lens-label">Suggested lens</span>
+                      <span id="suggested-lens-value" class="suggested-lens-value">—</span>
+                    </div>
+                    <p class="hint hint-warning" id="lens-suggestion-warning" hidden></p>
+                  </div>
+                </div>
+              </details>
+
+              <details class="panel-section" open>
+                <summary>Projectors on Screen</summary>
+                <div class="panel-section-body">
+                  <div class="resource-toolbar">
+                    <div class="resource-toolbar-group">
+                      <button type="button" class="btn btn-icon" id="projector-new-group" aria-label="New projector group" title="New projector group">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                        </svg>
+                      </button>
+                      <button type="button" class="btn btn-icon btn-icon-danger" id="projector-remove" aria-label="Remove projector" title="Remove projector">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div id="projector-list"></div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </aside>
+
+        <div class="calc-canvas-wrap led-canvas-wrap">
+          <div class="canvas-toolbar">
+            <span id="proj-canvas-status">Configure projection screen to begin</span>
+            <div class="canvas-toolbar-actions">
+              <span class="view-hint">Scroll to zoom · right-drag to pan</span>
+              <button type="button" class="btn btn-secondary" id="reset-proj-view">Reset view</button>
+            </div>
+          </div>
+          <div class="calc-viewport calc-viewport--svg" id="proj-canvas-container">
+            <div class="wall-empty-state" id="proj-empty-state">
+              <p>Add a <strong>projection screen</strong> and configure projectors in the sidebar.</p>
+            </div>
+            <svg id="proj-svg" xmlns="http://www.w3.org/2000/svg" aria-label="Projection screen diagram" hidden></svg>
+          </div>
+          <div class="wall-legend">
+            <span class="legend-item"><span class="swatch proj-screen-swatch"></span> Screen</span>
+            <span class="legend-item" id="proj-legend-coverage" hidden><span class="swatch proj-coverage-swatch"></span> Projector coverage</span>
+            <span class="legend-item" id="proj-legend-overlap" hidden><span class="swatch proj-overlap-swatch"></span> Blend overlap</span>
+            <span class="legend-hint" id="proj-legend-hint">Right-drag to pan, scroll to zoom.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Placeholder tabs -->
+    <section id="signal-flow" class="tab-panel" role="tabpanel" hidden>
+      <div class="calc-layout calc-layout--narrow">
+        <aside class="calc-sidebar">
+          <h2 class="calc-sidebar-title">AV Gear</h2>
+          <div class="sf-gear-mode-toggle" role="tablist" aria-label="Gear source">
+            <button type="button" class="sf-gear-mode active" data-mode="premade" role="tab" aria-selected="true">Gear</button>
+            <button type="button" class="sf-gear-mode" data-mode="places" role="tab" aria-selected="false">Places</button>
+          </div>
+          <div id="sf-gear-palette" class="sf-gear-palette"></div>
+        </aside>
+        <div class="calc-canvas-wrap">
+          <div class="canvas-toolbar">
+            <span id="sf-status">Drag gear from the toolbar onto the canvas.</span>
+            <div class="canvas-toolbar-actions">
+              <span class="view-hint" id="sf-hint">Drag to select · shift+drag to add · scroll to zoom · right-drag to pan</span>
+              <button type="button" class="btn btn-secondary" id="sf-color-toggle" aria-pressed="false" title="Color lines and ports by cable type">Color by cable</button>
+              <button type="button" class="btn btn-secondary" id="sf-reset-view">Reset view</button>
+            </div>
+          </div>
+          <div class="calc-viewport" id="sf-viewport">
+            <div class="calc-world" id="sf-world">
+              <svg id="sf-svg" class="sf-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+              <div id="sf-nodes" class="sf-nodes"></div>
+              <div id="sf-marquee" class="sf-marquee" hidden></div>
+              <svg id="sf-wire-ui" class="sf-wire-ui" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+            </div>
+            <div class="sf-grid-ui" id="sf-grid-ui">
+              <button type="button" class="sf-grid-btn" id="sf-grid-btn" title="Grid settings" aria-label="Grid settings" aria-expanded="false">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+              </button>
+              <div class="sf-grid-popover" id="sf-grid-popover" hidden>
+                <label class="sf-grid-row">
+                  <input type="checkbox" id="sf-grid-snap" />
+                  <span>Snap to grid</span>
+                </label>
+                <label class="sf-grid-row">
+                  <span>Grid size</span>
+                  <input type="number" id="sf-grid-size" min="4" max="400" step="1" />
+                  <span class="sf-grid-unit">px</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="groundplan" class="tab-panel" role="tabpanel" hidden>
+      <div class="calc-layout calc-layout--narrow">
+        <aside class="calc-sidebar" id="gp-sidebar">
+          <h2 class="calc-sidebar-title">Groundplan</h2>
+
+          <details class="panel-section" id="gp-floor-plan-section" open>
+            <summary>Floor plan</summary>
+            <div class="panel-section-body" id="gp-floor-plan-body">
+              <label for="gp-image-input" class="btn btn-secondary gp-upload-btn">Upload PNG</label>
+              <input type="file" id="gp-image-input" class="import-file-input" accept="image/png,.png" />
+              <div id="gp-scale-panel" class="gp-scale-fields" hidden>
+                <div class="gp-scale-units unit-toggle-field">
+                  <div class="gp-scale-units-heading">
+                    <span class="unit-toggle-label">Units</span>
+                    <button type="button" class="btn btn-toggle gp-unit-glyph gp-scale-visibility-btn" id="gp-toggle-scale" hidden aria-pressed="true" aria-label="Hide scale overlay" title="Hide scale overlay">
+                      <svg class="gp-scale-eye-icon gp-scale-eye-icon--open" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8s2.5-4 7-4 7 4 7 4-2.5 4-7 4-7-4-7-4z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" /><circle cx="8" cy="8" r="1.75" fill="none" stroke="currentColor" stroke-width="1.25" /></svg>
+                      <svg class="gp-scale-eye-icon gp-scale-eye-icon--closed" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8s2.5-4 7-4 7 4 7 4-2.5 4-7 4-7-4-7-4z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" /><circle cx="8" cy="8" r="1.75" fill="none" stroke="currentColor" stroke-width="1.25" /><path d="M2.5 13.5 13.5 2.5" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" /></svg>
+                    </button>
+                  </div>
+                  <div class="gp-unit-glyphs" role="group" aria-label="Distance unit">
+                    <button type="button" class="btn btn-toggle gp-unit-glyph active" data-gp-unit="metric" aria-pressed="true" title="Meters">m</button>
+                    <button type="button" class="btn btn-toggle gp-unit-glyph" data-gp-unit="imperial" aria-pressed="false" title="Feet and inches">ft</button>
+                  </div>
+                </div>
+                <div class="gp-scale-metric" id="gp-scale-metric">
+                  <label class="field-label" for="gp-scale-meters">Distance (m)</label>
+                  <input type="number" id="gp-scale-meters" class="field-input" min="0" step="any" placeholder="e.g. 12.5" />
+                </div>
+                <div class="gp-scale-imperial" id="gp-scale-imperial" hidden>
+                  <div class="gp-imperial-row">
+                    <label class="field-label" for="gp-scale-feet">Feet</label>
+                    <input type="number" id="gp-scale-feet" class="field-input" min="0" step="1" placeholder="0" />
+                  </div>
+                  <div class="gp-imperial-row">
+                    <label class="field-label" for="gp-scale-inches">Inches</label>
+                    <input type="number" id="gp-scale-inches" class="field-input" min="0" step="any" placeholder="0" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="panel-section" id="gp-routes-list-section" open>
+            <summary>Cable routes</summary>
+            <div class="panel-section-body" id="gp-routes-list-body">
+              <button type="button" class="btn btn-secondary" id="gp-cancel-route" hidden>Cancel route</button>
+              <div id="gp-routes-list" class="gp-routes-list" role="list"></div>
+            </div>
+          </details>
+
+          <details class="panel-section" id="gp-places-section" open>
+            <summary>Places</summary>
+            <div class="panel-section-body" id="gp-places-body">
+              <button type="button" class="btn btn-secondary btn-sm gp-places-add-btn" id="gp-places-add-btn" title="Add place" aria-label="Add place">Add place</button>
+              <form class="gp-places-new-form" id="gp-new-place-form" hidden>
+                <input type="text" name="placeName" maxlength="48" placeholder="e.g. FOH, Stage, AV rack" aria-label="Place name" required class="field-input" />
+                <div class="gp-places-new-actions">
+                  <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="gp-new-place-cancel">Cancel</button>
+                </div>
+              </form>
+              <div id="gp-places-palette" class="gp-places-palette"></div>
+            </div>
+          </details>
+        </aside>
+
+        <div class="calc-canvas-wrap">
+          <div class="canvas-toolbar">
+            <span id="gp-status">Upload a groundplan PNG to begin.</span>
+            <div class="canvas-toolbar-actions">
+              <span class="view-hint" id="gp-hint">Scroll to zoom · right-drag to pan</span>
+              <button type="button" class="btn btn-secondary" id="gp-reset-view">Reset view</button>
+            </div>
+          </div>
+          <div class="calc-viewport" id="gp-viewport">
+            <div class="gp-empty-state" id="gp-empty-state">
+              <p>Upload a <strong>PNG floor plan</strong> using the sidebar — you'll be prompted to set scale next.</p>
+            </div>
+            <div class="calc-world" id="gp-world" hidden>
+              <img id="gp-image" class="gp-image" alt="" draggable="false" />
+              <svg id="gp-svg" class="gp-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+              <div id="gp-route-height-badges" class="gp-route-height-badges"></div>
+              <div id="gp-route-handles" class="gp-route-handles"></div>
+              <div id="gp-route-height-editor-layer" class="gp-route-height-editor-layer"></div>
+              <div id="gp-places" class="gp-places"></div>
+              <div id="gp-route-labels" class="gp-route-labels"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="cable-calculator" class="tab-panel" role="tabpanel" hidden>
+      <div class="cable-calculator">
+        <header class="cable-calculator-header">
+          <div>
+            <h2 class="cable-calculator-title">Cable Calculator</h2>
+            <p class="cable-calculator-subtitle">
+              Automated cables from Signal Flow; add extras manually per route or place. Lengths come from the Groundplan.
+            </p>
+          </div>
+          <p id="cable-status" class="cable-calculator-status" role="status" aria-live="polite"></p>
+        </header>
+        <div class="cable-calculator-body">
+          <section class="cable-section" aria-labelledby="cable-routes-heading">
+            <h3 id="cable-routes-heading" class="cable-section-title">Routes</h3>
+            <div id="cable-route-cards" class="cable-card-grid"></div>
+          </section>
+          <section class="cable-section" aria-labelledby="cable-places-heading">
+            <h3 id="cable-places-heading" class="cable-section-title">Places</h3>
+            <div id="cable-place-cards" class="cable-card-grid"></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section id="labor-calculator" class="tab-panel" role="tabpanel" hidden>
+      <div class="labor-calculator">
+        <header class="labor-calculator-header">
+          <div>
+            <h2 class="labor-calculator-title">Labor Calculator</h2>
+            <p class="labor-calculator-subtitle">
+              Estimate call cost from start/end clock times and base hourly rate. If end is earlier than start, the call is treated as overnight. Each pay event stacks once to 1.5×, then 2×.
+            </p>
+          </div>
+          <p id="labor-status" class="labor-calculator-status" role="status" aria-live="polite"></p>
+        </header>
+        <div class="labor-calculator-body">
+          <div class="labor-panel">
+            <h3 class="labor-panel-title">Call</h3>
+            <div class="labor-fields">
+              <div class="labor-time-field">
+                <span class="labor-field-label" id="labor-start-label">Start</span>
+                <button
+                  type="button"
+                  class="labor-time-trigger is-empty"
+                  id="labor-start-trigger"
+                  aria-labelledby="labor-start-label"
+                  aria-haspopup="dialog"
+                  aria-controls="labor-clock-popover"
+                >
+                  <span id="labor-start-display">Select time</span>
+                </button>
+              </div>
+              <div class="labor-time-field">
+                <span class="labor-field-label" id="labor-end-label">End</span>
+                <button
+                  type="button"
+                  class="labor-time-trigger is-empty"
+                  id="labor-end-trigger"
+                  aria-labelledby="labor-end-label"
+                  aria-haspopup="dialog"
+                  aria-controls="labor-clock-popover"
+                >
+                  <span id="labor-end-display">Select time</span>
+                </button>
+              </div>
+              <label class="labor-rate-field">
+                Hourly rate ($)
+                <input type="number" id="labor-rate" min="0" step="0.01" placeholder="0.00" />
+              </label>
+            </div>
+            <div class="labor-total-block">
+              <span class="labor-total-label">Total cost</span>
+              <span id="labor-total" class="labor-total-value">—</span>
+            </div>
+            <h3 class="labor-panel-title">Pay events</h3>
+            <div class="labor-events" role="group" aria-label="Overtime events">
+              <label class="labor-event">
+                <input type="checkbox" id="labor-event-10" checked />
+                <span>Any hour after the 10th hour of the call → +1 tier</span>
+              </label>
+              <label class="labor-event">
+                <input type="checkbox" id="labor-event-14" checked />
+                <span>Any hour after the 14th hour of the call → +1 tier</span>
+              </label>
+              <label class="labor-event">
+                <input type="checkbox" id="labor-event-night" checked />
+                <span>Any work between midnight and 6:00am → +1 tier</span>
+              </label>
+            </div>
+            <p class="labor-tier-note">Tiers stack: 1× → 1.5× → 2×. Once an event applies, it stays for the rest of the call — later events can stack on top, but the tier never steps back down.</p>
+          </div>
+          <div class="labor-panel">
+            <h3 class="labor-panel-title">Summary</h3>
+            <div id="labor-summary" class="labor-summary"></div>
+            <h3 class="labor-panel-title">Rate segments</h3>
+            <ul id="labor-breakdown" class="labor-breakdown"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="rigging-calculator" class="tab-panel" role="tabpanel" hidden>
+      <div class="placeholder-panel">
+        <h2>Rigging Calculator</h2>
+        <p>Point loads, bridles, and safety factors — coming soon.</p>
+      </div>
+    </section>
+
+    <section id="paperwork-composer" class="tab-panel" role="tabpanel" hidden>
+      <div class="placeholder-panel">
+        <h2>Paperwork Composer</h2>
+        <p>Combine outputs from all tools into printable site packets — coming soon.</p>
+      </div>
+    </section>
+  </main>
+
+  <div
+    id="labor-clock-popover"
+    class="labor-clock-popover"
+    hidden
+    role="dialog"
+    aria-label="Choose time"
+  >
+    <div class="labor-clock-widget">
+      <div class="labor-clock-ampm" role="group" aria-label="AM or PM">
+        <button type="button" class="labor-clock-ampm-btn" data-ampm="AM" aria-pressed="true">AM</button>
+        <button type="button" class="labor-clock-ampm-btn" data-ampm="PM" aria-pressed="false">PM</button>
+      </div>
+      <div class="labor-clock-header">
+        <button type="button" class="labor-clock-part is-active" data-part="hour">12</button>
+        <span class="labor-clock-colon">:</span>
+        <button type="button" class="labor-clock-part" data-part="minute">00</button>
+      </div>
+      <p class="labor-clock-mode-hint">Choose hour</p>
+      <div class="labor-clock-face">
+        <div class="labor-clock-hand" aria-hidden="true"></div>
+        <div class="labor-clock-center" aria-hidden="true"></div>
+        <div class="labor-clock-dial"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="boot-error" class="boot-error" hidden role="alert"></div>
+  <script type="module">
+    const bootError = document.getElementById("boot-error");
+    import("./js/app.js?v=103").catch((error) => {
+      console.error(error);
+      if (bootError) {
+        bootError.hidden = false;
+        bootError.textContent = `App failed to start: ${error.message}. Hard-refresh the page (Cmd+Shift+R).`;
+      }
+    });
+  </script>
+</body>
+</html>

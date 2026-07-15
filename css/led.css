@@ -1,0 +1,222 @@
+/* Resource bars */
+.resource-section {
+  margin-bottom: 0.75rem;
+}
+
+.resource-section-flat:not(.is-open) {
+  margin-bottom: 0.5rem;
+}
+
+.resource-section-flat:not(.is-open) .resource-section-header {
+  margin-bottom: 0;
+}
+
+.resource-section-flat:not(.is-open) .resource-section-body {
+  display: none;
+}
+
+.resource-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.resource-section-header h3 {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-collapse-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.btn-collapse-section:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.collapse-chevron {
+  display: block;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+
+.resource-section-flat.is-open .collapse-chevron {
+  transform: rotate(45deg);
+}
+
+.resource-section h3 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.resource-section.data h3 {
+  color: var(--data-color);
+}
+
+.resource-section.power h3 {
+  color: var(--power-color);
+}
+
+.resource-bar {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.2rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.resource-bar:last-child {
+  margin-bottom: 0;
+}
+
+.resource-bar:hover {
+  background: var(--surface-2);
+}
+
+.resource-section.data .resource-bar.selected {
+  border-color: var(--data-color);
+  background: rgba(34, 211, 238, 0.12);
+}
+
+.resource-section.power .resource-bar.selected {
+  border-color: var(--power-color);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.resource-bar.selected .resource-bar-label {
+  color: var(--text);
+}
+
+.resource-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  margin-bottom: 0.1rem;
+  color: var(--text-muted);
+}
+
+.resource-bar-track {
+  height: 6px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.resource-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.2s;
+}
+
+.resource-bar-fill.ok {
+  background: var(--success);
+}
+
+.resource-bar-fill.warn {
+  background: var(--power-color);
+}
+
+.resource-bar-fill.over {
+  background: var(--danger);
+}
+
+.grid-item {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.grid-item:hover {
+  border-color: var(--text-muted);
+}
+
+.grid-item.selected {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+#grid-list {
+  position: relative;
+}
+
+.grid-item-name {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: text;
+}
+
+.grid-item-name.is-editing {
+  visibility: hidden;
+}
+
+.grid-name-editor {
+  position: absolute;
+  z-index: 5;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--bg);
+  opacity: 1;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.grid-item-meta {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.resource-empty {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+#screen-list {
+  position: relative;
+}
+

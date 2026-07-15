@@ -1,0 +1,41 @@
+/* Print */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .app-chrome,
+  .tab-bar,
+  .led-sidebar,
+  .canvas-toolbar {
+    display: none !important;
+  }
+
+  .led-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .led-canvas-wrap {
+    border: 1px solid #000;
+    background: #fff;
+  }
+
+  .wall-canvas-container {
+    background: #fff;
+    border: 1px solid #ccc;
+  }
+
+  .tab-panel[hidden] {
+    display: none !important;
+  }
+
+  .app-main {
+    padding: 0;
+  }
+
+  @page {
+    margin: 0.75in;
+    size: landscape;
+  }
+}
