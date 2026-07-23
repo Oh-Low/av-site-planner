@@ -7,7 +7,7 @@ import {
 } from "./calculator-registry.js?v=120";
 import { buildSiteState, downloadSiteState, parseSiteState } from "./site-state.js?v=2";
 
-/** Auto-loaded on startup for local testing. Replace fixtures/default.avp to change the default site. */
+/** Auto-loaded on startup. Keep fixtures/default.avp as a blank/minimal site plan. */
 const DEFAULT_AVP_PATH = "fixtures/default.avp";
 
 /** @type {Record<string, { exportState?: () => object, importState?: (data: object) => void } | null>} */
