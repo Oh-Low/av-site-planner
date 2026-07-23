@@ -9,6 +9,7 @@
  *   setName: (id: string, name: string) => void,
  *   onCommit?: (id: string, previousName: string, newName: string) => void,
  *   onCancel?: () => void,
+ *   maxLength?: number,
  * }} options
  */
 export function createListNameEditor(options) {
@@ -41,7 +42,7 @@ export function createListNameEditor(options) {
     const input = document.createElement("input");
     input.type = "text";
     input.className = "grid-name-editor";
-    input.maxLength = 48;
+    input.maxLength = Math.max(1, Number(options.maxLength) || 48);
     input.value = currentName;
     input.style.left = `${nameRect.left - listRect.left}px`;
     input.style.top = `${nameRect.top - listRect.top}px`;

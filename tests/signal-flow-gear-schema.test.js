@@ -141,6 +141,31 @@ describe("catalog entry serialization", () => {
     assert.equal(parsed.ports[1].outputType, "XLR");
   });
 
+  it("round-trips an optional note and omits it when blank", () => {
+    const withNote = normalizeGearEntry(
+      serializeGearForCatalog({
+        id: "gear-3",
+        label: "DI Box",
+        defaultName: "DI Box",
+        category: "Audio",
+        note: "  Phantom power required  ",
+        ports: [{ input: "TS In", output: "XLR Out", inputType: "TS", outputType: "XLR" }],
+      })
+    );
+    assert.equal(withNote.note, "Phantom power required");
+
+    const withoutNote = serializeGearForCatalog({
+      id: "gear-4",
+      label: "Plain",
+      defaultName: "Plain",
+      category: "Other",
+      note: "   ",
+      ports: [{ input: "In", output: "—", inputType: null, outputType: null }],
+    });
+    assert.equal("note" in withoutNote, false);
+    assert.equal("note" in normalizeGearEntry(withoutNote), false);
+  });
+
   it("still accepts the parallel-arrays catalog form", () => {
     const parsed = normalizeGearEntry({
       id: "legacy-1",

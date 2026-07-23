@@ -1,5 +1,6 @@
 import { getCalculatorExport } from "./calculator-instances.js";
-import { inferConnectorTypeFromLabel, resolveGearType } from "./signal-flow-data.js?v=40";
+import { inferConnectorTypeFromLabel, resolveGearType } from "./signal-flow-data.js?v=42";
+import { DEFAULT_PALETTE_COLOR, normalizeHexColor } from "./shared/color-palette.js";
 import { escapeXml } from "./shared/dom.js";
 import { formatDistance, getMetersPerPixel, routeLengthMeters } from "./groundplan-units.js";
 import { uid } from "./shared/id.js";
@@ -16,16 +17,16 @@ import { uid } from "./shared/id.js";
  *   toRow: number,
  *   toCol: "input" | "output",
  * }} CableConnection
- * @typedef {{ id: string, fromPlaceId: string, toPlaceId: string, points: { x: number, y: number, heightMeters?: number | null }[] }} CableRoute
+ * @typedef {{ id: string, fromPlaceId: string, toPlaceId: string, points: { x: number, y: number, heightMeters?: number | null }[], color?: string }} CableRoute
  * @typedef {{ connectionId: string, cableLabel: string, fromDevice: string, toDevice: string, amount?: number, fromNodeId?: string, toNodeId?: string }} CableRow
  * @typedef {{ id: string, cableLabel: string, fromDevice: string, toDevice: string, amount: number }} ManualCable
  * @typedef {{ type: string, count: number, rows: CableRow[] }} CableTypeGroup
- * @typedef {{ id: string, title: string, lengthLabel: string, rows: CableRow[], emptyMessage: string }} CableCard
+ * @typedef {{ id: string, title: string, lengthLabel: string, rows: CableRow[], emptyMessage: string, color?: string }} CableCard
  * @typedef {{ routes: Record<string, ManualCable[]>, places: Record<string, ManualCable[]> }} CableState
  */
 
 /** Preferred display order for known connector types; unknown types follow alphabetically. */
-const CABLE_TYPE_ORDER = ["HDMI", "DP", "SDI", "USB-C", "XLR", "ETH", "Cable"];
+const CABLE_TYPE_ORDER = ["HDMI", "DP", "SDI", "USB-C", "XLR", "ETH", "Fiber", "Cable"];
 
 /**
  * @param {unknown} value
@@ -342,6 +343,7 @@ export function buildRouteCards(data) {
       lengthLabel,
       rows,
       emptyMessage: "No signal-flow cables for this route",
+      color: normalizeHexColor(route.color ?? DEFAULT_PALETTE_COLOR),
     };
   });
 }

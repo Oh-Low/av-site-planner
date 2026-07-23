@@ -6,8 +6,8 @@ import {
   connectorColor,
   gearPortsToSideLists,
   sideListsToGearPorts,
-} from "./signal-flow-gear-schema.js?v=1";
-import { createGearType } from "./signal-flow-data.js?v=40";
+} from "./signal-flow-gear-schema.js?v=3";
+import { createGearType } from "./signal-flow-data.js?v=42";
 
 /**
  * @param {string} label
@@ -63,7 +63,21 @@ export function renderGearPortRowsHtml(ports, { colorize = false, interactive = 
 }
 
 /**
- * @param {{ defaultName: string, category: string, ports: import("./signal-flow-gear-schema.js").GearPortRow[] }} gear
+ * Optional note row shown above the ports. Renders nothing when the gear has
+ * no note.
+ * @param {string | null | undefined} note
+ */
+export function renderGearNoteRowHtml(note) {
+  const text = typeof note === "string" ? note.trim() : "";
+  if (!text) return "";
+  return `
+    <tr class="sf-node-note-row">
+      <th class="sf-node-note" colspan="2"><div class="sf-node-note-text">${escapeXml(text)}</div></th>
+    </tr>`;
+}
+
+/**
+ * @param {{ defaultName: string, category: string, note?: string, ports: import("./signal-flow-gear-schema.js").GearPortRow[] }} gear
  * @param {{ name?: string, showCategory?: boolean, colorize?: boolean }} [options]
  */
 export function renderGearPreviewHtml(gear, options = {}) {
@@ -90,6 +104,7 @@ export function renderGearPreviewHtml(gear, options = {}) {
               ${categoryLine}
             </th>
           </tr>
+          ${renderGearNoteRowHtml(gear.note)}
           <tr class="sf-col-labels">
             <th>Inputs</th>
             <th>Outputs</th>
@@ -130,20 +145,14 @@ function renderDraftItem(item) {
   if (item.kind === "divider") {
     return `
       <div class="sf-port-item sf-port-item-divider" data-key="${item.key}">
-        <div class="sf-port-item-move">
-          <button type="button" class="sf-port-item-btn" data-action="move-up" title="Move up" aria-label="Move divider up">▲</button>
-          <button type="button" class="sf-port-item-btn" data-action="move-down" title="Move down" aria-label="Move divider down">▼</button>
-        </div>
+        <button type="button" class="sf-port-item-grip" title="Drag to reorder" aria-label="Drag divider to reorder">≡</button>
         <span class="sf-port-item-divider-bar" title="Divider"></span>
         <button type="button" class="sf-port-item-btn sf-port-item-remove" data-action="remove" title="Remove divider" aria-label="Remove divider">×</button>
       </div>`;
   }
   return `
     <div class="sf-port-item" data-key="${item.key}">
-      <div class="sf-port-item-move">
-        <button type="button" class="sf-port-item-btn" data-action="move-up" title="Move up" aria-label="Move port up">▲</button>
-        <button type="button" class="sf-port-item-btn" data-action="move-down" title="Move down" aria-label="Move port down">▼</button>
-      </div>
+      <button type="button" class="sf-port-item-grip" title="Drag to reorder" aria-label="Drag port to reorder">≡</button>
       <span class="sf-port-item-swatch"${swatchStyle(item.type)} aria-hidden="true"></span>
       <input
         type="text"
@@ -236,22 +245,32 @@ export function openGearBuilderModal({ mount, onSave, gear = null }) {
               </select>
             </label>
           </div>
+          <label class="sf-gear-field">
+            <span class="sf-gear-field-label">Note (optional)</span>
+            <textarea name="note" rows="2" maxlength="200" placeholder="Shown on the device above its ports">${escapeXml(gear?.note ?? "")}</textarea>
+          </label>
           <div class="sf-gear-ports-columns">
             <fieldset class="sf-connector-fieldset sf-gear-ports-side">
               <legend>Inputs</legend>
-              <div class="sf-port-list" data-side="inputs"></div>
               <div class="sf-port-list-actions">
                 <button type="button" class="btn btn-secondary btn-sm" data-action="add-port" data-side="inputs">+ Port</button>
+                <select class="sf-port-add-type" data-side="inputs" aria-label="Connector type for new input ports">
+                  ${typeOptionsHtml("HDMI")}
+                </select>
                 <button type="button" class="btn btn-secondary btn-sm" data-action="add-divider" data-side="inputs">+ Divider</button>
               </div>
+              <div class="sf-port-list" data-side="inputs"></div>
             </fieldset>
             <fieldset class="sf-connector-fieldset sf-gear-ports-side">
               <legend>Outputs</legend>
-              <div class="sf-port-list" data-side="outputs"></div>
               <div class="sf-port-list-actions">
                 <button type="button" class="btn btn-secondary btn-sm" data-action="add-port" data-side="outputs">+ Port</button>
+                <select class="sf-port-add-type" data-side="outputs" aria-label="Connector type for new output ports">
+                  ${typeOptionsHtml("HDMI")}
+                </select>
                 <button type="button" class="btn btn-secondary btn-sm" data-action="add-divider" data-side="outputs">+ Divider</button>
               </div>
+              <div class="sf-port-list" data-side="outputs"></div>
             </fieldset>
           </div>
           <p class="sf-gear-form-hint">Ports keep the order shown here. Dividers draw a thicker line between two ports.</p>
@@ -278,6 +297,7 @@ export function openGearBuilderModal({ mount, onSave, gear = null }) {
   const formError = overlay.querySelector("#sf-gear-form-error");
   const nameInput = /** @type {HTMLInputElement} */ (form.elements.namedItem("name"));
   const categorySelect = /** @type {HTMLSelectElement} */ (form.elements.namedItem("category"));
+  const noteInput = /** @type {HTMLTextAreaElement} */ (form.elements.namedItem("note"));
 
   let backdropPointerDown = false;
   let backdropDragDistance = 0;
@@ -307,7 +327,12 @@ export function openGearBuilderModal({ mount, onSave, gear = null }) {
     if (!previewMount) return;
     const name = nameInput.value.trim() || "Device";
     previewMount.innerHTML = renderGearPreviewHtml(
-      { defaultName: name, category: categorySelect.value, ports: buildDraftPorts() },
+      {
+        defaultName: name,
+        category: categorySelect.value,
+        note: noteInput.value,
+        ports: buildDraftPorts(),
+      },
       { name, colorize: true }
     );
     if (formError) formError.hidden = true;
@@ -337,12 +362,14 @@ export function openGearBuilderModal({ mount, onSave, gear = null }) {
       const side = /** @type {HTMLElement} */ (btn).dataset.side === "outputs" ? "outputs" : "inputs";
       const items = sideItems(side);
       if (action === "add-port") {
-        const lastPort = [...items].reverse().find((i) => i.kind === "port");
+        const addTypeSelect = /** @type {HTMLSelectElement | null} */ (
+          form.querySelector(`.sf-port-add-type[data-side="${side}"]`)
+        );
         items.push({
           key: uid("pi"),
           kind: "port",
           label: "",
-          type: lastPort && lastPort.kind === "port" ? lastPort.type : "HDMI",
+          type: addTypeSelect?.value || null,
         });
       } else {
         items.push({ key: uid("pi"), kind: "divider" });
@@ -351,7 +378,9 @@ export function openGearBuilderModal({ mount, onSave, gear = null }) {
       const lastLabel = form.querySelector(
         `.sf-port-list[data-side="${side}"] .sf-port-item:last-child .sf-port-item-label`
       );
-      /** @type {HTMLInputElement | null} */ (lastLabel)?.focus();
+      // preventScroll keeps the dialog from snapping down when the new row
+      // is added below the visible area.
+      /** @type {HTMLInputElement | null} */ (lastLabel)?.focus({ preventScroll: true });
       return;
     }
 
@@ -362,13 +391,82 @@ export function openGearBuilderModal({ mount, onSave, gear = null }) {
     if (action === "remove") {
       items.splice(index, 1);
       renderLists();
-    } else if (action === "move-up" && index > 0) {
-      [items[index - 1], items[index]] = [items[index], items[index - 1]];
-      renderLists();
-    } else if (action === "move-down" && index < items.length - 1) {
-      [items[index], items[index + 1]] = [items[index + 1], items[index]];
-      renderLists();
     }
+  });
+
+  // --- Drag-to-reorder for port and divider rows ---------------------------
+
+  const rowDrag = {
+    active: false,
+    /** @type {"inputs" | "outputs"} */ side: "inputs",
+    /** @type {HTMLElement | null} */ el: null,
+    /** @type {HTMLElement | null} */ listEl: null,
+  };
+
+  /** Reorder the draft side array to match the list's current DOM order. */
+  function syncDraftOrderFromDom(side) {
+    const listEl = form.querySelector(`.sf-port-list[data-side="${side}"]`);
+    if (!listEl) return;
+    const orderedKeys = [...listEl.querySelectorAll(".sf-port-item")].map(
+      (el) => /** @type {HTMLElement} */ (el).dataset.key
+    );
+    sideItems(side).sort((a, b) => orderedKeys.indexOf(a.key) - orderedKeys.indexOf(b.key));
+  }
+
+  /** @param {PointerEvent} e */
+  function onRowDragMove(e) {
+    if (!rowDrag.active || !rowDrag.el || !rowDrag.listEl) return;
+    // Move the dragged row in the DOM to follow the pointer, then mirror the
+    // new order into the draft so the preview tracks the drag live.
+    const siblings = [...rowDrag.listEl.querySelectorAll(".sf-port-item")].filter(
+      (el) => el !== rowDrag.el
+    );
+    let placed = false;
+    for (const el of siblings) {
+      const rect = el.getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) {
+        if (el.previousElementSibling !== rowDrag.el) {
+          rowDrag.listEl.insertBefore(rowDrag.el, el);
+        }
+        placed = true;
+        break;
+      }
+    }
+    if (!placed && rowDrag.listEl.lastElementChild !== rowDrag.el) {
+      rowDrag.listEl.appendChild(rowDrag.el);
+    }
+    syncDraftOrderFromDom(rowDrag.side);
+    updatePreview();
+  }
+
+  function onRowDragEnd() {
+    if (!rowDrag.active) return;
+    rowDrag.el?.classList.remove("is-dragging");
+    rowDrag.active = false;
+    rowDrag.el = null;
+    rowDrag.listEl = null;
+    window.removeEventListener("pointermove", onRowDragMove);
+    window.removeEventListener("pointerup", onRowDragEnd);
+    window.removeEventListener("pointercancel", onRowDragEnd);
+  }
+
+  form.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    const grip = /** @type {HTMLElement} */ (e.target).closest(".sf-port-item-grip");
+    if (!grip) return;
+    const itemEl = /** @type {HTMLElement | null} */ (grip.closest(".sf-port-item"));
+    const listEl = /** @type {HTMLElement | null} */ (grip.closest(".sf-port-list"));
+    if (!itemEl || !listEl) return;
+    e.preventDefault();
+
+    rowDrag.active = true;
+    rowDrag.side = listEl.dataset.side === "outputs" ? "outputs" : "inputs";
+    rowDrag.el = itemEl;
+    rowDrag.listEl = listEl;
+    itemEl.classList.add("is-dragging");
+    window.addEventListener("pointermove", onRowDragMove);
+    window.addEventListener("pointerup", onRowDragEnd);
+    window.addEventListener("pointercancel", onRowDragEnd);
   });
 
   form.addEventListener("input", (e) => {
@@ -402,6 +500,23 @@ export function openGearBuilderModal({ mount, onSave, gear = null }) {
     updatePreview();
   });
 
+  // Enter in a text field moves focus to the next text field (name → first
+  // port label → next label…) instead of submitting the form.
+  form.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const target = e.target;
+    if (!(target instanceof HTMLInputElement) || target.type !== "text") return;
+    e.preventDefault();
+    const fields = /** @type {HTMLInputElement[]} */ ([
+      ...form.querySelectorAll('input[type="text"]'),
+    ]);
+    const next = fields[fields.indexOf(target) + 1];
+    if (next) {
+      next.focus();
+      next.select();
+    }
+  });
+
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const ports = buildDraftPorts();
@@ -420,6 +535,7 @@ export function openGearBuilderModal({ mount, onSave, gear = null }) {
     const saved = createGearType({
       name: nameInput.value.trim() || "Device",
       category: categorySelect.value,
+      note: noteInput.value,
       ports,
       kind: "premade",
       id: gear?.id,

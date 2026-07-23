@@ -97,6 +97,7 @@ Gear can alternatively declare a `ports` array of rows, which also supports divi
       "id": "acme-switcher-2",
       "label": "Acme Switcher II",
       "category": "Video",
+      "note": "Optional text shown on the device above its ports",
       "ports": [
         { "input": "HDMI In 1", "output": "PGM Out", "inputType": "HDMI", "outputType": "HDMI" },
         { "input": "HDMI In 2", "output": "AUX Out", "inputType": "HDMI", "outputType": "HDMI" },

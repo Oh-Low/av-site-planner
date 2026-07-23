@@ -138,6 +138,31 @@ export function inferProjectorAspectId(resW, resH) {
 
 export const DEFAULT_PROJECTOR_ASPECT_ID = "16:9";
 
+/** Resolution tiers offered for prebuilt projectors. Heights follow the selected aspect. */
+export const PROJECTOR_RESOLUTION_TIERS = [
+  { id: "hd", w: 1920 },
+  { id: "uhd", w: 3840 },
+];
+
+export const DEFAULT_PROJECTOR_RESOLUTION_ID = "hd";
+
+/** @typedef {{ id: string, label: string, w: number, h: number }} ProjectorResolutionOption */
+
+/**
+ * Resolution options for an aspect: 1920×1080 / 3840×2160 for 16:9,
+ * 1920×1200 / 3840×2400 for 16:10.
+ * @param {string} aspectId
+ * @returns {ProjectorResolutionOption[]}
+ */
+export function projectorResolutionOptions(aspectId) {
+  const aspect =
+    PROJECTOR_ASPECT_RATIOS.find((a) => a.id === aspectId) ?? PROJECTOR_ASPECT_RATIOS[0];
+  return PROJECTOR_RESOLUTION_TIERS.map((tier) => {
+    const h = Math.round((tier.w * aspect.h) / aspect.w);
+    return { id: tier.id, label: `${tier.w} × ${h}`, w: tier.w, h };
+  });
+}
+
 /** @param {ProjectorPreset} _preset @returns {"16:9" | "16:10"} */
 export function defaultProjectorAspectForPreset(_preset) {
   return DEFAULT_PROJECTOR_ASPECT_ID;

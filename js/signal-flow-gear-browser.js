@@ -9,7 +9,7 @@ import {
   listGearInFolder,
   mergeGearFolders,
   nextUniqueFolderName,
-} from "./signal-flow-gear-library.js?v=45";
+} from "./signal-flow-gear-library.js?v=47";
 
 /**
  * @param {import("./signal-flow-data.js").GearType} item

@@ -93,7 +93,8 @@
 }
 
 .app-main:has(> #signal-flow:not([hidden])),
-.app-main:has(> #groundplan:not([hidden])) {
+.app-main:has(> #groundplan:not([hidden])),
+.app-main:has(> #paperwork-composer:not([hidden])) {
   overflow: hidden;
   padding-bottom: 0;
 }

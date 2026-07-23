@@ -1,9 +1,9 @@
-import { connectorColor, resolveGearType } from "./signal-flow-data.js?v=40";
+import { connectorColor, resolveGearType } from "./signal-flow-data.js?v=42";
 import {
   normalizeGearEntry,
   serializeGearForCatalog,
-} from "./signal-flow-gear-schema.js?v=1";
-import { renderPremadeGearBrowser } from "./signal-flow-gear-browser.js?v=46";
+} from "./signal-flow-gear-schema.js?v=3";
+import { renderPremadeGearBrowser } from "./signal-flow-gear-browser.js?v=48";
 import {
   mergeGearFolders,
   BUILTIN_FOLDERS,
@@ -14,11 +14,12 @@ import {
   renameGearFolder,
   deleteGearFolder,
   isBuiltinGearId,
-} from "./signal-flow-gear-library.js?v=45";
+} from "./signal-flow-gear-library.js?v=47";
 import {
   openGearBuilderModal,
+  renderGearNoteRowHtml,
   renderGearPortRowsHtml,
-} from "./signal-flow-gear-ui.js?v=39";
+} from "./signal-flow-gear-ui.js?v=46";
 import { renderPlacesPanel } from "./signal-flow-places-ui.js?v=33";
 import { queryCalcShell } from "./shared/calc-shell.js";
 import { deepClone } from "./shared/clone.js";
@@ -35,10 +36,10 @@ import {
   roundedOrthoPath,
   roundedOrthoPolyline,
 } from "./shared/ortho-path.js?v=2";
-import { createTransformPanZoom } from "./shared/pan-zoom.js";
+import { clampZoom, createTransformPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
 
-/** @typedef {{ id: string, typeId: string, name: string, x: number, y: number, placeId?: string | null }} FlowNode */
+/** @typedef {{ id: string, typeId: string, name: string, x: number, y: number, placeId?: string | null, gearOverride?: object }} FlowNode */
 
 /** @typedef {{ id: string, name: string }} FlowPlace */
 
@@ -481,7 +482,7 @@ export function initSignalFlow() {
     const portType = (nodeId, row, col) => {
       const node = state.nodes.find((n) => n.id === nodeId);
       if (!node) return null;
-      const port = getGearType(node.typeId).ports?.[row];
+      const port = nodeGear(node).ports?.[row];
       if (!port) return null;
       const type = col === "input" ? port.inputType : port.outputType;
       return type && type !== "—" ? type : null;
@@ -719,9 +720,9 @@ export function initSignalFlow() {
       y: snapWorld(y),
     };
     state.nodes.push(node);
-    syncWorldBounds();
-    renderNodes();
-    renderWires();
+    // Full render: renderNodes() alone would leave the rebuilt node elements
+    // without their pointer handlers until something else re-bound them.
+    render();
     setStatus(`Added ${node.name}. Drag from a port cell to connect gear.`);
     return node;
   }
@@ -793,7 +794,7 @@ export function initSignalFlow() {
   function renderNodes() {
     els.nodes.innerHTML = state.nodes
       .map((node) => {
-        const gear = getGearType(node.typeId);
+        const gear = nodeGear(node);
         const selected = selectedNodeIds.has(node.id);
         const editingName = node.id === editingNodeNameId;
         const portRows = renderGearPortRowsHtml(gear.ports, {
@@ -820,8 +821,10 @@ export function initSignalFlow() {
               <th class="sf-node-header" colspan="2">
                 ${nameField}
                 ${placeLine}
+                <button type="button" class="sf-node-edit" title="Edit this device only" aria-label="Edit this device only">✎</button>
               </th>
             </tr>
+            ${renderGearNoteRowHtml(gear.note)}
             <tr class="sf-col-labels">
               <th>Inputs</th>
               <th>Outputs</th>
@@ -858,11 +861,22 @@ export function initSignalFlow() {
       input.addEventListener("mousedown", (e) => e.stopPropagation());
     });
 
+    els.nodes.querySelectorAll(".sf-node-edit").forEach((btn) => {
+      btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const nodeEl = btn.closest(".sf-node");
+        const nodeId = nodeEl instanceof HTMLElement ? nodeEl.dataset.nodeId : null;
+        if (nodeId) openNodeGearEditModal(nodeId);
+      });
+    });
+
     els.nodes.querySelectorAll(".sf-node").forEach((nodeEl) => {
       nodeEl.addEventListener("pointerdown", (e) => {
         if (e.button !== 0) return;
         const target = /** @type {HTMLElement} */ (e.target);
         if (target.closest(".sf-port") || target.closest(".sf-node-name.is-editing")) return;
+        if (target.closest(".sf-node-edit")) return;
 
         const nodeId = nodeEl.dataset.nodeId;
         if (
@@ -935,6 +949,15 @@ export function initSignalFlow() {
 
   function getGearType(typeId) {
     return resolveGearType(typeId, state.customGearTypes);
+  }
+
+  /**
+   * Effective gear definition for a placed node: its instance-only override
+   * when present, otherwise the shared gear type from the library.
+   * @param {FlowNode} node
+   */
+  function nodeGear(node) {
+    return node.gearOverride ?? getGearType(node.typeId);
   }
 
   function bindPaletteDragItems() {
@@ -1066,6 +1089,8 @@ export function initSignalFlow() {
     if (existing) {
       updated.folderId = existing.folderId ?? null;
       Object.assign(existing, updated);
+      // Object.assign cannot remove keys; a cleared note must be deleted.
+      if (!updated.note) delete existing.note;
     } else {
       if (isBuiltinGearId(gearId)) updated.folderId = builtinGearFolderId(gearId);
       state.customGearTypes.push(updated);
@@ -1085,7 +1110,7 @@ export function initSignalFlow() {
   function portExistsAt(nodeId, row, col) {
     const node = state.nodes.find((n) => n.id === nodeId);
     if (!node) return false;
-    const port = getGearType(node.typeId).ports?.[row];
+    const port = nodeGear(node).ports?.[row];
     if (!port) return false;
     const label = col === "input" ? port.input : port.output;
     return Boolean(label && label !== "—");
@@ -1184,6 +1209,7 @@ export function initSignalFlow() {
         if (existing) {
           gear.folderId = existing.folderId ?? null;
           Object.assign(existing, gear);
+          if (!gear.note) delete existing.note;
           updated += 1;
         } else if (isBuiltinGearId(gear.id)) {
           gear.folderId = builtinGearFolderId(gear.id);
@@ -1352,6 +1378,31 @@ export function initSignalFlow() {
       mount: root,
       gear,
       onSave: (updated) => applyGearEdit(gearId, updated),
+    });
+  }
+
+  /**
+   * Edit one placed device without touching the gear library: the result is
+   * stored on the node as an instance-only override.
+   * @param {string} nodeId
+   */
+  function openNodeGearEditModal(nodeId) {
+    const root = document.getElementById("signal-flow");
+    const node = state.nodes.find((n) => n.id === nodeId);
+    if (!root || !node) return;
+    openGearBuilderModal({
+      mount: root,
+      gear: nodeGear(node),
+      onSave: (updated) => {
+        node.gearOverride = updated;
+        const removed = pruneInvalidConnections();
+        render();
+        setStatus(
+          removed > 0
+            ? `Updated ${node.name} (this device only). Removed ${removed} connection${removed === 1 ? "" : "s"} that lost a port.`
+            : `Updated ${node.name} (this device only).`
+        );
+      },
     });
   }
 
@@ -1628,6 +1679,48 @@ export function initSignalFlow() {
     }
   });
 
+  /**
+   * Abandon every in-flight pointer gesture. Without this, a missed pointerup
+   * (browser pointercancel, window losing focus mid-drag) left wireDrag or
+   * marqueeSelect stuck "active", which swallowed the next clicks until
+   * something happened to reset them.
+   */
+  function cancelPointerGestures() {
+    routeDrag.active = false;
+    routeDrag.connectionId = null;
+    routeDrag.segmentIndex = null;
+    routeDrag.segmentKind = null;
+    routeDrag.startPoints = null;
+    routeDrag.handleT = 0.5;
+    routeDrag.moved = false;
+    if (wireDrag.active) {
+      wireDrag.active = false;
+      wireDrag.previewPath = null;
+      renderWires();
+    }
+    marqueeSelect.pending = false;
+    marqueeSelect.active = false;
+    marqueeSelect.moved = false;
+    hideMarquee();
+    nodeDrag.pending = false;
+    nodeDrag.active = false;
+    nodeDrag.nodeId = null;
+    nodeDrag.startPositions.clear();
+    suppressWireClick = false;
+    suppressClearSelection = false;
+  }
+
+  window.addEventListener("pointercancel", cancelPointerGestures);
+  window.addEventListener("blur", cancelPointerGestures);
+
+  // Stale suppression flags (set on a pointerup whose click never arrived)
+  // would otherwise eat the next click. Any new press starts with a clean
+  // slate; handlers that set these flags do so on pointerup, after this runs.
+  window.addEventListener("pointerdown", () => {
+    suppressWireClick = false;
+    suppressClearSelection = false;
+  });
+
   els.wireUi.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
     const target = /** @type {SVGElement} */ (e.target);
@@ -1694,9 +1787,66 @@ export function initSignalFlow() {
     refreshPlacesPanelIfActive();
   });
 
+  /** Pan/zoom so every placed device fits in the viewport. */
+  function fitViewToGear() {
+    if (state.nodes.length === 0) {
+      panZoom.resetView({ x: 40, y: 40 }, 1);
+      setStatus("Reset canvas view.");
+      return;
+    }
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const node of state.nodes) {
+      const nodeEl = /** @type {HTMLElement | null} */ (
+        els.nodes.querySelector(`[data-node-id="${node.id}"]`)
+      );
+      const display = nodeDisplayPosition(node);
+      const w = nodeEl?.offsetWidth || WORLD_NODE_W;
+      const h = nodeEl?.offsetHeight || WORLD_NODE_H;
+      minX = Math.min(minX, display.x);
+      minY = Math.min(minY, display.y);
+      maxX = Math.max(maxX, display.x + w);
+      maxY = Math.max(maxY, display.y + h);
+    }
+
+    // Wires can be routed well outside the node boxes; include every route
+    // point so no connection gets cut off.
+    for (const conn of state.connections) {
+      const points = connectionRoutePoints(conn);
+      if (!points) continue;
+      for (const p of points) {
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      }
+    }
+
+    const pad = 60;
+    minX -= pad;
+    minY -= pad;
+    maxX += pad;
+    maxY += pad;
+
+    const vw = els.viewport.clientWidth;
+    const vh = els.viewport.clientHeight;
+    if (!vw || !vh) return;
+
+    // Zoom out as far as needed (down to the wheel-zoom minimum), but never
+    // zoom in past 100% when there is only a little gear.
+    const zoom = clampZoom(Math.min(vw / (maxX - minX), vh / (maxY - minY)), 0.35, 1);
+    panZoom.view.zoom = zoom;
+    panZoom.view.panX = (vw - (maxX - minX) * zoom) / 2 - minX * zoom;
+    panZoom.view.panY = (vh - (maxY - minY) * zoom) / 2 - minY * zoom;
+    panZoom.applyView();
+    setStatus(`Fit ${state.nodes.length} device${state.nodes.length === 1 ? "" : "s"} in view.`);
+  }
+
   els.resetView?.addEventListener("click", () => {
-    panZoom.resetView({ x: 40, y: 40 }, 1);
-    setStatus("Reset canvas view.");
+    fitViewToGear();
   });
 
   document.addEventListener("keydown", (e) => {

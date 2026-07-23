@@ -208,6 +208,9 @@ export const PREBUILT_TILES = [
   },
 ];
 
+/** Default colors cycled through when creating processor groups. */
+export const PROCESSOR_COLORS = ["#22d3ee", "#a78bfa", "#34d399", "#f472b6", "#fbbf24", "#60a5fa"];
+
 export const LINE_COLORS = {
   data: ["#22d3ee", "#06b6d4", "#0891b2", "#0e7490", "#155e75", "#164e63"],
   power: ["#f59e0b", "#d97706", "#b45309", "#92400e", "#78350f", "#451a03"],

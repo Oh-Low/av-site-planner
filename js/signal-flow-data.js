@@ -2,11 +2,11 @@ import { uid } from "./shared/id.js";
 import {
   CONNECTOR_TYPES,
   normalizePortRow,
-} from "./signal-flow-gear-schema.js?v=1";
+} from "./signal-flow-gear-schema.js?v=3";
 import {
   BRAND_GEAR_TYPES,
   GENERIC_GEAR_TYPES,
-} from "./signal-flow-gear-presets.js?v=41";
+} from "./signal-flow-gear-presets.js?v=43";
 
 /** @typedef {import("./signal-flow-gear-schema.js").GearPortRow} GearPortRow */
 /** @typedef {import("./signal-flow-gear-schema.js").GearKind} GearKind */
@@ -19,7 +19,7 @@ export {
   connectorColor,
   inferConnectorTypeFromLabel,
   normalizePortRow,
-} from "./signal-flow-gear-schema.js?v=1";
+} from "./signal-flow-gear-schema.js?v=3";
 
 /** Generic templates plus brand product presets. */
 export const GEAR_TYPES = [...GENERIC_GEAR_TYPES, ...BRAND_GEAR_TYPES];
@@ -119,11 +119,13 @@ export function buildGearPorts(inputCount, outputCount) {
  *   kind?: GearKind,
  *   id?: string,
  *   folderId?: string | null,
+ *   note?: string,
  * }} spec
  * @returns {GearType}
  */
 export function createGearType(spec) {
   const name = spec.name.trim() || "Device";
+  const note = typeof spec.note === "string" ? spec.note.trim() : "";
   let ports = spec.ports;
   if (!ports) {
     if (spec.inputCounts || spec.outputCounts) {
@@ -144,6 +146,7 @@ export function createGearType(spec) {
     category: spec.category || "Other",
     kind: spec.kind ?? "premade",
     folderId: spec.folderId ?? null,
+    ...(note ? { note } : {}),
     ports,
   };
 }

@@ -1,0 +1,464 @@
+/* Content Maps tab */
+.cm-subtabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.cm-subtab {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.cm-subtab:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.cm-subtab.active {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.cm-subtab-panel {
+  display: none;
+}
+
+.cm-subtab-panel.active {
+  display: block;
+}
+
+/* "Add surface from LED wall" dropdown */
+.cm-add-from-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.cm-led-menu {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  z-index: 30;
+  min-width: 13rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+/* Tape measure popover */
+.cm-measure-popover {
+  min-width: 15rem;
+  max-height: none;
+  padding: 0.6rem;
+}
+
+.cm-measure-popover label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.cm-measure-popover label[hidden] {
+  display: none;
+}
+
+.cm-measure-popover input,
+.cm-measure-popover select {
+  width: 100%;
+}
+
+.cm-measure-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.cm-measure-result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cm-measure-result {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cm-measure-detail {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.cm-led-menu-item {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.35rem 0.45rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cm-led-menu-item:hover {
+  background: var(--surface-2);
+}
+
+.cm-led-menu-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-led-menu-size {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.cm-led-menu-empty {
+  margin: 0;
+  padding: 0.35rem 0.45rem;
+}
+
+.cm-led-menu-heading {
+  margin: 0.3rem 0 0.1rem;
+  padding: 0 0.45rem;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cm-led-menu-heading:first-child {
+  margin-top: 0.1rem;
+}
+
+/* Test pattern controls */
+.cm-tp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.cm-tp-field select,
+.cm-tp-field input {
+  width: 100%;
+}
+
+/* display:flex/grid on these would otherwise beat the [hidden] attribute. */
+.cm-tp-field[hidden],
+.cm-tp-field-row[hidden],
+.cm-tp-size-pair[hidden],
+#cm-tp-tile-fields[hidden] {
+  display: none;
+}
+
+.cm-tp-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.cm-tp-size-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.cm-tp-colors {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+#cm-tp-color-swatches {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+/* The shared swatch button fills its wrap, so the wrap must set the size. */
+.cm-tp-color-swatch {
+  width: 1.5rem;
+  height: 1.2rem;
+}
+
+.cm-tp-color-swatch:hover .gp-color-swatch-btn {
+  border-color: var(--text-muted);
+}
+
+.cm-tp-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.cm-tp-toggles .btn-toggle[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#cm-tp-source-list .cm-led-menu-heading {
+  padding: 0;
+}
+
+/* Output groups (imported LED ports / projector zones) */
+.cm-out-group {
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.cm-out-group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.45rem;
+  background: var(--surface-2);
+}
+
+.cm-out-group-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.cm-out-group-count {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.cm-out-group-zones {
+  padding: 0.35rem 0.35rem 0.35rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cm-out-group-zones .cm-zone {
+  margin-bottom: 0;
+}
+
+/* Overlap overlay */
+.cm-overlap-region,
+.cm-oob-region {
+  pointer-events: none;
+}
+
+/* Canvas selection */
+.cm-zone-rect {
+  cursor: pointer;
+}
+
+.cm-selection-outline {
+  pointer-events: none;
+}
+
+.cm-zone.is-selected {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px #38bdf8;
+}
+
+.cm-overlap-label {
+  font-weight: 700;
+  /* Draw the dark outline behind the glyphs so the fill stays legible. */
+  paint-order: stroke;
+}
+
+/* Surface size fields */
+.cm-surface-size {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+
+.cm-surface-size label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.cm-surface-size input {
+  width: 100%;
+}
+
+/* Media zone rows */
+.cm-zone {
+  margin-bottom: 0.5rem;
+  padding: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.cm-zone-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cm-zone-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.cm-zone-name:hover,
+.cm-zone-name:focus {
+  border-color: var(--border);
+  background: var(--bg);
+  outline: none;
+}
+
+.cm-zone-color-btn {
+  width: 1.5rem;
+  height: 1.2rem;
+}
+
+.cm-zone-color-btn:hover .gp-color-swatch-btn {
+  border-color: var(--text-muted);
+}
+
+.cm-zone-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cm-zone-remove:hover {
+  color: var(--danger);
+  background: var(--surface);
+}
+
+.cm-zone-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.cm-zone-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.cm-zone-fields input {
+  width: 100%;
+  font-size: 0.78rem;
+}
+
+/* Preview */
+.cm-viewport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.cm-svg {
+  display: none;
+  width: 100%;
+  height: 100%;
+}
+
+.cm-empty-state {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.cm-label-toggles {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.cm-label-toggles-caption {
+  margin-right: 0.15rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.cm-label-toggles .btn-toggle {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+}
+
+.cm-zone-label {
+  font-family: inherit;
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+
+.cm-zone-label-size {
+  font-weight: 400;
+  opacity: 0.85;
+}

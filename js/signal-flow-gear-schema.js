@@ -35,6 +35,7 @@
  *   category: string,
  *   kind?: GearKind,
  *   folderId?: string | null,
+ *   note?: string,
  *   ports: GearPortRow[],
  * }} GearType
  */
@@ -47,7 +48,7 @@
 export const GEAR_CATEGORIES = ["Video", "Audio", "Control", "Network", "Other"];
 
 /** Supported connector / cable types for gear ports. */
-export const CONNECTOR_TYPES = ["HDMI", "DP", "SDI", "USB-C", "XLR", "ETH"];
+export const CONNECTOR_TYPES = ["HDMI", "DP", "SDI", "USB-C", "XLR", "ETH", "Fiber"];
 
 /** @type {Record<string, string>} */
 const CONNECTOR_ALIASES = {
@@ -63,6 +64,12 @@ const CONNECTOR_ALIASES = {
   "12g-sdi": "SDI",
   "6g-sdi": "SDI",
   hdbaset: "ETH",
+  fibre: "Fiber",
+  optical: "Fiber",
+  smf: "Fiber",
+  mmf: "Fiber",
+  "lc fiber": "Fiber",
+  "lc fibre": "Fiber",
 };
 
 /** Colors for known connector types, used by the "color by cable type" view. */
@@ -74,6 +81,7 @@ export const CONNECTOR_COLORS = {
   "USB-C": "#a855f7",
   XLR: "#ec4899",
   ETH: "#06b6d4",
+  Fiber: "#eab308",
 };
 
 /**
@@ -196,6 +204,8 @@ export function normalizeGearEntry(raw) {
       ? raw.folderId.trim()
       : null;
 
+  const note = typeof raw.note === "string" && raw.note.trim() ? raw.note.trim() : "";
+
   return {
     id,
     label,
@@ -207,6 +217,7 @@ export function normalizeGearEntry(raw) {
       typeof raw.category === "string" && raw.category.trim() ? raw.category.trim() : "Other",
     kind: raw.kind === "blank" ? "blank" : "premade",
     folderId,
+    ...(note ? { note } : {}),
     ports: portsFromCatalogEntry(
       /** @type {string[] | undefined} */ (raw.inputs),
       /** @type {string[] | undefined} */ (raw.outputs),
@@ -233,6 +244,9 @@ export function serializeGearForCatalog(gear) {
   };
   if (gear.defaultName && gear.defaultName !== gear.label) {
     entry.defaultName = gear.defaultName;
+  }
+  if (typeof gear.note === "string" && gear.note.trim()) {
+    entry.note = gear.note.trim();
   }
   entry.ports = (gear.ports ?? []).map((raw) => {
     const row = normalizePortRow(raw);

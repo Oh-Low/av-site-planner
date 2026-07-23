@@ -727,9 +727,10 @@
   inset: 0;
   z-index: 20;
   display: flex;
-  align-items: center;
+  /* Anchor the dialog to the top so it only grows downward as rows are added. */
+  align-items: flex-start;
   justify-content: center;
-  padding: 1rem;
+  padding: 1.25rem 1rem 1rem;
   background: rgba(0, 0, 0, 0.55);
 }
 
@@ -773,7 +774,7 @@
 .sf-gear-modal-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  align-items: start;
+  align-items: stretch;
   gap: 1rem;
   padding: 1rem;
 }
@@ -800,6 +801,17 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
+}
+
+.sf-gear-form textarea {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  resize: vertical;
 }
 
 .sf-gear-form-hint {
@@ -856,10 +868,37 @@
   min-width: 0;
 }
 
-.sf-port-item-move {
-  display: flex;
-  flex-direction: column;
+.sf-port-item-grip {
   flex-shrink: 0;
+  width: 1.05rem;
+  height: 1.3rem;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.sf-port-item-grip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.sf-port-item-grip:active {
+  cursor: grabbing;
+}
+
+.sf-port-item.is-dragging {
+  opacity: 0.85;
+  outline: 1px dashed var(--accent);
+  outline-offset: 1px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.08);
 }
 
 .sf-port-item-btn {
@@ -941,8 +980,22 @@
 
 .sf-port-list-actions {
   display: flex;
+  align-items: center;
   gap: 0.35rem;
-  margin-top: 0.45rem;
+  margin-bottom: 0.45rem;
+}
+
+.sf-port-add-type {
+  flex-shrink: 1;
+  min-width: 3.2rem;
+  width: 4.4rem;
+  padding: 0.28rem 0.15rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.72rem;
 }
 
 .sf-connector-fieldset legend {
@@ -1025,19 +1078,25 @@
   letter-spacing: 0.04em;
 }
 
+/*
+ * The viewport stretches to fill the modal column height (which grows with
+ * the form), while the absolutely-positioned mount scrolls internally so a
+ * tall gear table never drives the modal's size itself.
+ */
 .sf-gear-preview-viewport {
   position: relative;
-  height: 360px;
-  max-height: min(360px, 45vh);
-  overflow: auto;
-  overscroll-behavior: contain;
+  flex: 1;
+  min-height: 360px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: #0a0e14;
 }
 
 .sf-gear-preview-mount {
-  display: block;
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
   padding: 0.75rem;
   box-sizing: border-box;
 }
@@ -1193,9 +1252,40 @@
 }
 
 .sf-node-header {
+  position: relative;
   padding: 0;
   background: var(--surface-2);
   border-bottom: 1px solid var(--border);
+}
+
+/* Instance-only edit button, revealed on hover/selection. */
+.sf-node-edit {
+  position: absolute;
+  top: 0.22rem;
+  right: 0.25rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.sf-node:hover .sf-node-edit,
+.sf-node.is-selected .sf-node-edit {
+  opacity: 0.8;
+}
+
+.sf-node .sf-node-edit:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
 }
 
 .sf-node-name {
@@ -1220,6 +1310,27 @@
 .sf-node-name.is-editing:focus {
   outline: none;
   background: rgba(59, 130, 246, 0.08);
+}
+
+.sf-node-note {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.35;
+  color: var(--text-muted);
+  text-align: left;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+/* width: 0 + min-width: 100% keeps long notes from widening the node table
+   (auto table layout ignores max-width on cells). */
+.sf-node-note-text {
+  width: 0;
+  min-width: 100%;
+  white-space: pre-line;
+  overflow-wrap: break-word;
 }
 
 .sf-col-labels th {

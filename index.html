@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AV Site Planner</title>
-  <link rel="stylesheet" href="css/main.css?v=55" />
+  <link rel="stylesheet" href="css/main.css?v=110" />
 </head>
 <body>
   <div class="app-chrome">
@@ -13,6 +13,7 @@
       <button class="tab" role="tab" aria-selected="false" data-tab="projector-calculator">Projector Calculator</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="signal-flow">Signal Flow Chart</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="groundplan">Groundplan</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="content-maps">Content Maps</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="cable-calculator">Cable Calculator</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="labor-calculator">Labor Calculator</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="rigging-calculator">Rigging Calculator</button>
@@ -311,6 +312,10 @@
                         <option value="16:10">16:10</option>
                       </select>
                     </div>
+                    <div class="preset-field preset-field-aspect" id="projector-resolution-wrap">
+                      <label for="projector-resolution">Resolution</label>
+                      <select id="projector-resolution"></select>
+                    </div>
                   </div>
 
                   <div id="custom-projector-fields" hidden>
@@ -351,6 +356,7 @@
                         <label>Overlap V (px) <input type="number" id="projector-overlap-v" min="0" step="1" value="0" /></label>
                       </div>
                     </div>
+                    <p class="hint" id="projector-pixel-summary" hidden></p>
                   </div>
 
                   <div id="placement-fields-wrap">
@@ -503,7 +509,7 @@
             <div class="canvas-toolbar-actions">
               <span class="view-hint" id="sf-hint">Drag to select · shift+drag to add · scroll to zoom · right-drag to pan</span>
               <button type="button" class="btn btn-secondary" id="sf-color-toggle" aria-pressed="false" title="Color lines and ports by cable type">Color by cable</button>
-              <button type="button" class="btn btn-secondary" id="sf-reset-view">Reset view</button>
+              <button type="button" class="btn btn-secondary" id="sf-reset-view" title="Fit all gear in view">Fit view</button>
             </div>
           </div>
           <div class="calc-viewport" id="sf-viewport">
@@ -629,6 +635,306 @@
       </div>
     </section>
 
+    <section id="content-maps" class="tab-panel" role="tabpanel" hidden>
+      <nav class="cm-subtabs" role="tablist" aria-label="Content maps sections">
+        <button type="button" class="cm-subtab sidebar-tab active" role="tab" aria-selected="true" data-sidebar-tab="media" data-cm-subtab="media">Media</button>
+        <button type="button" class="cm-subtab sidebar-tab" role="tab" aria-selected="false" data-sidebar-tab="output" data-cm-subtab="output">Output</button>
+        <button type="button" class="cm-subtab sidebar-tab" role="tab" aria-selected="false" data-sidebar-tab="patterns" data-cm-subtab="patterns">Test Patterns</button>
+      </nav>
+
+      <div id="cm-media" class="cm-subtab-panel active" role="tabpanel">
+        <div class="calc-layout">
+          <aside class="calc-sidebar" id="cm-sidebar">
+            <details class="panel-section" open>
+              <summary>Surfaces</summary>
+              <div class="panel-section-body">
+                <div class="resource-toolbar">
+                  <div class="resource-toolbar-group">
+                    <button type="button" class="btn btn-icon" id="cm-surface-new" aria-label="New blank surface" title="New blank surface">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    </button>
+                    <div class="cm-add-from-wrap">
+                      <button type="button" class="btn btn-icon" id="cm-surface-from-led" aria-label="New surface from LED wall or projector screen" title="New surface from LED wall or projector screen">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="3" y="4" width="18" height="13" rx="1" />
+                          <line x1="9" y1="4" x2="9" y2="17" /><line x1="15" y1="4" x2="15" y2="17" />
+                          <line x1="3" y1="10.5" x2="21" y2="10.5" />
+                          <line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                      </button>
+                      <div id="cm-led-menu" class="cm-led-menu" hidden></div>
+                    </div>
+                    <div class="cm-add-from-wrap">
+                      <button type="button" class="btn btn-icon" id="cm-surface-measure" aria-label="Tape measure — convert feet and inches to pixels" title="Tape measure: feet + inches to pixels">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="2" y="9" width="20" height="7" rx="1" />
+                          <line x1="6" y1="9" x2="6" y2="12.5" /><line x1="10" y1="9" x2="10" y2="12.5" />
+                          <line x1="14" y1="9" x2="14" y2="12.5" /><line x1="18" y1="9" x2="18" y2="12.5" />
+                        </svg>
+                      </button>
+                      <div id="cm-measure-popover" class="cm-led-menu cm-measure-popover" hidden>
+                        <p class="cm-led-menu-heading">Tape measure</p>
+                        <div class="cm-measure-fields">
+                          <label>Feet
+                            <input type="text" inputmode="decimal" autocomplete="off" id="cm-measure-feet" />
+                          </label>
+                          <label>Inches
+                            <input type="text" inputmode="decimal" autocomplete="off" id="cm-measure-inches" />
+                          </label>
+                        </div>
+                        <label>Pixels per inch from
+                          <select id="cm-measure-source"></select>
+                        </label>
+                        <label id="cm-measure-ppi-wrap">Pixels per inch
+                          <input type="text" inputmode="decimal" autocomplete="off" id="cm-measure-ppi" />
+                        </label>
+                        <div class="cm-measure-result-row">
+                          <p class="cm-measure-result"><span id="cm-measure-result">—</span><span class="cm-measure-detail" id="cm-measure-detail"></span></p>
+                          <button type="button" class="btn btn-secondary" id="cm-measure-copy">Copy</button>
+                        </div>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-icon btn-icon-danger" id="cm-surface-remove" aria-label="Remove surface" title="Remove surface">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div id="cm-surface-list"></div>
+                <div class="cm-surface-size" id="cm-surface-size-fields" hidden>
+                  <label>Width (px) <input type="text" inputmode="decimal" autocomplete="off" id="cm-surface-width" /></label>
+                  <label>Height (px) <input type="text" inputmode="decimal" autocomplete="off" id="cm-surface-height" /></label>
+                </div>
+              </div>
+            </details>
+
+            <details class="panel-section" open>
+              <summary>Media Zones</summary>
+              <div class="panel-section-body">
+                <div class="resource-toolbar">
+                  <div class="resource-toolbar-group">
+                    <button type="button" class="btn btn-icon" id="cm-zone-new" aria-label="New media zone" title="New media zone">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    </button>
+                    <div class="cm-add-from-wrap">
+                      <button type="button" class="btn btn-icon" id="cm-zone-from-led" aria-label="Import media zones from LED wall or projector screen" title="Import media zones from LED wall or projector screen">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="3" y="4" width="18" height="13" rx="1" />
+                          <line x1="9" y1="4" x2="9" y2="17" /><line x1="15" y1="4" x2="15" y2="17" />
+                          <line x1="3" y1="10.5" x2="21" y2="10.5" />
+                          <line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                      </button>
+                      <div id="cm-zone-led-menu" class="cm-led-menu" hidden></div>
+                    </div>
+                  </div>
+                </div>
+                <p class="hint">Anchor X/Y is the zone's top-left corner in surface pixels. Number fields accept math, e.g. 4800+256 or 3840/2.</p>
+                <div id="cm-zone-list"></div>
+              </div>
+            </details>
+          </aside>
+
+          <div class="calc-canvas-wrap">
+            <div class="canvas-toolbar">
+              <span id="cm-status" role="status" aria-live="polite">Add a surface to begin.</span>
+              <div class="canvas-toolbar-actions">
+                <div class="cm-label-toggles" id="cm-label-toggles" role="group" aria-label="Zone labels">
+                  <span class="cm-label-toggles-caption">Labels</span>
+                  <button type="button" class="btn btn-toggle active" data-cm-label="name" aria-pressed="true" title="Show zone names">Name</button>
+                  <button type="button" class="btn btn-toggle active" data-cm-label="resolution" aria-pressed="true" title="Show zone resolution (width × height)">Resolution</button>
+                  <button type="button" class="btn btn-toggle" data-cm-label="anchor" aria-pressed="false" title="Show top-left anchor coordinates">Anchor</button>
+                </div>
+                <span class="view-hint" id="cm-view-hint">100% · scroll to zoom · right-drag to pan</span>
+                <button type="button" class="btn btn-secondary" id="cm-reset-view">Reset view</button>
+              </div>
+            </div>
+            <div class="calc-viewport cm-viewport" id="cm-viewport">
+              <div class="cm-empty-state" id="cm-empty-state">
+                <p>Create a <strong>surface</strong> in the sidebar to see its world here.</p>
+              </div>
+              <svg id="cm-svg" class="cm-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="cm-output" class="cm-subtab-panel" role="tabpanel" hidden>
+        <div class="calc-layout">
+          <aside class="calc-sidebar" id="cm-out-sidebar">
+            <details class="panel-section" open>
+              <summary>Rasters</summary>
+              <div class="panel-section-body">
+                <div class="resource-toolbar">
+                  <div class="resource-toolbar-group">
+                    <button type="button" class="btn btn-icon" id="cm-raster-new" aria-label="New blank raster" title="New blank raster">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    </button>
+                    <div class="cm-add-from-wrap">
+                      <button type="button" class="btn btn-icon" id="cm-raster-from-import" aria-label="New raster from LED wall or projector screen" title="New raster from LED wall or projector screen">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="3" y="4" width="18" height="13" rx="1" />
+                          <line x1="9" y1="4" x2="9" y2="17" /><line x1="15" y1="4" x2="15" y2="17" />
+                          <line x1="3" y1="10.5" x2="21" y2="10.5" />
+                          <line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                      </button>
+                      <div id="cm-raster-import-menu" class="cm-led-menu" hidden></div>
+                    </div>
+                    <button type="button" class="btn btn-icon btn-icon-danger" id="cm-raster-remove" aria-label="Remove raster" title="Remove raster">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div id="cm-raster-list"></div>
+                <div class="cm-surface-size" id="cm-raster-size-fields" hidden>
+                  <label>Width (px) <input type="text" inputmode="decimal" autocomplete="off" id="cm-raster-width" /></label>
+                  <label>Height (px) <input type="text" inputmode="decimal" autocomplete="off" id="cm-raster-height" /></label>
+                </div>
+              </div>
+            </details>
+
+            <details class="panel-section" open>
+              <summary>Output Zones</summary>
+              <div class="panel-section-body">
+                <div class="resource-toolbar">
+                  <div class="resource-toolbar-group">
+                    <button type="button" class="btn btn-icon" id="cm-out-zone-new" aria-label="New output zone" title="New output zone">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    </button>
+                    <div class="cm-add-from-wrap">
+                      <button type="button" class="btn btn-icon" id="cm-out-zone-from-import" aria-label="Import output group from LED wall or projector screen" title="Import output group from LED wall or projector screen">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="3" y="4" width="18" height="13" rx="1" />
+                          <line x1="9" y1="4" x2="9" y2="17" /><line x1="15" y1="4" x2="15" y2="17" />
+                          <line x1="3" y1="10.5" x2="21" y2="10.5" />
+                          <line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                      </button>
+                      <div id="cm-out-zone-import-menu" class="cm-led-menu" hidden></div>
+                    </div>
+                  </div>
+                </div>
+                <p class="hint">LED imports create a group of ports — one per data line. Projector imports create a group with one zone per projector. Number fields accept math, e.g. 4800+256.</p>
+                <div id="cm-out-zone-list"></div>
+              </div>
+            </details>
+          </aside>
+
+          <div class="calc-canvas-wrap">
+            <div class="canvas-toolbar">
+              <span id="cm-out-status" role="status" aria-live="polite">Add a raster to begin.</span>
+              <div class="canvas-toolbar-actions">
+                <div class="cm-label-toggles" id="cm-out-label-toggles" role="group" aria-label="Output zone labels">
+                  <span class="cm-label-toggles-caption">Labels</span>
+                  <button type="button" class="btn btn-toggle active" data-cm-label="name" aria-pressed="true" title="Show zone names">Name</button>
+                  <button type="button" class="btn btn-toggle active" data-cm-label="resolution" aria-pressed="true" title="Show zone resolution (width × height)">Resolution</button>
+                  <button type="button" class="btn btn-toggle" data-cm-label="anchor" aria-pressed="false" title="Show top-left anchor coordinates">Anchor</button>
+                </div>
+                <span class="view-hint" id="cm-out-view-hint">100% · scroll to zoom · right-drag to pan</span>
+                <button type="button" class="btn btn-secondary" id="cm-out-reset-view">Reset view</button>
+              </div>
+            </div>
+            <div class="calc-viewport cm-viewport" id="cm-out-viewport">
+              <div class="cm-empty-state" id="cm-out-empty-state">
+                <p>Create a <strong>raster</strong> in the sidebar to map outputs here.</p>
+              </div>
+              <svg id="cm-out-svg" class="cm-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="cm-patterns" class="cm-subtab-panel" role="tabpanel" hidden>
+        <div class="calc-layout">
+          <aside class="calc-sidebar" id="cm-tp-sidebar">
+            <details class="panel-section" open>
+              <summary>Source</summary>
+              <div class="panel-section-body">
+                <p class="hint">Pick a surface or raster — the pattern is built at its exact pixel size.</p>
+                <div id="cm-tp-source-list"></div>
+              </div>
+            </details>
+
+            <details class="panel-section" open>
+              <summary>Pattern</summary>
+              <div class="panel-section-body">
+                <div class="cm-tp-field-row">
+                  <label class="cm-tp-field">Type
+                    <select id="cm-tp-type">
+                      <option value="grid">LED tiles</option>
+                      <option value="bars">Color bars</option>
+                      <option value="gradient">Gradients</option>
+                      <option value="alignment">Alignment</option>
+                    </select>
+                  </label>
+                  <label class="cm-tp-field">Apply to
+                    <select id="cm-tp-scope">
+                      <option value="source">Whole source</option>
+                      <option value="zones">Per zone</option>
+                    </select>
+                  </label>
+                </div>
+                <div id="cm-tp-tile-fields" hidden>
+                  <label class="cm-tp-field">Tile
+                    <select id="cm-tp-tile-select"></select>
+                  </label>
+                  <div class="cm-tp-size-pair" id="cm-tp-tile-size-pair">
+                    <label class="cm-tp-field">Tile width (px)
+                      <input type="text" inputmode="decimal" autocomplete="off" id="cm-tp-tile-w" />
+                    </label>
+                    <label class="cm-tp-field">Tile height (px)
+                      <input type="text" inputmode="decimal" autocomplete="off" id="cm-tp-tile-h" />
+                    </label>
+                  </div>
+                  <div class="cm-tp-colors">
+                    <span class="cm-tp-colors-caption">Alternating colors</span>
+                    <span id="cm-tp-color-swatches"></span>
+                  </div>
+                </div>
+                <label class="cm-tp-field">Grid spacing (px)
+                  <input type="text" inputmode="decimal" autocomplete="off" id="cm-tp-grid-size" />
+                </label>
+                <div class="cm-tp-toggles" role="group" aria-label="Pattern overlays">
+                  <button type="button" class="btn btn-toggle active" id="cm-tp-zones-toggle" aria-pressed="true" title="Outline media/output zones on the pattern">Zone outlines</button>
+                  <button type="button" class="btn btn-toggle active" id="cm-tp-labels-toggle" aria-pressed="true" title="Label each zone with name and resolution">Zone labels</button>
+                  <button type="button" class="btn btn-toggle active" id="cm-tp-center-toggle" aria-pressed="true" title="Show center cross and circle">Center marker</button>
+                </div>
+              </div>
+            </details>
+          </aside>
+
+          <div class="calc-canvas-wrap">
+            <div class="canvas-toolbar">
+              <span id="cm-tp-status" role="status" aria-live="polite">Pick a surface or raster to build a test pattern.</span>
+              <div class="canvas-toolbar-actions">
+                <button type="button" class="btn btn-secondary" id="cm-tp-download">Download PNG</button>
+                <span class="view-hint" id="cm-tp-view-hint">100% · scroll to zoom · right-drag to pan</span>
+                <button type="button" class="btn btn-secondary" id="cm-tp-reset-view">Reset view</button>
+              </div>
+            </div>
+            <div class="calc-viewport cm-viewport" id="cm-tp-viewport">
+              <div class="cm-empty-state" id="cm-tp-empty-state">
+                <p>Select a <strong>surface</strong> or <strong>raster</strong> in the sidebar to generate its test pattern.</p>
+              </div>
+              <svg id="cm-tp-svg" class="cm-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="cable-calculator" class="tab-panel" role="tabpanel" hidden>
       <div class="cable-calculator">
         <header class="cable-calculator-header">
@@ -738,9 +1044,154 @@
     </section>
 
     <section id="paperwork-composer" class="tab-panel" role="tabpanel" hidden>
-      <div class="placeholder-panel">
-        <h2>Paperwork Composer</h2>
-        <p>Combine outputs from all tools into printable site packets — coming soon.</p>
+      <div class="calc-layout pw-layout">
+        <aside class="calc-sidebar pw-sidebar-left" id="pw-sidebar">
+          <details class="panel-section">
+            <summary>Page</summary>
+            <div class="panel-section-body">
+              <div class="pw-field-row">
+                <label class="pw-field">Paper size
+                  <select id="pw-paper-size"></select>
+                </label>
+                <label class="pw-field">Orientation
+                  <select id="pw-paper-orientation">
+                    <option value="landscape">Landscape</option>
+                    <option value="portrait">Portrait</option>
+                  </select>
+                </label>
+              </div>
+              <div class="pw-sidebar-actions">
+                <button type="button" class="btn btn-secondary" id="pw-generate-packet" title="Generate packet">Generate</button>
+                <button type="button" class="btn btn-secondary" id="pw-update-linked" title="Update linked elements">Update</button>
+                <button type="button" class="btn btn-secondary" id="pw-reset-layout" title="Reset sheet layout">Reset</button>
+              </div>
+              <details class="pw-subpanel">
+                <summary>Title block</summary>
+                <div class="pw-subpanel-body">
+                  <label class="pw-field pw-check-field">
+                    <input type="checkbox" id="pw-tb-include" checked />
+                    Include on sheets
+                  </label>
+                  <div class="pw-tb-logo-controls">
+                    <label class="pw-field">Logo
+                      <input type="file" id="pw-tb-logo" accept="image/*" />
+                    </label>
+                    <button type="button" class="btn btn-secondary" id="pw-tb-logo-clear" hidden>Clear logo</button>
+                  </div>
+                  <label class="pw-field">Project
+                    <input type="text" id="pw-tb-project" autocomplete="off" />
+                  </label>
+                  <label class="pw-field">Company
+                    <input type="text" id="pw-tb-company" autocomplete="off" />
+                  </label>
+                  <div class="pw-field-row">
+                    <label class="pw-field">Approved
+                      <input type="text" id="pw-tb-approved" autocomplete="off" />
+                    </label>
+                    <label class="pw-field">Checked
+                      <input type="text" id="pw-tb-checked" autocomplete="off" />
+                    </label>
+                  </div>
+                  <div class="pw-field-row">
+                    <label class="pw-field">Drawn
+                      <input type="text" id="pw-tb-drawn" autocomplete="off" />
+                    </label>
+                    <label class="pw-field">Rev
+                      <input type="text" id="pw-tb-revision" autocomplete="off" />
+                    </label>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </details>
+
+          <details class="panel-section">
+            <summary>Sheets</summary>
+            <div class="panel-section-body">
+              <div class="pw-sheet-actions">
+                <button type="button" class="btn btn-secondary" id="pw-new-sheet" title="New blank plate">New</button>
+                <button type="button" class="btn btn-secondary" id="pw-duplicate-sheet" title="Duplicate plate" disabled>Duplicate</button>
+                <button type="button" class="btn btn-secondary" id="pw-delete-sheet" title="Delete plate" disabled>Delete</button>
+              </div>
+              <div id="pw-sheet-list"></div>
+              <button type="button" class="btn btn-secondary pw-export-paperwork" id="pw-export-paperwork" title="Export included sheets (print / Save as PDF)">
+                Export paperwork
+              </button>
+            </div>
+          </details>
+        </aside>
+
+        <div class="calc-canvas-wrap pw-canvas-wrap">
+          <div class="pw-draw-toolbar" id="pw-draw-toolbar" role="toolbar" aria-label="Drawing tools">
+            <div class="pw-draw-tools" id="pw-draw-tools"></div>
+            <div class="pw-draw-styles" id="pw-draw-styles">
+              <label class="pw-style-field" title="Fill">
+                <span class="pw-style-label">Fill</span>
+                <input type="color" id="pw-style-fill" value="#ffffff" />
+              </label>
+              <label class="pw-style-field" title="Stroke">
+                <span class="pw-style-label">Stroke</span>
+                <input type="color" id="pw-style-stroke" value="#111111" />
+              </label>
+              <label class="pw-style-field" title="Weight">
+                <span class="pw-style-label">Wt</span>
+                <input type="number" id="pw-style-weight" min="0.5" max="24" step="0.5" value="2" />
+              </label>
+              <label class="pw-style-field" title="Font size (pt)">
+                <span class="pw-style-label">Size</span>
+                <input type="number" id="pw-style-font" min="6" max="96" step="1" value="14" />
+              </label>
+            </div>
+            <div class="pw-draw-order">
+              <div class="pw-grid-ui" id="pw-grid-ui">
+                <button type="button" class="btn btn-secondary pw-tool-btn" id="pw-grid-btn" title="Grid &amp; snap" aria-label="Grid and snap" aria-expanded="false" aria-controls="pw-grid-popover">▦</button>
+                <div class="pw-grid-popover" id="pw-grid-popover" hidden>
+                  <label class="pw-grid-row">
+                    <input type="checkbox" id="pw-grid-visible" checked />
+                    <span>Show grid</span>
+                  </label>
+                  <label class="pw-grid-row">
+                    <input type="checkbox" id="pw-grid-snap" checked />
+                    <span>Snap to grid</span>
+                  </label>
+                  <label class="pw-grid-row">
+                    <span>Size</span>
+                    <input type="number" id="pw-grid-size" min="0.05" max="2" step="0.05" value="0.25" />
+                    <span class="pw-grid-unit">in</span>
+                  </label>
+                  <button type="button" class="btn btn-secondary" id="pw-grid-arrange">Arrange in grid</button>
+                </div>
+              </div>
+              <button type="button" class="btn btn-secondary pw-tool-btn" id="pw-bring-forward" title="Bring forward">⇧</button>
+              <button type="button" class="btn btn-secondary pw-tool-btn" id="pw-send-backward" title="Send backward">⇩</button>
+              <button type="button" class="btn btn-secondary pw-tool-btn" id="pw-reset-view" title="Fit page in view">Fit</button>
+            </div>
+            <span id="pw-status" class="pw-status" role="status" aria-live="polite"></span>
+          </div>
+          <div class="calc-viewport pw-viewport" id="pw-viewport">
+            <div id="pw-artboard" class="pw-artboard" aria-label="Paperwork page"></div>
+          </div>
+        </div>
+
+        <aside class="pw-sidebar-right" id="pw-sidebar-right">
+          <button type="button" class="pw-right-collapse" id="pw-right-collapse" title="Collapse panel" aria-expanded="true" aria-controls="pw-right-body">›</button>
+          <div class="pw-right-body" id="pw-right-body">
+            <details class="panel-section">
+              <summary>Inspector</summary>
+              <div class="panel-section-body" id="pw-inspector">
+                <p class="resource-empty" id="pw-inspector-empty">Select an element on the page.</p>
+                <div id="pw-inspector-fields" hidden></div>
+                <button type="button" class="btn btn-secondary" id="pw-delete-element" hidden>Delete element</button>
+              </div>
+            </details>
+            <details class="panel-section">
+              <summary>Element library</summary>
+              <div class="panel-section-body">
+                <div id="pw-element-library" class="pw-element-library"></div>
+              </div>
+            </details>
+          </div>
+        </aside>
       </div>
     </section>
   </main>
@@ -774,7 +1225,7 @@
   <div id="boot-error" class="boot-error" hidden role="alert"></div>
   <script type="module">
     const bootError = document.getElementById("boot-error");
-    import("./js/app.js?v=103").catch((error) => {
+    import("./js/app.js?v=203").catch((error) => {
       console.error(error);
       if (bootError) {
         bootError.hidden = false;

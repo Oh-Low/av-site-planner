@@ -1,4 +1,10 @@
-import { PREBUILT_TILES, LINE_COLORS, MAX_AMPS, BITRATE_PIXEL_FACTOR } from "./led-data.js";
+import {
+  PREBUILT_TILES,
+  LINE_COLORS,
+  PROCESSOR_COLORS,
+  MAX_AMPS,
+  BITRATE_PIXEL_FACTOR,
+} from "./led-data.js?v=2";
 import { queryCalcShell, bindSidebarTabs } from "./shared/calc-shell.js";
 import { deepClone } from "./shared/clone.js";
 import { escapeXml } from "./shared/dom.js";
@@ -8,12 +14,68 @@ import { uid } from "./shared/id.js";
 
 /** @typedef {{ processorType: string, wiringType: string, pixelWidth: number, pixelHeight: number, totalPixels: number, maxPerPort: number, metricWidth: number, metricHeight: number, weight: number, wattage: number, id?: string }} TileConfig */
 
-/** @typedef {{ id: string, name: string, tiles: number[], startLabel: string, endLabel: string, startLabelDraft: string, endLabelDraft: string }} LineSet */
+/** @typedef {{ id: string, name: string, tiles: number[], startLabel: string, endLabel: string, startLabelDraft: string, endLabelDraft: string, processorId?: string|null }} LineSet */
 
-/** @typedef {{ id: string, name: string, tile: TileConfig, rows: number, cols: number, generated: boolean, generatedRows: number, generatedCols: number, dataLines: LineSet[], powerLines: LineSet[], activeLineType: 'data'|'power', activeLineId: string|null, view: { panX: number, panY: number, zoom: number, contentW: number, contentH: number, lastContentKey: string } | null }} WallGrid */
+/** Folder-like group for data lines; its color overrides the palette for lines inside. */
+/** @typedef {{ id: string, name: string, color: string }} Processor */
+
+/** @typedef {{ id: string, name: string, tile: TileConfig, rows: number, cols: number, generated: boolean, generatedRows: number, generatedCols: number, dataLines: LineSet[], powerLines: LineSet[], processors: Processor[], activeProcessorId: string|null, activeLineType: 'data'|'power', activeLineId: string|null, view: { panX: number, panY: number, zoom: number, contentW: number, contentH: number, lastContentKey: string } | null }} WallGrid */
 
 function defaultGridName(existingCount) {
   return existingCount === 0 ? "LED Wall" : `LED Wall ${existingCount + 1}`;
+}
+
+/**
+ * Pixel dimensions of a wall: columns × tile pixel width, rows × tile pixel
+ * height. Uses the generated size when the wall has been built, otherwise the
+ * draft rows/cols. Consumed by other calculators (e.g. Content Maps surfaces).
+ * @param {Pick<WallGrid, "tile" | "rows" | "cols" | "generated" | "generatedRows" | "generatedCols">} grid
+ */
+export function gridPixelSize(grid) {
+  const cols = Math.max(1, Number(grid?.generated ? grid.generatedCols : grid?.cols) || 1);
+  const rows = Math.max(1, Number(grid?.generated ? grid.generatedRows : grid?.rows) || 1);
+  const pixelWidth = Math.max(1, Number(grid?.tile?.pixelWidth) || 1);
+  const pixelHeight = Math.max(1, Number(grid?.tile?.pixelHeight) || 1);
+  return { width: cols * pixelWidth, height: rows * pixelHeight };
+}
+
+/**
+ * Pixel rect ("port") for each data line on a wall: the bounding box of the
+ * tiles the line drives, in wall pixels with the origin at the wall's
+ * top-left. Consumed by Content Maps output mapping.
+ * @param {Pick<WallGrid, "tile" | "rows" | "cols" | "generated" | "generatedRows" | "generatedCols" | "dataLines">} grid
+ * @returns {{ id: string, name: string, x: number, y: number, width: number, height: number }[]}
+ */
+export function gridDataLinePixelRects(grid) {
+  const cols = Math.max(1, Number(grid?.generated ? grid.generatedCols : grid?.cols) || 1);
+  const pixelWidth = Math.max(1, Number(grid?.tile?.pixelWidth) || 1);
+  const pixelHeight = Math.max(1, Number(grid?.tile?.pixelHeight) || 1);
+  const rects = [];
+  for (const line of grid?.dataLines ?? []) {
+    const tiles = Array.isArray(line?.tiles) ? line.tiles : [];
+    if (!tiles.length) continue;
+    let minRow = Infinity;
+    let minCol = Infinity;
+    let maxRow = -Infinity;
+    let maxCol = -Infinity;
+    for (const index of tiles) {
+      const row = Math.floor(index / cols);
+      const col = index % cols;
+      minRow = Math.min(minRow, row);
+      minCol = Math.min(minCol, col);
+      maxRow = Math.max(maxRow, row);
+      maxCol = Math.max(maxCol, col);
+    }
+    rects.push({
+      id: String(line.id),
+      name: String(line.name ?? "Line"),
+      x: minCol * pixelWidth,
+      y: minRow * pixelHeight,
+      width: (maxCol - minCol + 1) * pixelWidth,
+      height: (maxRow - minRow + 1) * pixelHeight,
+    });
+  }
+  return rects;
 }
 
 function emptyTile() {
@@ -133,6 +195,27 @@ export function initLedCalculator() {
     onChange: () => updateViewHint(),
   });
 
+  const processorNameEditor =
+    els.resourceBars &&
+    createListNameEditor({
+      listEl: els.resourceBars,
+      nameSelector: ".processor-name",
+      itemSelector: "[data-processor-id]",
+      getItemId: (item) => item.dataset.processorId,
+      getName: (id) => findProcessor(getActiveGrid(), id)?.name,
+      setName: (id, name) => {
+        const proc = findProcessor(getActiveGrid(), id);
+        if (proc) proc.name = name;
+      },
+      onCommit: (_id, previousName, newName) => {
+        renderResourceBars();
+        if (newName !== previousName) setStatus(`Renamed processor to ${newName}.`);
+      },
+      onCancel: () => {
+        renderResourceBars();
+      },
+    });
+
   const gridNameEditor =
     els.gridList &&
     createListNameEditor({
@@ -153,6 +236,34 @@ export function initLedCalculator() {
         renderGridList();
       },
     });
+
+  /** Fills fields added after older saves (processors, line.processorId). */
+  function ensureGridShape(grid) {
+    if (!Array.isArray(grid.processors)) grid.processors = [];
+    if (grid.activeProcessorId === undefined) grid.activeProcessorId = null;
+    for (const line of grid.dataLines ?? []) {
+      if (line.processorId === undefined) line.processorId = null;
+    }
+    return grid;
+  }
+
+  function findProcessor(grid, processorId) {
+    if (!processorId) return null;
+    return grid?.processors?.find((p) => p.id === processorId) ?? null;
+  }
+
+  /**
+   * Color for a line: its processor's color when grouped, otherwise the
+   * type palette cycled by the line's index.
+   */
+  function lineColor(grid, line, type, paletteIndex) {
+    if (type === "data") {
+      const proc = findProcessor(grid, line.processorId);
+      if (proc) return proc.color;
+    }
+    const palette = LINE_COLORS[type];
+    return palette[paletteIndex % palette.length];
+  }
 
   function defaultLabelsForLine(lineNumber, type) {
     const n = String(lineNumber);
@@ -293,6 +404,8 @@ export function initLedCalculator() {
       generatedCols: 0,
       dataLines: [],
       powerLines: [],
+      processors: [],
+      activeProcessorId: null,
       activeLineType: "data",
       activeLineId: null,
       view: null,
@@ -658,6 +771,12 @@ export function initLedCalculator() {
       <div class="resource-section-header">
         ${renderSectionCollapseButton("data", open)}
         <h3>Data Lines</h3>
+        <button type="button" class="btn-add-processor" data-add-processor="1" title="New processor group" aria-label="New processor group">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <line x1="12" y1="10" x2="12" y2="16" /><line x1="9" y1="13" x2="15" y2="13" />
+          </svg>
+        </button>
         <div class="bitrate-toggle" role="group" aria-label="Color depth bitrate">
           ${buttons}
         </div>
@@ -866,6 +985,10 @@ export function initLedCalculator() {
     if (!grid) return;
     grid.activeLineType = type;
     grid.activeLineId = lineId;
+    if (type === "data") {
+      const line = grid.dataLines.find((l) => l.id === lineId);
+      grid.activeProcessorId = findProcessor(grid, line?.processorId)?.id ?? null;
+    }
     els.selectData.classList.toggle("active", type === "data");
     els.selectPower.classList.toggle("active", type === "power");
     updateLabelButtons();
@@ -883,49 +1006,93 @@ export function initLedCalculator() {
     return el?.classList.contains("is-open") ?? true;
   }
 
+  /** @param {WallGrid|null} grid @param {LineSet} line @param {'data'|'power'} type @param {number} paletteIdx */
+  function renderLineBar(grid, line, type, paletteIdx) {
+    const usage = lineUsage(line, type);
+    const pct = Math.min(100, (usage.used / usage.max) * 100);
+    const cls = pct >= 100 ? "over" : pct >= 85 ? "warn" : "ok";
+    const isSelected = line.id === grid?.activeLineId && type === grid?.activeLineType;
+    const color = lineColor(grid, line, type, paletteIdx);
+    const draggable = type === "data" ? ` draggable="true" title="Drag onto a processor to group"` : "";
+    return `
+      <button type="button" class="resource-bar${isSelected ? " selected" : ""}" data-line-id="${line.id}" data-line-type="${type}"${draggable} aria-pressed="${isSelected}">
+        <div class="resource-bar-label"><span>${escapeXml(line.name)}</span><span>${type === "data" ? `${usage.used}/${usage.max}` : `${usage.used.toFixed(1)}A`}</span></div>
+        <div class="resource-bar-track">
+          <div class="resource-bar-fill ${cls}" style="width:${pct}%;background:${color}"></div>
+        </div>
+      </button>`;
+  }
+
+  /** Data section body: processor folders first, ungrouped lines below. */
+  function renderDataSectionBody(grid) {
+    const lines = grid?.dataLines ?? [];
+    const processors = grid?.processors ?? [];
+    const barFor = (line) => renderLineBar(grid, line, "data", lines.indexOf(line));
+
+    const ungrouped = lines.filter((l) => !findProcessor(grid, l.processorId));
+    const parts = [];
+
+    if (!lines.length && !processors.length) {
+      parts.push(`<p class="resource-empty">No lines defined</p>`);
+    }
+
+    for (const proc of processors) {
+      const procLines = lines.filter((l) => l.processorId === proc.id);
+      const isActive = proc.id === grid?.activeProcessorId;
+      parts.push(`
+        <div class="processor-group processor-drop${isActive ? " selected" : ""}" data-processor-id="${proc.id}" data-processor-drop="${proc.id}">
+          <div class="processor-row" draggable="true" data-processor-row="${proc.id}" title="Drag to reorder">
+            <span class="processor-grip" aria-hidden="true">⋮⋮</span>
+            <button type="button" class="processor-select" data-processor-select="${proc.id}" aria-pressed="${isActive}" title="New data lines are created in the selected processor">
+              <svg class="processor-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              </svg>
+              <span class="processor-name">${escapeXml(proc.name)}</span>
+              <span class="processor-count">${procLines.length}</span>
+            </button>
+            <input type="color" class="processor-color" data-processor-color="${proc.id}" value="${escapeXml(proc.color)}" title="Line color for this processor" aria-label="Color for ${escapeXml(proc.name)}" />
+            <button type="button" class="processor-remove" data-processor-remove="${proc.id}" title="Remove processor (keeps its lines)" aria-label="Remove ${escapeXml(proc.name)}">×</button>
+          </div>
+          <div class="processor-lines">
+            ${procLines.map(barFor).join("") || `<p class="resource-empty processor-empty-hint">No lines — drag lines here or create one</p>`}
+          </div>
+        </div>`);
+    }
+
+    if (ungrouped.length || processors.length) {
+      parts.push(`
+        <div class="processor-drop processor-ungrouped" data-processor-drop="">
+          ${ungrouped.map(barFor).join("") || (processors.length ? `<p class="resource-empty processor-ungrouped-hint">Drop lines here to ungroup</p>` : "")}
+        </div>`);
+    }
+
+    return parts.join("");
+  }
+
   function renderResourceBars() {
+    processorNameEditor?.close();
     const grid = getActiveGrid();
     if (grid) {
+      ensureGridShape(grid);
       syncLineNumbersIfNeeded(grid);
     }
     const dataOpen = getResourceSectionOpen("data");
     const powerOpen = getResourceSectionOpen("power");
-    const sections = [
-      { type: "data", lines: grid?.dataLines ?? [], open: dataOpen },
-      { type: "power", lines: grid?.powerLines ?? [], open: powerOpen },
-    ];
 
-    els.resourceBars.innerHTML = sections
-      .map(({ type, lines, open }) => {
-        const sectionHeader =
-          type === "power" ? renderPowerSectionHeader(open) : renderDataSectionHeader(open);
+    const powerLines = grid?.powerLines ?? [];
+    const powerBody = !powerLines.length
+      ? `<p class="resource-empty">No lines defined</p>`
+      : powerLines.map((line, i) => renderLineBar(grid, line, "power", i)).join("");
 
-        const body = !lines.length
-          ? `<p class="resource-empty">No lines defined</p>`
-          : lines
-              .map((line, i) => {
-                const usage = lineUsage(line, type);
-                const pct = Math.min(100, (usage.used / usage.max) * 100);
-                const cls = pct >= 100 ? "over" : pct >= 85 ? "warn" : "ok";
-                const isSelected = line.id === grid?.activeLineId && type === grid?.activeLineType;
-                const color = LINE_COLORS[type][i % LINE_COLORS[type].length];
-                return `
-              <button type="button" class="resource-bar${isSelected ? " selected" : ""}" data-line-id="${line.id}" data-line-type="${type}" aria-pressed="${isSelected}">
-                <div class="resource-bar-label"><span>${line.name}</span><span>${type === "data" ? `${usage.used}/${usage.max}` : `${usage.used.toFixed(1)}A`}</span></div>
-                <div class="resource-bar-track">
-                  <div class="resource-bar-fill ${cls}" style="width:${pct}%;background:${color}"></div>
-                </div>
-              </button>`;
-              })
-              .join("");
-
-        return `
-          <div class="resource-section resource-section-flat ${type}${open ? " is-open" : ""}">
-            ${sectionHeader}
-            <div class="resource-section-body">${body}</div>
-          </div>`;
-      })
-      .join("");
+    els.resourceBars.innerHTML = `
+      <div class="resource-section resource-section-flat data${dataOpen ? " is-open" : ""}">
+        ${renderDataSectionHeader(dataOpen)}
+        <div class="resource-section-body">${renderDataSectionBody(grid)}</div>
+      </div>
+      <div class="resource-section resource-section-flat power${powerOpen ? " is-open" : ""}">
+        ${renderPowerSectionHeader(powerOpen)}
+        <div class="resource-section-body">${powerBody}</div>
+      </div>`;
   }
 
   function getFixedTileDimensions(tile) {
@@ -959,7 +1126,6 @@ export function initLedCalculator() {
 
     const viewType = grid.activeLineType;
     const visibleLines = viewType === "data" ? grid.dataLines : grid.powerLines;
-    const lineColors = LINE_COLORS[viewType];
 
     const { tileW, tileH } = getFixedTileDimensions(tile);
 
@@ -988,7 +1154,7 @@ export function initLedCalculator() {
     // Lines for active type only (behind tiles)
     visibleLines.forEach((line, li) => {
       if (line.tiles.length < 2) return;
-      const color = lineColors[li % lineColors.length];
+      const color = lineColor(grid, line, viewType, li);
       const points = line.tiles
         .map((idx) => {
           const c = tileCenter(idx, tileW, tileH);
@@ -1030,7 +1196,7 @@ export function initLedCalculator() {
     // Endpoint labels (active type only)
     visibleLines.forEach((line, li) => {
       if (!line.tiles.length) return;
-      const color = lineColors[li % lineColors.length];
+      const color = lineColor(grid, line, viewType, li);
       const isActiveLine = line.id === grid.activeLineId;
       const startIdx = line.tiles[0];
       const endIdx = line.tiles[line.tiles.length - 1];
@@ -1343,6 +1509,7 @@ export function initLedCalculator() {
       endLabel: labels.endLabel,
       startLabelDraft: labels.startLabel,
       endLabelDraft: labels.endLabel,
+      processorId: type === "data" ? (grid.activeProcessorId ?? null) : null,
     };
     lines.push(line);
     grid.activeLineId = line.id;
@@ -1354,6 +1521,88 @@ export function initLedCalculator() {
       setStatus(`Created ${line.name}. Click or drag across tiles to draw.`);
     }
     return line;
+  }
+
+  function createProcessor() {
+    const grid = getActiveGrid();
+    if (!grid) {
+      setStatus("Create an LED wall first.", true);
+      return;
+    }
+    ensureGridShape(grid);
+    const n = grid.processors.length + 1;
+    const proc = {
+      id: uid("proc"),
+      name: `Processor ${n}`,
+      color: PROCESSOR_COLORS[(n - 1) % PROCESSOR_COLORS.length],
+    };
+    grid.processors.push(proc);
+    grid.activeProcessorId = proc.id;
+    render();
+    setStatus(`Created ${proc.name}. New data lines go into the selected processor.`);
+  }
+
+  function selectProcessor(processorId) {
+    const grid = getActiveGrid();
+    if (!grid) return;
+    grid.activeProcessorId = grid.activeProcessorId === processorId ? null : processorId;
+    renderResourceBars();
+    const proc = findProcessor(grid, grid.activeProcessorId);
+    setStatus(
+      proc
+        ? `Selected ${proc.name} — new data lines will be created in it.`
+        : "No processor selected — new data lines will be ungrouped."
+    );
+  }
+
+  function removeProcessor(processorId) {
+    const grid = getActiveGrid();
+    if (!grid) return;
+    const idx = grid.processors.findIndex((p) => p.id === processorId);
+    if (idx < 0) return;
+    const name = grid.processors[idx].name;
+    grid.processors.splice(idx, 1);
+    for (const line of grid.dataLines) {
+      if (line.processorId === processorId) line.processorId = null;
+    }
+    if (grid.activeProcessorId === processorId) grid.activeProcessorId = null;
+    render();
+    setStatus(`Removed ${name}. Its lines are now ungrouped.`);
+  }
+
+  function setProcessorColor(processorId, color) {
+    const proc = findProcessor(getActiveGrid(), processorId);
+    if (!proc) return;
+    proc.color = color;
+    render();
+    setStatus(`Updated ${proc.name} color.`);
+  }
+
+  /** @param {string} processorId @param {string} targetId @param {boolean} before */
+  function reorderProcessor(processorId, targetId, before) {
+    const grid = getActiveGrid();
+    if (!grid || processorId === targetId) return;
+    const list = grid.processors;
+    const from = list.findIndex((p) => p.id === processorId);
+    if (from < 0 || !list.some((p) => p.id === targetId)) return;
+    const [proc] = list.splice(from, 1);
+    const insert = list.findIndex((p) => p.id === targetId) + (before ? 0 : 1);
+    list.splice(insert, 0, proc);
+    renderResourceBars();
+    setStatus(`Moved ${proc.name} to position ${insert + 1}.`);
+  }
+
+  /** @param {string} lineId @param {string|null} processorId */
+  function assignLineToProcessor(lineId, processorId) {
+    const grid = getActiveGrid();
+    const line = grid?.dataLines.find((l) => l.id === lineId);
+    if (!grid || !line) return;
+    const target = findProcessor(grid, processorId);
+    if ((line.processorId ?? null) === (target?.id ?? null)) return;
+    line.processorId = target?.id ?? null;
+    if (grid.activeLineId === line.id) grid.activeProcessorId = target?.id ?? null;
+    render();
+    setStatus(target ? `Moved ${line.name} into ${target.name}.` : `Moved ${line.name} out of its processor.`);
   }
 
   function removeActiveLine() {
@@ -1523,6 +1772,22 @@ export function initLedCalculator() {
   els.placeStartLabel.addEventListener("click", () => handleLabelButton("start"));
   els.placeEndLabel.addEventListener("click", () => handleLabelButton("end"));
   els.resourceBars.addEventListener("click", (e) => {
+    if (e.target.closest(".processor-color") || e.target.closest(".grid-name-editor")) return;
+    const addProcessorBtn = e.target.closest("[data-add-processor]");
+    if (addProcessorBtn) {
+      createProcessor();
+      return;
+    }
+    const removeProcessorBtn = e.target.closest("[data-processor-remove]");
+    if (removeProcessorBtn) {
+      removeProcessor(removeProcessorBtn.dataset.processorRemove);
+      return;
+    }
+    const processorSelectBtn = e.target.closest("[data-processor-select]");
+    if (processorSelectBtn) {
+      selectProcessor(processorSelectBtn.dataset.processorSelect);
+      return;
+    }
     const collapseBtn = e.target.closest("[data-collapse-section]");
     if (collapseBtn) {
       const type = collapseBtn.dataset.collapseSection;
@@ -1565,6 +1830,104 @@ export function initLedCalculator() {
   });
   els.clearActiveLine.addEventListener("click", clearActiveLineTiles);
 
+  // Live wall preview while picking; skip re-rendering the bars so the native
+  // color input isn't destroyed mid-interaction.
+  els.resourceBars.addEventListener("input", (e) => {
+    const colorInput = /** @type {HTMLInputElement|null} */ (e.target.closest(".processor-color"));
+    if (!colorInput) return;
+    const proc = findProcessor(getActiveGrid(), colorInput.dataset.processorColor);
+    if (!proc) return;
+    proc.color = colorInput.value;
+    renderWall();
+  });
+  els.resourceBars.addEventListener("change", (e) => {
+    const colorInput = /** @type {HTMLInputElement|null} */ (e.target.closest(".processor-color"));
+    if (!colorInput) return;
+    setProcessorColor(colorInput.dataset.processorColor, colorInput.value);
+  });
+  els.resourceBars.addEventListener("dblclick", (e) => {
+    const nameEl = e.target.closest(".processor-name");
+    if (!nameEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+    processorNameEditor?.open(nameEl);
+  });
+
+  const LINE_MOVE_MIME = "text/led-line-move";
+  const PROC_MOVE_MIME = "text/led-processor-move";
+  function hasDragType(e, mime) {
+    return [...(e.dataTransfer?.types ?? [])].includes(mime);
+  }
+  function clearProcessorDropHighlights() {
+    els.resourceBars
+      .querySelectorAll(".is-drop-target, .drop-before, .drop-after")
+      .forEach((el) => {
+        el.classList.remove("is-drop-target", "drop-before", "drop-after");
+      });
+  }
+  els.resourceBars.addEventListener("dragstart", (e) => {
+    if (!e.dataTransfer) return;
+    const procRow = e.target.closest('.processor-row[draggable="true"]');
+    if (procRow) {
+      e.dataTransfer.setData(PROC_MOVE_MIME, procRow.dataset.processorRow ?? "");
+      e.dataTransfer.effectAllowed = "move";
+      const group = procRow.closest(".processor-group");
+      if (group) e.dataTransfer.setDragImage(group, 12, 12);
+      return;
+    }
+    const bar = e.target.closest('.resource-bar[data-line-type="data"]');
+    if (!bar) return;
+    e.dataTransfer.setData(LINE_MOVE_MIME, bar.dataset.lineId ?? "");
+    e.dataTransfer.effectAllowed = "move";
+  });
+  els.resourceBars.addEventListener("dragover", (e) => {
+    if (hasDragType(e, PROC_MOVE_MIME)) {
+      const group = e.target.closest(".processor-group");
+      clearProcessorDropHighlights();
+      if (!group) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+      const rect = group.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      group.classList.add(before ? "drop-before" : "drop-after");
+      return;
+    }
+    if (!hasDragType(e, LINE_MOVE_MIME)) return;
+    const zone = e.target.closest("[data-processor-drop]");
+    if (!zone) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    clearProcessorDropHighlights();
+    zone.classList.add("is-drop-target");
+  });
+  els.resourceBars.addEventListener("dragleave", (e) => {
+    const zone = e.target.closest(".processor-drop, .processor-group");
+    const related = /** @type {Node|null} */ (e.relatedTarget);
+    if (zone && related && zone.contains(related)) return;
+    zone?.classList.remove("is-drop-target", "drop-before", "drop-after");
+  });
+  els.resourceBars.addEventListener("drop", (e) => {
+    if (hasDragType(e, PROC_MOVE_MIME)) {
+      const group = e.target.closest(".processor-group");
+      clearProcessorDropHighlights();
+      if (!group) return;
+      e.preventDefault();
+      const procId = e.dataTransfer?.getData(PROC_MOVE_MIME);
+      const rect = group.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      if (procId) reorderProcessor(procId, group.dataset.processorId ?? "", before);
+      return;
+    }
+    if (!hasDragType(e, LINE_MOVE_MIME)) return;
+    const zone = e.target.closest("[data-processor-drop]");
+    if (!zone) return;
+    e.preventDefault();
+    clearProcessorDropHighlights();
+    const lineId = e.dataTransfer?.getData(LINE_MOVE_MIME);
+    if (lineId) assignLineToProcessor(lineId, zone.dataset.processorDrop || null);
+  });
+  els.resourceBars.addEventListener("dragend", clearProcessorDropHighlights);
+
   els.wallSvg.addEventListener("click", onEndpointClick);
   els.wallCanvasContainer.addEventListener("pointerdown", onWallPointerDown);
   els.wallCanvasContainer.addEventListener("pointermove", onWallPointerMove);
@@ -1605,7 +1968,7 @@ export function initLedCalculator() {
     }
     closeGridNameEditor();
     closeLabelEditor();
-    state.grids = deepClone(data.grids);
+    state.grids = deepClone(data.grids).map(ensureGridShape);
     state.activeGridId =
       data.activeGridId && state.grids.some((g) => g.id === data.activeGridId)
         ? data.activeGridId

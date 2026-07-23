@@ -1,14 +1,15 @@
 import {
   ASPECT_RATIOS,
+  DEFAULT_PROJECTOR_RESOLUTION_ID,
   PREBUILT_PROJECTORS,
-  PROJECTOR_ASPECT_RATIOS,
   PROJECTOR_COLORS,
   PROJECTOR_ROLES,
   defaultProjectorAspectForPreset,
   getProjectorManufacturers,
   getProjectorModelsForManufacturer,
   inferProjectorAspectId,
-} from "./projector-data.js";
+  projectorResolutionOptions,
+} from "./projector-data.js?v=2";
 import {
   clamp,
   convertLinearDistance,
@@ -32,7 +33,7 @@ import { uid } from "./shared/id.js";
 /** @typedef {{ id: string, name: string, role: string, blendOverlap: number, tileCols: number, tileRows: number, layoutMode: "fit" | "overlap", overlapPxH: number, overlapPxV: number }} ProjectorGroup */
 
 /** @typedef {"throw" | "image" | "zoom"} ThrowLockField */
-/** @typedef {{ id: string, name: string, source: "prebuilt" | "custom", presetId: string, lensId: string, projectorAspectId: "16:9" | "16:10", customThrowMin: number, customThrowMax: number, customLumens: number, customResW: number, customResH: number, role: string, groupId: string | null, offsetX: number, offsetY: number, blendOverlap: number, layoutMode: "fit" | "overlap", overlapPxH: number, overlapPxV: number, orientation: "landscape" | "portrait", tileCol: number, tileRow: number, tileCols: number, tileRows: number, throwDistance: number, throwRatio: number, lensZoom: number, throwLocks: ThrowLockField[] }} ScreenProjector */
+/** @typedef {{ id: string, name: string, source: "prebuilt" | "custom", presetId: string, lensId: string, projectorAspectId: "16:9" | "16:10", resolutionId: "hd" | "uhd", customThrowMin: number, customThrowMax: number, customLumens: number, customResW: number, customResH: number, role: string, groupId: string | null, offsetX: number, offsetY: number, blendOverlap: number, layoutMode: "fit" | "overlap", overlapPxH: number, overlapPxV: number, orientation: "landscape" | "portrait", tileCol: number, tileRow: number, tileCols: number, tileRows: number, throwDistance: number, throwRatio: number, lensZoom: number, throwLocks: ThrowLockField[] }} ScreenProjector */
 
 /** @typedef {{ id: string, name: string, unit: "ft" | "m", aspectId: string, width: number, height: number, projectors: ScreenProjector[], projectorGroups: ProjectorGroup[], activeProjectorId: string | null, activeGroupId: string | null, view: { panX: number, panY: number, zoom: number, contentW: number, contentH: number } | null }} ProjectionScreen */
 
@@ -114,6 +115,7 @@ function copySharedProjectorSettings(source, target) {
   target.customResW = source.customResW;
   target.customResH = source.customResH;
   target.projectorAspectId = source.projectorAspectId ?? inferProjectorAspectId(source.customResW, source.customResH);
+  target.resolutionId = source.resolutionId ?? DEFAULT_PROJECTOR_RESOLUTION_ID;
   target.role = source.role;
   target.blendOverlap = source.blendOverlap;
   target.layoutMode = source.layoutMode ?? "fit";
@@ -395,6 +397,7 @@ function newProjector(index = 0) {
     presetId: preset.id,
     lensId: lens.id,
     projectorAspectId: defaultProjectorAspectForPreset(preset),
+    resolutionId: DEFAULT_PROJECTOR_RESOLUTION_ID,
     customThrowMin: 1.2,
     customThrowMax: 1.8,
     customLumens: 10000,
@@ -433,6 +436,7 @@ function projectorFromTemplate(template, index) {
       (template.source === "custom"
         ? inferProjectorAspectId(template.customResW, template.customResH)
         : defaultProjectorAspectForPreset(getPreset(template))),
+    resolutionId: template.resolutionId ?? DEFAULT_PROJECTOR_RESOLUTION_ID,
     customThrowMin: template.customThrowMin,
     customThrowMax: template.customThrowMax,
     customLumens: template.customLumens,
@@ -588,6 +592,11 @@ function getProjectorAspectId(projector) {
   return defaultProjectorAspectForPreset(getPreset(projector));
 }
 
+/** @param {ScreenProjector} projector @returns {"hd" | "uhd"} */
+function getProjectorResolutionId(projector) {
+  return projector.resolutionId === "uhd" ? "uhd" : "hd";
+}
+
 /** @param {ScreenProjector} projector */
 function getProjectorNativeResolution(projector) {
   if (projector.source === "custom") {
@@ -596,8 +605,9 @@ function getProjectorNativeResolution(projector) {
       h: Number(projector.customResH) || 1080,
     };
   }
-  const aspect = PROJECTOR_ASPECT_RATIOS.find((a) => a.id === getProjectorAspectId(projector)) ?? PROJECTOR_ASPECT_RATIOS[0];
-  return { w: aspect.w * 120, h: aspect.h * 120 };
+  const options = projectorResolutionOptions(getProjectorAspectId(projector));
+  const option = options.find((o) => o.id === getProjectorResolutionId(projector)) ?? options[0];
+  return { w: option.w, h: option.h };
 }
 
 function projectorPixelAspect(projector) {
@@ -716,6 +726,117 @@ function computeGridCoverage(projector, screen) {
   };
 }
 
+/** Native pixel resolution of a projector, swapped when mounted in portrait. */
+export function projectorPixelResolution(projector) {
+  const { w, h } = getProjectorNativeResolution(projector);
+  return projector.orientation === "portrait" ? { w: h, h: w } : { w, h };
+}
+
+/**
+ * Pixel overlap between adjacent projectors in a blend/tile grid.
+ * In "overlap" layout the pixel values are user-specified; in "fit" layout the
+ * overlap is derived from image size vs. screen size and converted to pixels.
+ * @param {ScreenProjector} lead @param {ProjectionScreen} screen
+ */
+export function gridPixelOverlap(lead, screen) {
+  if ((lead.layoutMode ?? "fit") === "overlap") {
+    return {
+      overlapPxH: Math.max(0, Math.round(Number(lead.overlapPxH) || 0)),
+      overlapPxV: Math.max(0, Math.round(Number(lead.overlapPxV) || 0)),
+    };
+  }
+  const { w: resW, h: resH } = projectorPixelResolution(lead);
+  const cov = computeGridCoverage(lead, screen);
+  return {
+    overlapPxH: Math.max(0, Math.round(cov.overlapH * resW)),
+    overlapPxV: Math.max(0, Math.round(cov.overlapV * resH)),
+  };
+}
+
+/**
+ * Total pixel canvas covered by a blend/tile group:
+ * cols × resW minus the blended overlap between neighbors (same vertically).
+ * @param {ProjectionScreen} screen @param {string} groupId
+ * @returns {{ width: number, height: number, cols: number, rows: number, overlapPxH: number, overlapPxV: number } | null}
+ */
+export function groupPixelSize(screen, groupId) {
+  const group = getProjectorGroup(screen, groupId);
+  const lead = getGroupMembers(screen, groupId)[0];
+  if (!group || !lead) return null;
+  const cols = Math.max(1, Number(group.tileCols) || 1);
+  const rows = Math.max(1, Number(group.tileRows) || 1);
+  const { w: resW, h: resH } = projectorPixelResolution(lead);
+  const { overlapPxH, overlapPxV } = gridPixelOverlap(lead, screen);
+  return {
+    width: Math.max(1, Math.round(cols * resW - (cols - 1) * overlapPxH)),
+    height: Math.max(1, Math.round(rows * resH - (rows - 1) * overlapPxV)),
+    cols,
+    rows,
+    overlapPxH,
+    overlapPxV,
+  };
+}
+
+/**
+ * Pixel rect of every projector on a screen, in the screen's pixel canvas
+ * (origin at the canvas top-left). Grid members are placed by column/row with
+ * the blend overlap subtracted between neighbors; standalone projectors sit at
+ * the origin at their native resolution.
+ * @param {ProjectionScreen} screen
+ * @returns {{ id: string, name: string, x: number, y: number, width: number, height: number }[]}
+ */
+export function screenProjectorPixelRects(screen) {
+  const rects = [];
+  for (const group of screen.projectorGroups ?? []) {
+    const members = getGroupMembers(screen, group.id);
+    const lead = members[0];
+    if (!lead) continue;
+    const { w: resW, h: resH } = projectorPixelResolution(lead);
+    const { overlapPxH, overlapPxV } = gridPixelOverlap(lead, screen);
+    const stepX = resW - overlapPxH;
+    const stepY = resH - overlapPxV;
+    for (const projector of members) {
+      const { col, row } = getGridIndices(projector);
+      rects.push({
+        id: projector.id,
+        name: projector.name,
+        x: col * stepX,
+        y: row * stepY,
+        width: resW,
+        height: resH,
+      });
+    }
+  }
+  for (const projector of getUngroupedProjectors(screen)) {
+    const { w, h } = projectorPixelResolution(projector);
+    rects.push({ id: projector.id, name: projector.name, x: 0, y: 0, width: w, height: h });
+  }
+  return rects;
+}
+
+/**
+ * Overall pixel size of the projector screen: the largest pixel canvas among
+ * blend/tile groups and individual (single/stack) projectors.
+ * @param {ProjectionScreen} screen
+ * @returns {{ width: number, height: number } | null}
+ */
+export function screenPixelSize(screen) {
+  let best = null;
+  for (const group of screen.projectorGroups ?? []) {
+    const size = groupPixelSize(screen, group.id);
+    if (size && (!best || size.width * size.height > best.width * best.height)) {
+      best = { width: size.width, height: size.height };
+    }
+  }
+  for (const projector of getUngroupedProjectors(screen)) {
+    const { w, h } = projectorPixelResolution(projector);
+    if (!best || w * h > best.width * best.height) {
+      best = { width: w, height: h };
+    }
+  }
+  return best;
+}
+
 function throwDistanceFromImageWidth(projector, imageWidth) {
   return throwDistanceFromImageWidthAndRatio(imageWidth, effectiveThrowRatio(projector));
 }
@@ -797,6 +918,9 @@ export function initProjectorCalculator() {
     projectorModel: document.getElementById("projector-model"),
     projectorAspect: document.getElementById("projector-aspect"),
     projectorAspectWrap: document.getElementById("projector-aspect-wrap"),
+    projectorResolution: document.getElementById("projector-resolution"),
+    projectorResolutionWrap: document.getElementById("projector-resolution-wrap"),
+    projectorPixelSummary: document.getElementById("projector-pixel-summary"),
     customLensFields: document.getElementById("custom-lens-fields"),
     projectorRole: document.getElementById("projector-role"),
     orientationLandscape: document.getElementById("orientation-landscape"),
@@ -1179,6 +1303,21 @@ export function initProjectorCalculator() {
     }
   }
 
+  /**
+   * Rebuild the resolution dropdown for an aspect (heights differ between
+   * 16:9 and 16:10) while keeping the current tier selected.
+   * @param {string} aspectId @param {"hd" | "uhd"} [selectedId]
+   */
+  function updateResolutionOptions(aspectId, selectedId) {
+    if (!els.projectorResolution) return;
+    const options = projectorResolutionOptions(aspectId);
+    els.projectorResolution.innerHTML = options
+      .map((o) => `<option value="${o.id}">${escapeXml(o.label)}</option>`)
+      .join("");
+    const id = options.some((o) => o.id === selectedId) ? selectedId : options[0]?.id;
+    if (id) els.projectorResolution.value = id;
+  }
+
   /** @param {string} make @param {string} [selectedPresetId] @param {"16:9" | "16:10"} [selectedAspectId] */
   function updateModelOptions(make, selectedPresetId, selectedAspectId) {
     if (!els.projectorModel) return;
@@ -1186,6 +1325,7 @@ export function initProjectorCalculator() {
     if (els.customProjectorFields) els.customProjectorFields.hidden = !isCustom;
     if (els.customLensFields) els.customLensFields.hidden = !isCustom;
     if (els.projectorAspectWrap) els.projectorAspectWrap.hidden = isCustom;
+    if (els.projectorResolutionWrap) els.projectorResolutionWrap.hidden = isCustom;
     if (isCustom) {
       els.projectorModel.innerHTML = '<option value="custom">Custom</option>';
       els.projectorModel.value = "custom";
@@ -1475,7 +1615,9 @@ export function initProjectorCalculator() {
     }
     const u = unitLabel(screen.unit);
     const aspectLabel = aspectSummaryLabel(screen);
-    els.screenSummary.textContent = `${screen.width.toFixed(2)} × ${screen.height.toFixed(2)} ${u} (${aspectLabel}) · ${screen.projectors.length} projector${screen.projectors.length === 1 ? "" : "s"}`;
+    const px = screenPixelSize(screen);
+    const pxLabel = px ? ` · ${px.width} × ${px.height} px` : "";
+    els.screenSummary.textContent = `${screen.width.toFixed(2)} × ${screen.height.toFixed(2)} ${u} (${aspectLabel}) · ${screen.projectors.length} projector${screen.projectors.length === 1 ? "" : "s"}${pxLabel}`;
   }
 
   function loadScreenToForm(screen) {
@@ -1506,6 +1648,7 @@ export function initProjectorCalculator() {
     if (els.projectorAspect && p.source !== "custom") {
       els.projectorAspect.value = getProjectorAspectId(p);
     }
+    updateResolutionOptions(getProjectorAspectId(p), getProjectorResolutionId(p));
     if (els.suggestedLensWrap) els.suggestedLensWrap.hidden = isCustom;
     if (!placeholder) syncSuggestedLens(p);
     if (els.customThrowMin) els.customThrowMin.value = String(p.customThrowMin);
@@ -1568,6 +1711,10 @@ export function initProjectorCalculator() {
       const aspect = els.projectorAspect?.value;
       if (aspect === "16:9" || aspect === "16:10") {
         projector.projectorAspectId = aspect;
+      }
+      const resolution = els.projectorResolution?.value;
+      if (resolution === "hd" || resolution === "uhd") {
+        projector.resolutionId = resolution;
       }
     }
     projector.customThrowMin = Number(els.customThrowMin.value) || 1;
@@ -1708,7 +1855,8 @@ export function initProjectorCalculator() {
       .map((screen) => {
         const selected = screen.id === state.activeScreenId;
         const u = unitLabel(screen.unit);
-        const meta = `${screen.width.toFixed(1)}×${screen.height.toFixed(1)} ${u} · ${screen.projectors.length} proj.`;
+        const px = screenPixelSize(screen);
+        const meta = `${screen.width.toFixed(1)}×${screen.height.toFixed(1)} ${u} · ${screen.projectors.length} proj.${px ? ` · ${px.width}×${px.height} px` : ""}`;
         return `
           <div class="grid-item${selected ? " selected" : ""}" data-screen-id="${screen.id}" role="button" tabindex="0" aria-pressed="${selected}">
             <span class="grid-item-name" title="Double-click to rename">${escapeXml(screen.name)}</span>
@@ -1858,6 +2006,7 @@ export function initProjectorCalculator() {
     const make = getMakeForProjector(template);
     if (els.projectorMake) els.projectorMake.value = make;
     updateModelOptions(make, template.presetId, getProjectorAspectId(template));
+    updateResolutionOptions(getProjectorAspectId(template), getProjectorResolutionId(template));
     updateOrientationUI(template.orientation ?? "landscape");
     if (els.projectorThrow) els.projectorThrow.value = String(template.throwDistance);
     if (els.projectorLensRatio) {
@@ -2010,6 +2159,25 @@ export function initProjectorCalculator() {
     panZoom.applyView();
   }
 
+  /** Show the computed pixel canvas for the active blend/tile group. */
+  function updatePixelSummary() {
+    if (!els.projectorPixelSummary) return;
+    const screen = getActiveScreen();
+    const projector = getActiveProjector();
+    const groupId = screen?.activeGroupId ?? projector?.groupId ?? null;
+    const isGrid = projector?.role === "blend" || projector?.role === "tile";
+    const size = screen && groupId && isGrid ? groupPixelSize(screen, groupId) : null;
+    if (!size) {
+      els.projectorPixelSummary.hidden = true;
+      return;
+    }
+    const overlapBits = [];
+    if (size.cols > 1) overlapBits.push(`${size.overlapPxH} px H overlap`);
+    if (size.rows > 1) overlapBits.push(`${size.overlapPxV} px V overlap`);
+    els.projectorPixelSummary.textContent = `Blend canvas: ${size.width} × ${size.height} px${overlapBits.length ? ` (${overlapBits.join(", ")})` : ""}`;
+    els.projectorPixelSummary.hidden = false;
+  }
+
   function updateCanvasLegend() {
     const showCoverage = activeSidebarTab === "projectors";
     if (els.projLegendCoverage) els.projLegendCoverage.hidden = !showCoverage;
@@ -2066,7 +2234,8 @@ export function initProjectorCalculator() {
 
     svg += `<rect x="${originX - swDraw / 2}" y="${originY - shDraw / 2}" width="${swDraw}" height="${shDraw}" class="proj-screen" rx="2" />`;
     svg += `<text x="${originX}" y="${originY - shDraw / 2 - 8}" class="proj-label proj-label-title" text-anchor="middle">${escapeXml(screen.name)}</text>`;
-    svg += `<text x="${originX}" y="${originY + shDraw / 2 + 16}" class="proj-label" text-anchor="middle">${sw.toFixed(1)} × ${sh.toFixed(1)} ${u}</text>`;
+    const screenPx = screenPixelSize(screen);
+    svg += `<text x="${originX}" y="${originY + shDraw / 2 + 16}" class="proj-label" text-anchor="middle">${sw.toFixed(1)} × ${sh.toFixed(1)} ${u}${screenPx ? ` · ${screenPx.width} × ${screenPx.height} px` : ""}</text>`;
 
     if (activeSidebarTab === "projectors") {
       screen.projectors.forEach((projector, index) => {
@@ -2115,6 +2284,8 @@ export function initProjectorCalculator() {
         : `${screenName} — ${screen.projectors.length} projector(s) on ${sw.toFixed(1)}×${sh.toFixed(1)} ${u} screen.`
     );
     if (proj) updateThrowHints(proj, screen);
+    updatePixelSummary();
+    updateScreenSummary(screen);
     updateCanvasLegend();
   }
 
@@ -2229,6 +2400,7 @@ export function initProjectorCalculator() {
 
     updateThrowHints(projector, screen);
     renderProjectorList();
+    renderScreenList();
     renderCanvas();
   }
 
@@ -2276,6 +2448,7 @@ export function initProjectorCalculator() {
     syncThrowFieldsToForm(projector);
     updateThrowHints(projector, screen);
     renderProjectorList();
+    renderScreenList();
     renderCanvas();
   }
 
@@ -2348,7 +2521,13 @@ export function initProjectorCalculator() {
     }
     onProjectorFormChange(true);
   });
-  on(els.projectorAspect, "change", () => onProjectorFormChange(true));
+  on(els.projectorAspect, "change", () => {
+    // Same tier, new aspect: 1920×1080 becomes 1920×1200, etc.
+    const currentTier = els.projectorResolution?.value === "uhd" ? "uhd" : "hd";
+    updateResolutionOptions(els.projectorAspect?.value ?? "16:9", currentTier);
+    onProjectorFormChange(true);
+  });
+  on(els.projectorResolution, "change", () => onProjectorFormChange());
   on(els.layoutModeFit, "click", () => {
     updateLayoutModeUI("fit");
     onProjectorFormChange();

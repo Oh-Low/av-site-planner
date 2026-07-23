@@ -4,7 +4,7 @@ import {
   CALCULATOR_PLUGINS,
   ensureCalculatorsReady,
   initCalculatorInstances,
-} from "./calculator-registry.js?v=20";
+} from "./calculator-registry.js?v=119";
 import { buildSiteState, downloadSiteState, parseSiteState } from "./site-state.js";
 
 /** Auto-loaded on startup for local testing. Replace fixtures/default.avp to change the default site. */
