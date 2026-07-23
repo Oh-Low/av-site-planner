@@ -4,8 +4,8 @@ import {
   CALCULATOR_PLUGINS,
   ensureCalculatorsReady,
   initCalculatorInstances,
-} from "./calculator-registry.js?v=119";
-import { buildSiteState, downloadSiteState, parseSiteState } from "./site-state.js";
+} from "./calculator-registry.js?v=120";
+import { buildSiteState, downloadSiteState, parseSiteState } from "./site-state.js?v=2";
 
 /** Auto-loaded on startup for local testing. Replace fixtures/default.avp to change the default site. */
 const DEFAULT_AVP_PATH = "fixtures/default.avp";
@@ -47,7 +47,16 @@ function applySiteState(state) {
   for (const plugin of CALCULATOR_PLUGINS) {
     const key = plugin.meta.stateKey;
     const fallback = plugin.meta.emptyState?.() ?? {};
-    calculators[key]?.importState?.(state[key] ?? fallback);
+    try {
+      calculators[key]?.importState?.(state[key] ?? fallback);
+    } catch (error) {
+      console.error(`Failed to import ${plugin.meta.label} state:`, error);
+    }
+    // Refresh LED as soon as its state lands so later calculators that peek
+    // via exportState (e.g. paperwork) never see a stale empty form.
+    if (key === "led") {
+      calculators.led?.refreshUi?.();
+    }
   }
 
   if (typeof state.activeTab === "string") {

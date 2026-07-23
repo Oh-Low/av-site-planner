@@ -1951,7 +1951,9 @@ export function initLedCalculator() {
   setStatus("Set wall size and click Generate Grid, then click or drag across tiles to wire.");
 
   function exportState() {
-    persistFormToActiveGrid();
+    // Read-only snapshot. Do not persist form fields here — paperwork and other
+    // calculators call exportState while loading a site plan, when the form may
+    // still hold HTML defaults and would clobber freshly imported grids.
     saveWallViewToGrid();
     return {
       grids: deepClone(state.grids),
@@ -1959,6 +1961,12 @@ export function initLedCalculator() {
       voltage: state.voltage,
       bitrate: state.bitrate,
     };
+  }
+
+  /** Flush sidebar form values onto the active grid before a user-initiated save. */
+  function flushFormToState() {
+    persistFormToActiveGrid();
+    saveWallViewToGrid();
   }
 
   /** @param {object} data */
@@ -1977,7 +1985,12 @@ export function initLedCalculator() {
     state.bitrate = [8, 10, 12].includes(data.bitrate) ? data.bitrate : 8;
   }
 
-  return { exportState, importState, refreshUi: refreshLedUiFromState };
+  return {
+    exportState,
+    importState,
+    flushFormToState,
+    refreshUi: refreshLedUiFromState,
+  };
 }
 
 export const calculatorPlugin = {

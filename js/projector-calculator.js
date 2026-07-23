@@ -2663,8 +2663,8 @@ export function initProjectorCalculator() {
   }
 
   function exportState() {
-    persistScreenFromForm();
-    persistProjectorFromForm();
+    // Read-only snapshot — see led-calculator exportState note. Cross-calculator
+    // peeks must not write stale sidebar form values over imported screens.
     const active = getActiveScreen();
     if (active) {
       active.view = { ...projView };
@@ -2674,6 +2674,16 @@ export function initProjectorCalculator() {
       activeScreenId: state.activeScreenId,
       activeSidebarTab,
     };
+  }
+
+  /** Flush sidebar form values onto the active screen before a user-initiated save. */
+  function flushFormToState() {
+    persistScreenFromForm();
+    persistProjectorFromForm();
+    const active = getActiveScreen();
+    if (active) {
+      active.view = { ...projView };
+    }
   }
 
   /** @param {object} data */
@@ -2702,7 +2712,7 @@ export function initProjectorCalculator() {
     render();
   }
 
-  return { exportState, importState };
+  return { exportState, importState, flushFormToState };
 }
 
 export const calculatorPlugin = {

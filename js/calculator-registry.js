@@ -1,9 +1,9 @@
-import { calculatorPlugin as ledPlugin } from "./led-calculator.js?v=53";
-import { calculatorPlugin as projectorPlugin } from "./projector-calculator.js?v=5";
+import { calculatorPlugin as ledPlugin } from "./led-calculator.js?v=54";
+import { calculatorPlugin as projectorPlugin } from "./projector-calculator.js?v=6";
 import { calculatorPlugin as signalFlowPlugin } from "./signal-flow.js?v=68";
 import { calculatorPlugin as cablePlugin } from "./cable-calculator.js?v=16";
 import { calculatorPlugin as laborPlugin } from "./labor-calculator.js";
-import { calculatorPlugin as contentMapsPlugin } from "./content-maps.js?v=21";
+import { calculatorPlugin as contentMapsPlugin } from "./content-maps.js?v=22";
 import { calculatorPlugin as paperworkPlugin } from "./paperwork/composer.js?v=73";
 import { groundplanPluginMeta } from "./groundplan-meta.js";
 

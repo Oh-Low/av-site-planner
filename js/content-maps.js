@@ -1,6 +1,6 @@
 import { getCalculatorExport } from "./calculator-instances.js";
-import { gridDataLinePixelRects, gridPixelSize } from "./led-calculator.js?v=53";
-import { screenPixelSize, screenProjectorPixelRects } from "./projector-calculator.js?v=5";
+import { gridDataLinePixelRects, gridPixelSize } from "./led-calculator.js?v=54";
+import { screenPixelSize, screenProjectorPixelRects } from "./projector-calculator.js?v=6";
 import { bindSidebarTabs } from "./shared/calc-shell.js";
 import { deepClone } from "./shared/clone.js";
 import {

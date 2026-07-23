@@ -83,6 +83,9 @@ export function buildSiteState(instances, activeTab) {
   for (const plugin of CALCULATOR_PLUGINS) {
     const key = plugin.meta.stateKey;
     const instance = instances[key];
+    if (instance?.flushFormToState) {
+      instance.flushFormToState();
+    }
     if (instance?.exportState) {
       state[key] = instance.exportState();
     } else if (plugin.meta.emptyState) {
