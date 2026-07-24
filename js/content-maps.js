@@ -611,6 +611,7 @@ export function initContentMaps() {
     status: document.getElementById("cm-status"),
     labelToggles: document.getElementById("cm-label-toggles"),
     viewHint: document.getElementById("cm-view-hint"),
+    download: document.getElementById("cm-download"),
     resetView: document.getElementById("cm-reset-view"),
     viewport: document.getElementById("cm-viewport"),
     emptyState: document.getElementById("cm-empty-state"),
@@ -630,6 +631,7 @@ export function initContentMaps() {
     outStatus: document.getElementById("cm-out-status"),
     outLabelToggles: document.getElementById("cm-out-label-toggles"),
     outViewHint: document.getElementById("cm-out-view-hint"),
+    outDownload: document.getElementById("cm-out-download"),
     outResetView: document.getElementById("cm-out-reset-view"),
     outViewport: document.getElementById("cm-out-viewport"),
     outEmptyState: document.getElementById("cm-out-empty-state"),
@@ -1173,6 +1175,7 @@ export function initContentMaps() {
     const hasSurface = Boolean(surface);
     if (els.emptyState) els.emptyState.hidden = hasSurface;
     if (els.svg) els.svg.style.display = hasSurface ? "block" : "none";
+    if (els.download) els.download.disabled = !hasSurface;
     if (!surface || !els.svg) return;
 
     view.contentW = surface.width;
@@ -1477,6 +1480,7 @@ export function initContentMaps() {
     const hasRaster = Boolean(raster);
     if (els.outEmptyState) els.outEmptyState.hidden = hasRaster;
     if (els.outSvg) els.outSvg.style.display = hasRaster ? "block" : "none";
+    if (els.outDownload) els.outDownload.disabled = !hasRaster;
     if (!raster || !els.outSvg) return;
 
     outView.contentW = raster.width;
@@ -1739,40 +1743,91 @@ export function initContentMaps() {
     }
   }
 
-  /** Rasterize the current pattern at native pixel size and download as PNG. */
-  function downloadTestPatternPng() {
-    const source = getTestPatternSource();
-    if (!source || !els.tpSvg) return;
-    const markup = `<svg xmlns="http://www.w3.org/2000/svg" width="${source.width}" height="${source.height}" viewBox="0 0 ${source.width} ${source.height}">${els.tpSvg.innerHTML}</svg>`;
+  /**
+   * Rasterize an on-screen content-map SVG at native pixel size and download as PNG.
+   * @param {{
+   *   svg: SVGSVGElement | null,
+   *   width: number,
+   *   height: number,
+   *   filename: string,
+   *   onStatus: (message: string) => void,
+   * }} opts
+   */
+  function downloadSvgAsPng(opts) {
+    const { svg, width, height, filename, onStatus } = opts;
+    if (!svg || !(width > 0) || !(height > 0)) return;
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${svg.innerHTML}</svg>`;
     const blob = new Blob([markup], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      canvas.width = source.width;
-      canvas.height = source.height;
-      canvas.getContext("2d")?.drawImage(img, 0, 0, source.width, source.height);
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")?.drawImage(img, 0, 0, width, height);
       URL.revokeObjectURL(url);
       canvas.toBlob((png) => {
         if (!png) {
-          setTpStatus("PNG export failed — the pattern may be too large for this browser.");
+          onStatus("PNG export failed — the map may be too large for this browser.");
           return;
         }
         const link = document.createElement("a");
         link.href = URL.createObjectURL(png);
-        const safeName = source.name.replace(/[^\w-]+/g, "_");
-        const scopeTag = source.pattern.scope === "zones" ? "_per-zone" : "";
-        link.download = `${safeName}_${source.pattern.type}${scopeTag}_${source.width}x${source.height}.png`;
+        link.download = filename;
         link.click();
         URL.revokeObjectURL(link.href);
-        setTpStatus(`Downloaded ${link.download}.`);
+        onStatus(`Downloaded ${filename}.`);
       }, "image/png");
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      setTpStatus("PNG export failed — could not rasterize the pattern.");
+      onStatus("PNG export failed — could not rasterize the map.");
     };
     img.src = url;
+  }
+
+  /** @param {string} name */
+  function safeDownloadName(name) {
+    return String(name || "map").replace(/[^\w-]+/g, "_");
+  }
+
+  function downloadMediaPng() {
+    const surface = getActiveSurface();
+    if (!surface) return;
+    downloadSvgAsPng({
+      svg: els.svg,
+      width: surface.width,
+      height: surface.height,
+      filename: `${safeDownloadName(surface.name)}_media_${surface.width}x${surface.height}.png`,
+      onStatus: setStatus,
+    });
+  }
+
+  function downloadOutputPng() {
+    const raster = getActiveRaster();
+    if (!raster) return;
+    downloadSvgAsPng({
+      svg: els.outSvg,
+      width: raster.width,
+      height: raster.height,
+      filename: `${safeDownloadName(raster.name)}_output_${raster.width}x${raster.height}.png`,
+      onStatus: setOutStatus,
+    });
+  }
+
+  /** Rasterize the current pattern at native pixel size and download as PNG. */
+  function downloadTestPatternPng() {
+    const source = getTestPatternSource();
+    if (!source) return;
+    const safeName = safeDownloadName(source.name);
+    const scopeTag = source.pattern.scope === "zones" ? "_per-zone" : "";
+    downloadSvgAsPng({
+      svg: els.tpSvg,
+      width: source.width,
+      height: source.height,
+      filename: `${safeName}_${source.pattern.type}${scopeTag}_${source.width}x${source.height}.png`,
+      onStatus: setTpStatus,
+    });
   }
 
   function render() {
@@ -1815,6 +1870,7 @@ export function initContentMaps() {
     panZoom.resetView();
     setStatus("View reset.");
   });
+  els.download?.addEventListener("click", downloadMediaPng);
   updateViewHint();
 
   els.surfaceNew?.addEventListener("click", () => {
@@ -1943,6 +1999,7 @@ export function initContentMaps() {
     outPanZoom.resetView();
     setOutStatus("View reset.");
   });
+  els.outDownload?.addEventListener("click", downloadOutputPng);
   updateOutViewHint();
 
   els.outLabelToggles?.addEventListener("click", (e) => {

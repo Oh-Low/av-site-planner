@@ -751,6 +751,7 @@
                   <button type="button" class="btn btn-toggle" data-cm-label="anchor" aria-pressed="false" title="Show top-left anchor coordinates">Anchor</button>
                 </div>
                 <span class="view-hint" id="cm-view-hint">100% · scroll to zoom · right-drag to pan</span>
+                <button type="button" class="btn btn-secondary" id="cm-download" disabled>Download PNG</button>
                 <button type="button" class="btn btn-secondary" id="cm-reset-view">Reset view</button>
               </div>
             </div>
@@ -843,6 +844,7 @@
                   <button type="button" class="btn btn-toggle" data-cm-label="anchor" aria-pressed="false" title="Show top-left anchor coordinates">Anchor</button>
                 </div>
                 <span class="view-hint" id="cm-out-view-hint">100% · scroll to zoom · right-drag to pan</span>
+                <button type="button" class="btn btn-secondary" id="cm-out-download" disabled>Download PNG</button>
                 <button type="button" class="btn btn-secondary" id="cm-out-reset-view">Reset view</button>
               </div>
             </div>
@@ -1225,7 +1227,7 @@
   <div id="boot-error" class="boot-error" hidden role="alert"></div>
   <script type="module">
     const bootError = document.getElementById("boot-error");
-    import("./js/app.js?v=205").catch((error) => {
+    import("./js/app.js?v=206").catch((error) => {
       console.error(error);
       if (bootError) {
         bootError.hidden = false;

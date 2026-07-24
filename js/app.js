@@ -4,7 +4,7 @@ import {
   CALCULATOR_PLUGINS,
   ensureCalculatorsReady,
   initCalculatorInstances,
-} from "./calculator-registry.js?v=120";
+} from "./calculator-registry.js?v=121";
 import { buildSiteState, downloadSiteState, parseSiteState } from "./site-state.js?v=2";
 
 /** Auto-loaded on startup. Keep fixtures/default.avp as a blank/minimal site plan. */

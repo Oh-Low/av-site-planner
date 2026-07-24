@@ -3,7 +3,7 @@ import { calculatorPlugin as projectorPlugin } from "./projector-calculator.js?v
 import { calculatorPlugin as signalFlowPlugin } from "./signal-flow.js?v=68";
 import { calculatorPlugin as cablePlugin } from "./cable-calculator.js?v=16";
 import { calculatorPlugin as laborPlugin } from "./labor-calculator.js";
-import { calculatorPlugin as contentMapsPlugin } from "./content-maps.js?v=22";
+import { calculatorPlugin as contentMapsPlugin } from "./content-maps.js?v=23";
 import { calculatorPlugin as paperworkPlugin } from "./paperwork/composer.js?v=73";
 import { groundplanPluginMeta } from "./groundplan-meta.js";
 
