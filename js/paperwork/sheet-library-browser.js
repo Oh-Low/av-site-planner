@@ -7,7 +7,7 @@ import {
   mergeSheetFolders,
   nextUniqueSheetFolderName,
   sheetTreeRowTitle,
-} from "./sheet-library.js?v=1";
+} from "./sheet-library.js";
 import { getSheetType } from "./sheet-registry.js";
 
 /**

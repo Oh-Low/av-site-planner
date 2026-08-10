@@ -1,5 +1,5 @@
 import { uid } from "../shared/id.js";
-import { roundTo } from "./numbers.js?v=1";
+import { roundTo } from "./numbers.js";
 
 /**
  * Packet-level page decoration (drawing).

@@ -4,13 +4,16 @@ import {
   PROCESSOR_COLORS,
   MAX_AMPS,
   BITRATE_PIXEL_FACTOR,
-} from "./led-data.js?v=2";
+} from "./led-data.js";
+import { normalizeLedGrid, normalizeLedState } from "./domain/led.js";
 import { queryCalcShell, bindSidebarTabs } from "./shared/calc-shell.js";
 import { deepClone } from "./shared/clone.js";
 import { escapeXml } from "./shared/dom.js";
 import { createListNameEditor } from "./shared/inline-editor.js";
 import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
+
+export { emptyLedState, normalizeLedGrid, normalizeLedState } from "./domain/led.js";
 
 /** @typedef {{ processorType: string, wiringType: string, pixelWidth: number, pixelHeight: number, totalPixels: number, maxPerPort: number, metricWidth: number, metricHeight: number, weight: number, wattage: number, id?: string }} TileConfig */
 
@@ -239,11 +242,8 @@ export function initLedCalculator() {
 
   /** Fills fields added after older saves (processors, line.processorId). */
   function ensureGridShape(grid) {
-    if (!Array.isArray(grid.processors)) grid.processors = [];
-    if (grid.activeProcessorId === undefined) grid.activeProcessorId = null;
-    for (const line of grid.dataLines ?? []) {
-      if (line.processorId === undefined) line.processorId = null;
-    }
+    const normalized = normalizeLedGrid(grid);
+    if (normalized !== grid) Object.assign(grid, normalized);
     return grid;
   }
 
@@ -1971,18 +1971,13 @@ export function initLedCalculator() {
 
   /** @param {object} data */
   function importState(data) {
-    if (!data || !Array.isArray(data.grids)) {
-      throw new Error("Invalid LED calculator state.");
-    }
+    const normalized = normalizeLedState(data);
     closeGridNameEditor();
     closeLabelEditor();
-    state.grids = deepClone(data.grids).map(ensureGridShape);
-    state.activeGridId =
-      data.activeGridId && state.grids.some((g) => g.id === data.activeGridId)
-        ? data.activeGridId
-        : state.grids[0]?.id ?? null;
-    state.voltage = data.voltage === 208 ? 208 : 120;
-    state.bitrate = [8, 10, 12].includes(data.bitrate) ? data.bitrate : 8;
+    state.grids = deepClone(normalized.grids);
+    state.activeGridId = normalized.activeGridId;
+    state.voltage = normalized.voltage;
+    state.bitrate = normalized.bitrate;
   }
 
   return {
@@ -2000,13 +1995,7 @@ export const calculatorPlugin = {
     stateKey: "led",
     label: "LED Calculator",
     requiredForSave: true,
-    /** @param {unknown} data */
-    validateState(data) {
-      if (!data || typeof data !== "object" || !Array.isArray(data.grids)) {
-        throw new Error("The file is missing LED calculator data.");
-      }
-      return data;
-    },
+    validateState: normalizeLedState,
   },
   init: initLedCalculator,
 };

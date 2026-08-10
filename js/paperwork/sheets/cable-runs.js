@@ -1,7 +1,7 @@
 import {
   createCableCardsElement,
   createGroundplanDiagramElement,
-} from "../element-catalog.js?v=3";
+} from "../element-catalog.js";
 import { createElement } from "../state.js";
 import { registerSheetType } from "../sheet-registry.js";
 import { titleBlockFrame } from "../title-block-layout.js";

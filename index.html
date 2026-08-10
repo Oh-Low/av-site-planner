@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AV Site Planner</title>
-  <link rel="stylesheet" href="css/main.css?v=110" />
+  <link rel="stylesheet" href="css/main.css" />
 </head>
 <body>
   <div class="app-chrome">
@@ -21,10 +21,11 @@
     </nav>
     <div class="tab-bar-actions">
       <p id="app-save-status" class="app-save-status" role="status" aria-live="polite"></p>
+      <button type="button" class="btn btn-secondary" id="print-btn">Print</button>
       <button type="button" class="btn btn-secondary" id="export-btn">Export</button>
       <label for="import-file-input" class="btn btn-secondary import-file-label" id="import-btn">Import</label>
     </div>
-    <input type="file" id="import-file-input" class="import-file-input" accept=".avp,.AVP,.json,application/json" />
+    <input type="file" id="import-file-input" class="import-file-input" accept=".avp,.AVP,.json,.txt,application/json,text/plain,application/vnd.av-site-planner+avp" />
   </div>
 
   <main class="app-main">
@@ -1227,7 +1228,7 @@
   <div id="boot-error" class="boot-error" hidden role="alert"></div>
   <script type="module">
     const bootError = document.getElementById("boot-error");
-    import("./js/app.js?v=206").catch((error) => {
+    import("./js/app.js").catch((error) => {
       console.error(error);
       if (bootError) {
         bootError.hidden = false;

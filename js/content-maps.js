@@ -1,6 +1,6 @@
 import { getCalculatorExport } from "./calculator-instances.js";
-import { gridDataLinePixelRects, gridPixelSize } from "./led-calculator.js?v=54";
-import { screenPixelSize, screenProjectorPixelRects } from "./projector-calculator.js?v=6";
+import { gridDataLinePixelRects, gridPixelSize } from "./led-calculator.js";
+import { screenPixelSize, screenProjectorPixelRects } from "./projector-calculator.js";
 import { bindSidebarTabs } from "./shared/calc-shell.js";
 import { deepClone } from "./shared/clone.js";
 import {
@@ -17,6 +17,23 @@ import { createListNameEditor } from "./shared/inline-editor.js";
 import { evaluateMathExpression } from "./shared/math-expression.js";
 import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
 
+import {
+  emptyContentMapsState,
+  normalizeContentMapsState,
+  normalizeImportSource,
+  normalizeOutputGroup,
+  normalizePatternSettings,
+  normalizeRaster,
+  normalizeSurface,
+  normalizeTestPattern,
+  normalizeZone,
+  normalizeZoneLabels,
+  toFiniteNumber,
+} from "./domain/content-maps.js";
+
+export { emptyContentMapsState, normalizeContentMapsState } from "./domain/content-maps.js";
+
+
 /** @typedef {{ type: "led" | "projector", id: string }} ImportSource */
 /** @typedef {{ id: string, name: string, x: number, y: number, width: number, height: number, color: string, source?: ImportSource | null }} MediaZone */
 /** @typedef {{ id: string, name: string, width: number, height: number, zones: MediaZone[], source?: ImportSource | null, pattern?: object }} Surface */
@@ -27,14 +44,6 @@ import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
 const DEFAULT_SURFACE_WIDTH = 3840;
 const DEFAULT_SURFACE_HEIGHT = 2160;
 const MAX_SURFACE_DIMENSION = 65536;
-
-
-/** @param {unknown} value @param {number} fallback @param {number} [min] @param {number} [max] */
-function toFiniteNumber(value, fallback, min = -Infinity, max = Infinity) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, Math.round(n)));
-}
 
 /**
  * Parse a user-typed field that may contain math (e.g. "4800+256", "3840/2").
@@ -70,64 +79,9 @@ function contrastText(hex) {
 }
 
 /** @returns {MediaZone} */
-function normalizeZone(raw, index) {
-  return {
-    id: typeof raw?.id === "string" && raw.id ? raw.id : uid("zone"),
-    name:
-      typeof raw?.name === "string" && raw.name.trim() ? raw.name.trim() : `Zone ${index + 1}`,
-    x: toFiniteNumber(raw?.x, 0),
-    y: toFiniteNumber(raw?.y, 0),
-    width: toFiniteNumber(raw?.width, 1920, 1, MAX_SURFACE_DIMENSION),
-    height: toFiniteNumber(raw?.height, 1080, 1, MAX_SURFACE_DIMENSION),
-    color: /^#[0-9a-f]{6}$/i.test(String(raw?.color))
-      ? String(raw.color).toLowerCase()
-      : COLOR_PALETTE[index % COLOR_PALETTE.length],
-    source: normalizeImportSource(raw?.source),
-  };
-}
-
 /** @returns {Surface} */
-function normalizeSurface(raw, index) {
-  return {
-    id: typeof raw?.id === "string" && raw.id ? raw.id : uid("surface"),
-    name:
-      typeof raw?.name === "string" && raw.name.trim()
-        ? raw.name.trim()
-        : `Surface ${index + 1}`,
-    width: toFiniteNumber(raw?.width, DEFAULT_SURFACE_WIDTH, 1, MAX_SURFACE_DIMENSION),
-    height: toFiniteNumber(raw?.height, DEFAULT_SURFACE_HEIGHT, 1, MAX_SURFACE_DIMENSION),
-    zones: Array.isArray(raw?.zones) ? raw.zones.map((z, i) => normalizeZone(z, i)) : [],
-    source: normalizeImportSource(raw?.source),
-    ...(raw?.pattern ? { pattern: normalizePatternSettings(raw.pattern) } : {}),
-  };
-}
-
 /** @returns {OutputGroup} */
-function normalizeOutputGroup(raw, index) {
-  return {
-    id: typeof raw?.id === "string" && raw.id ? raw.id : uid("ogroup"),
-    name:
-      typeof raw?.name === "string" && raw.name.trim() ? raw.name.trim() : `Group ${index + 1}`,
-    zones: Array.isArray(raw?.zones) ? raw.zones.map((z, i) => normalizeZone(z, i)) : [],
-    source: normalizeImportSource(raw?.source),
-  };
-}
-
 /** @returns {Raster} */
-function normalizeRaster(raw, index) {
-  return {
-    id: typeof raw?.id === "string" && raw.id ? raw.id : uid("raster"),
-    name:
-      typeof raw?.name === "string" && raw.name.trim() ? raw.name.trim() : `Raster ${index + 1}`,
-    width: toFiniteNumber(raw?.width, DEFAULT_SURFACE_WIDTH, 1, MAX_SURFACE_DIMENSION),
-    height: toFiniteNumber(raw?.height, DEFAULT_SURFACE_HEIGHT, 1, MAX_SURFACE_DIMENSION),
-    groups: Array.isArray(raw?.groups) ? raw.groups.map((g, i) => normalizeOutputGroup(g, i)) : [],
-    zones: Array.isArray(raw?.zones) ? raw.zones.map((z, i) => normalizeZone(z, i)) : [],
-    source: normalizeImportSource(raw?.source),
-    ...(raw?.pattern ? { pattern: normalizePatternSettings(raw.pattern) } : {}),
-  };
-}
-
 /** All zones on a raster, grouped ones first, flattened for preview/overlaps. */
 function rasterAllZones(raster) {
   return [...raster.groups.flatMap((group) => group.zones), ...raster.zones];
@@ -331,14 +285,6 @@ function buildWorldSvg(w, h, zones, labels, patternKey, selectedZoneId = null) {
 }
 
 /** @param {unknown} raw @returns {ImportSource | null} */
-function normalizeImportSource(raw) {
-  const type = raw?.type;
-  if ((type === "led" || type === "projector") && typeof raw.id === "string") {
-    return { type, id: raw.id };
-  }
-  return null;
-}
-
 /** Per-surface/raster pattern configuration (everything but which source is selected). */
 /** @typedef {{ scope: "source" | "zones", type: "grid" | "bars" | "gradient" | "alignment", gridSize: number, tileMode: "custom" | "led", tileWallId: string | null, tileW: number, tileH: number, tileColorA: string, tileColorB: string, showZones: boolean, showLabels: boolean, showCenter: boolean }} PatternSettings */
 
@@ -346,33 +292,7 @@ function normalizeImportSource(raw) {
 /** @typedef {{ sourceType: "surface" | "raster", sourceId: string | null }} TestPatternSelection */
 
 /** @param {unknown} raw @returns {PatternSettings} */
-function normalizePatternSettings(raw) {
-  const r = /** @type {Record<string, unknown>} */ (raw ?? {});
-  return {
-    scope: r.scope === "zones" ? "zones" : "source",
-    type: ["grid", "bars", "gradient", "alignment"].includes(r.type) ? r.type : "grid",
-    gridSize: toFiniteNumber(r.gridSize, 100, 8, 4096),
-    tileMode: r.tileMode === "led" ? "led" : "custom",
-    tileWallId: typeof r.tileWallId === "string" ? r.tileWallId : null,
-    tileW: toFiniteNumber(r.tileW, 168, 8, 4096),
-    tileH: toFiniteNumber(r.tileH, 168, 8, 4096),
-    tileColorA: typeof r.tileColorA === "string" ? r.tileColorA : "#ff0000",
-    tileColorB: typeof r.tileColorB === "string" ? r.tileColorB : "#000000",
-    showZones: r.showZones !== false,
-    showLabels: r.showLabels !== false,
-    showCenter: r.showCenter !== false,
-  };
-}
-
 /** @param {unknown} raw @returns {TestPatternSelection} */
-function normalizeTestPattern(raw) {
-  const r = /** @type {Record<string, unknown>} */ (raw ?? {});
-  return {
-    sourceType: r.sourceType === "raster" ? "raster" : "surface",
-    sourceId: typeof r.sourceId === "string" ? r.sourceId : null,
-  };
-}
-
 /**
  * Pattern settings for a surface/raster, created on first access so every
  * creation path (new, imported, loaded) gets defaults without opting in.
@@ -560,27 +480,11 @@ function buildTestPatternSvg(w, h, zones, settings) {
 }
 
 /** @param {unknown} raw */
-function normalizeZoneLabels(raw) {
-  const r = /** @type {Record<string, unknown>} */ (raw ?? {});
-  return {
-    name: r.name !== false,
-    resolution: r.resolution !== false,
-    anchor: r.anchor === true,
-  };
-}
-
-export function emptyContentMapsState() {
-  return {
-    surfaces: [],
-    activeSurfaceId: null,
-    zoneLabels: normalizeZoneLabels(null),
-    rasters: [],
-    activeRasterId: null,
-    outputLabels: normalizeZoneLabels(null),
-    testPattern: normalizeTestPattern(null),
-  };
-}
-
+/**
+ * Normalize content-maps section for .AVP parse / import.
+ * @param {unknown} data
+ * @returns {ReturnType<typeof emptyContentMapsState>}
+ */
 export function initContentMaps() {
   const root = document.getElementById("content-maps");
   if (!root) return null;
@@ -2242,33 +2146,14 @@ export function initContentMaps() {
 
   /** @param {object} data */
   function importState(data) {
-    // Older saves kept one global pattern config on testPattern; seed sources
-    // that don't carry their own settings with it.
-    const legacyPattern =
-      data?.testPattern && typeof data.testPattern === "object" && "type" in data.testPattern
-        ? data.testPattern
-        : null;
-    const withPatternFallback = (raw) =>
-      raw && typeof raw === "object" && !raw.pattern && legacyPattern
-        ? { ...raw, pattern: legacyPattern }
-        : raw;
-    const surfaces = Array.isArray(data?.surfaces) ? data.surfaces : [];
-    state.surfaces = surfaces.map((s, i) => normalizeSurface(withPatternFallback(s), i));
-    state.activeSurfaceId =
-      typeof data?.activeSurfaceId === "string" &&
-      state.surfaces.some((s) => s.id === data.activeSurfaceId)
-        ? data.activeSurfaceId
-        : state.surfaces[0]?.id ?? null;
-    state.zoneLabels = normalizeZoneLabels(data?.zoneLabels);
-    const rasters = Array.isArray(data?.rasters) ? data.rasters : [];
-    state.rasters = rasters.map((r, i) => normalizeRaster(withPatternFallback(r), i));
-    state.activeRasterId =
-      typeof data?.activeRasterId === "string" &&
-      state.rasters.some((r) => r.id === data.activeRasterId)
-        ? data.activeRasterId
-        : state.rasters[0]?.id ?? null;
-    state.outputLabels = normalizeZoneLabels(data?.outputLabels);
-    state.testPattern = normalizeTestPattern(data?.testPattern);
+    const next = normalizeContentMapsState(data);
+    state.surfaces = next.surfaces;
+    state.activeSurfaceId = next.activeSurfaceId;
+    state.zoneLabels = next.zoneLabels;
+    state.rasters = next.rasters;
+    state.activeRasterId = next.activeRasterId;
+    state.outputLabels = next.outputLabels;
+    state.testPattern = next.testPattern;
     render();
     renderOutput();
   }
@@ -2284,6 +2169,7 @@ export const calculatorPlugin = {
     label: "Content Maps",
     requiredForSave: false,
     emptyState: emptyContentMapsState,
+    validateState: normalizeContentMapsState,
   },
   init: initContentMaps,
 };

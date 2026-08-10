@@ -3,6 +3,7 @@
   "app": "av-site-planner",
   "exportedAt": "2026-07-23T00:00:00.000Z",
   "activeTab": "led-calculator",
+  "places": [],
   "led": {
     "grids": [],
     "activeGridId": null,
@@ -33,7 +34,11 @@
     "connections": [],
     "customGearTypes": [],
     "gearLibraryFolders": [],
-    "places": []
+    "colorByCableType": false,
+    "grid": {
+      "snap": true,
+      "size": 20
+    }
   },
   "groundplan": {
     "imageDataUrl": null,
@@ -49,5 +54,84 @@
     "cableRoutes": [],
     "rulerLines": [],
     "showScaleInViewport": true
+  },
+  "contentMaps": {
+    "surfaces": [],
+    "activeSurfaceId": null,
+    "zoneLabels": {
+      "name": true,
+      "resolution": true,
+      "anchor": false
+    },
+    "rasters": [],
+    "activeRasterId": null,
+    "outputLabels": {
+      "name": true,
+      "resolution": true,
+      "anchor": false
+    },
+    "testPattern": {
+      "sourceType": "surface",
+      "sourceId": null
+    }
+  },
+  "cable": {
+    "routes": {},
+    "places": {}
+  },
+  "labor": {
+    "startTime": "",
+    "endTime": "",
+    "hourlyRate": 0,
+    "events": {
+      "after10": true,
+      "after14": true,
+      "night": true
+    }
+  },
+  "paperwork": {
+    "identity": {
+      "show": "",
+      "venue": "",
+      "client": "",
+      "date": "2026-07-23",
+      "company": "",
+      "approved": "",
+      "checked": "",
+      "drawnBy": "",
+      "code": "",
+      "dwgNo": "",
+      "revision": "A",
+      "scale": "N/A",
+      "weight": ""
+    },
+    "paper": {
+      "size": "arch-c",
+      "orientation": "landscape"
+    },
+    "titleBlockDefault": true,
+    "titleBlockLogo": null,
+    "sheets": [],
+    "sharedElements": [],
+    "decorations": [],
+    "drawStyle": {
+      "fill": "#ffffff",
+      "stroke": "#111111",
+      "strokeWidth": 2,
+      "fontSize": 14
+    },
+    "activeSheetId": null,
+    "selectedElementId": null,
+    "selectedDecorationId": null,
+    "rightPanelCollapsed": false,
+    "collapsedFolders": {},
+    "libraryFolders": [],
+    "libraryPlacements": {},
+    "sheetFolders": [],
+    "grid": {
+      "snap": true,
+      "visible": true,
+      "sizeIn": 0.25
+    }
   }
 }

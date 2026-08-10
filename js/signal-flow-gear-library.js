@@ -1,6 +1,6 @@
 import { uid } from "./shared/id.js";
-import { GEAR_TYPES, getBuiltinGearType } from "./signal-flow-data.js?v=42";
-import { BRAND_FOLDERS, BRAND_GEAR_PLACEMENTS } from "./signal-flow-gear-presets.js?v=43";
+import { GEAR_TYPES, getBuiltinGearType } from "./signal-flow-data.js";
+import { BRAND_FOLDERS, BRAND_GEAR_PLACEMENTS } from "./signal-flow-gear-presets.js";
 
 /** @typedef {{ id: string, name: string, parentId: string | null }} GearFolder */
 

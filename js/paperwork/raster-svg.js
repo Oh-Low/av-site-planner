@@ -1,10 +1,10 @@
 import { escapeXml } from "../shared/dom.js";
-import { fontSizePtToUserUnits, normalizeFontSizePt } from "./font-scale.js?v=4";
+import { fontSizePtToUserUnits, normalizeFontSizePt } from "./font-scale.js";
 import {
   formatSurfaceLength,
   formatSurfacePoint,
   normalizeSurfaceDimensionUnit,
-} from "./surface-scale.js?v=1";
+} from "./surface-scale.js";
 
 /**
  * @param {object} raster

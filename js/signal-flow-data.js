@@ -2,11 +2,11 @@ import { uid } from "./shared/id.js";
 import {
   CONNECTOR_TYPES,
   normalizePortRow,
-} from "./signal-flow-gear-schema.js?v=3";
+} from "./signal-flow-gear-schema.js";
 import {
   BRAND_GEAR_TYPES,
   GENERIC_GEAR_TYPES,
-} from "./signal-flow-gear-presets.js?v=43";
+} from "./signal-flow-gear-presets.js";
 
 /** @typedef {import("./signal-flow-gear-schema.js").GearPortRow} GearPortRow */
 /** @typedef {import("./signal-flow-gear-schema.js").GearKind} GearKind */
@@ -19,7 +19,7 @@ export {
   connectorColor,
   inferConnectorTypeFromLabel,
   normalizePortRow,
-} from "./signal-flow-gear-schema.js?v=3";
+} from "./signal-flow-gear-schema.js";
 
 /** Generic templates plus brand product presets. */
 export const GEAR_TYPES = [...GENERIC_GEAR_TYPES, ...BRAND_GEAR_TYPES];

@@ -1,22 +1,19 @@
-import { calculatorPlugin as ledPlugin } from "./led-calculator.js?v=54";
-import { calculatorPlugin as projectorPlugin } from "./projector-calculator.js?v=6";
-import { calculatorPlugin as signalFlowPlugin } from "./signal-flow.js?v=68";
-import { calculatorPlugin as cablePlugin } from "./cable-calculator.js?v=16";
+import { calculatorPlugin as ledPlugin } from "./led-calculator.js";
+import { calculatorPlugin as projectorPlugin } from "./projector-calculator.js";
+import { calculatorPlugin as signalFlowPlugin } from "./signal-flow.js";
+import { calculatorPlugin as groundplanPlugin } from "./groundplan.js";
+import { calculatorPlugin as cablePlugin } from "./cable-calculator.js";
 import { calculatorPlugin as laborPlugin } from "./labor-calculator.js";
-import { calculatorPlugin as contentMapsPlugin } from "./content-maps.js?v=23";
-import { calculatorPlugin as paperworkPlugin } from "./paperwork/composer.js?v=73";
-import { groundplanPluginMeta } from "./groundplan-meta.js";
+import { calculatorPlugin as contentMapsPlugin } from "./content-maps.js";
+import { calculatorPlugin as paperworkPlugin } from "./paperwork/composer.js";
 
 export { setCalculatorInstances, getCalculatorExport, getCalculatorInstance } from "./calculator-instances.js";
-
-/** Groundplan init is loaded dynamically in app.js so it cannot block core startup. */
-const groundplanPluginStub = { meta: groundplanPluginMeta, init: null };
 
 export const CALCULATOR_PLUGINS = [
   ledPlugin,
   projectorPlugin,
   signalFlowPlugin,
-  groundplanPluginStub,
+  groundplanPlugin,
   contentMapsPlugin,
   cablePlugin,
   laborPlugin,

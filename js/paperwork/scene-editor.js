@@ -8,12 +8,12 @@ import {
   fullImageCrop,
   normalizeGroundplanCrop,
   resizeCropByHandle,
-} from "./groundplan-svg.js?v=5";
-import { strokeWidthInches } from "./decoration-render.js?v=4";
-import { roundTo } from "./numbers.js?v=1";
+} from "./groundplan-svg.js";
+import { strokeWidthInches } from "./decoration-render.js";
+import { roundTo } from "./numbers.js";
 import { PAPERWORK_DPI } from "./paper-sizes.js";
 import { isPanPointerDown } from "../shared/dom.js";
-import { createDoubleClickTracker } from "../shared/double-click.js?v=1";
+import { createDoubleClickTracker } from "../shared/double-click.js";
 import { clampZoom, createTransformPanZoom } from "../shared/pan-zoom.js";
 
 const MIN_SIZE_IN = 0.35;

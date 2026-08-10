@@ -1,10 +1,10 @@
 import { buildLedSpecificationFields } from "../led-spec-data.js";
-import { resolveElementFontSizePt } from "../font-scale.js?v=4";
+import { resolveElementFontSizePt } from "../font-scale.js";
 import {
   detailTableHtml,
   registerElementRenderer,
   resolveFieldValue,
-} from "./registry.js?v=3";
+} from "./registry.js";
 
 registerElementRenderer({
   type: "ledSpecificationTable",

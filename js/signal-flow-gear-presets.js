@@ -4,7 +4,7 @@
  * Company overlays can define new folders and gear; they merge on top of presets.
  */
 
-import { normalizeGearEntry } from "./signal-flow-gear-schema.js?v=3";
+import { normalizeGearEntry } from "./signal-flow-gear-schema.js";
 
 import index from "../data/gear/index.json" with { type: "json" };
 import presetsCatalog from "../data/gear/presets.json" with { type: "json" };

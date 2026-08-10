@@ -3,9 +3,9 @@
  * Geometry mirrors the LED calculator canvas, drawn for white print sheets.
  */
 
-import { LINE_COLORS } from "../led-data.js?v=2";
+import { LINE_COLORS } from "../led-data.js";
 import { escapeXml } from "../shared/dom.js";
-import { fontSizePtToUserUnits, normalizeFontSizePt } from "./font-scale.js?v=4";
+import { fontSizePtToUserUnits, normalizeFontSizePt } from "./font-scale.js";
 
 const PADDING = 28;
 const TILE_GAP = 5;

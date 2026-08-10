@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   SITE_STATE_VERSION,
+  ensureAvpFilename,
   migrateSiteStateToV2,
   parseSiteState,
   validateSiteState,
@@ -34,13 +35,52 @@ const sampleV1 = {
   },
 };
 
+describe("ensureAvpFilename", () => {
+  it("keeps existing avp/json extensions", () => {
+    assert.equal(ensureAvpFilename("Show.avp"), "Show.avp");
+    assert.equal(ensureAvpFilename("Show.JSON"), "Show.JSON");
+  });
+
+  it("recovers from .txt downloads and missing extensions", () => {
+    assert.equal(ensureAvpFilename("Show.txt"), "Show.avp");
+    assert.equal(ensureAvpFilename("Show"), "Show.avp");
+  });
+});
+
 describe("migrateSiteStateToV2", () => {
   it("bumps format version and fills optional sections", () => {
     const migrated = migrateSiteStateToV2(sampleV1);
     assert.equal(migrated.formatVersion, SITE_STATE_VERSION);
     assert.deepEqual(migrated.led, sampleV1.led);
     assert.deepEqual(migrated.projector, sampleV1.projector);
-    assert.deepEqual(migrated.signalFlow, { nodes: [], connections: [] });
+    assert.deepEqual(migrated.signalFlow, {
+      nodes: [],
+      connections: [],
+      customGearTypes: [],
+      gearLibraryFolders: [],
+      colorByCableType: false,
+      grid: { snap: true, size: 20 },
+    });
+    assert.deepEqual(migrated.places, []);
+    assert.equal("places" in migrated.signalFlow, false);
+    assert.ok(migrated.groundplan);
+    assert.ok(migrated.contentMaps);
+    assert.deepEqual(migrated.cable, { routes: {}, places: {} });
+    assert.ok(migrated.labor);
+    assert.ok(migrated.paperwork);
+  });
+
+  it("lifts legacy signalFlow.places to root", () => {
+    const migrated = migrateSiteStateToV2({
+      ...sampleV1,
+      signalFlow: {
+        nodes: [],
+        connections: [],
+        places: [{ id: "foh", name: "FOH" }],
+      },
+    });
+    assert.deepEqual(migrated.places, [{ id: "foh", name: "FOH" }]);
+    assert.equal("places" in migrated.signalFlow, false);
   });
 });
 
@@ -82,5 +122,10 @@ describe("parseSiteState", () => {
       () => parseSiteState(JSON.stringify({ ...sampleV1, formatVersion: 99 })),
       /Unsupported file version/
     );
+  });
+
+  it("accepts a UTF-8 BOM prefix", () => {
+    const parsed = parseSiteState(`\uFEFF${JSON.stringify(sampleV1)}`);
+    assert.equal(parsed.formatVersion, SITE_STATE_VERSION);
   });
 });

@@ -1,10 +1,10 @@
 import { getCalculatorExport } from "../calculator-instances.js";
 import { deepClone } from "../shared/clone.js";
 import { escapeXml } from "../shared/dom.js";
-import { createDoubleClickTracker } from "../shared/double-click.js?v=1";
-import { createListNameEditor } from "../shared/inline-editor.js?v=2";
-import { listLinkedSourceOptions } from "./element-catalog.js?v=13";
-import { renderElementLibraryBrowser } from "./element-library-browser.js?v=1";
+import { createDoubleClickTracker } from "../shared/double-click.js";
+import { createListNameEditor } from "../shared/inline-editor.js";
+import { listLinkedSourceOptions } from "./element-catalog.js";
+import { renderElementLibraryBrowser } from "./element-library-browser.js";
 import {
   clearPlacementsForFolders,
   deleteLibraryFolder,
@@ -13,8 +13,8 @@ import {
   moveLibraryItemToFolder,
   renameLibraryFolder,
   resolveLibraryCatalog,
-} from "./element-library.js?v=1";
-import { renderSheetLibraryBrowser } from "./sheet-library-browser.js?v=1";
+} from "./element-library.js";
+import { renderSheetLibraryBrowser } from "./sheet-library-browser.js";
 import {
   buildAutoSheetLibrary,
   deleteSheetFolder,
@@ -23,33 +23,33 @@ import {
   mergeSheetFolders,
   moveSheetToFolder,
   renameSheetFolder,
-} from "./sheet-library.js?v=1";
+} from "./sheet-library.js";
 import {
   clampFrameToPage,
   createDecoration,
   decorationsForSheet,
   normalizeDrawStyle,
-} from "./decorations.js?v=3";
-import { renderDecoration } from "./decoration-render.js?v=4";
-import { getDrawTool, listDrawTools } from "./draw-tools.js?v=1";
-import "./elements/base.js?v=10";
+} from "./decorations.js";
+import { renderDecoration } from "./decoration-render.js";
+import { getDrawTool, listDrawTools } from "./draw-tools.js";
+import "./elements/base.js";
 import {
   normalizeCableCardScale,
-} from "./elements/cable-cards.js?v=5";
-import "./elements/groundplan-diagram.js?v=10";
-import "./elements/led-spec-table.js?v=5";
-import "./elements/led-wiring.js?v=9";
-import "./elements/raster-diagram.js?v=11";
-import "./elements/signal-flow-diagram.js?v=10";
-import "./elements/surface-diagram.js?v=9";
-import { getElementRenderer } from "./elements/registry.js?v=3";
+} from "./elements/cable-cards.js";
+import "./elements/groundplan-diagram.js";
+import "./elements/led-spec-table.js";
+import "./elements/led-wiring.js";
+import "./elements/raster-diagram.js";
+import "./elements/signal-flow-diagram.js";
+import "./elements/surface-diagram.js";
+import { getElementRenderer } from "./elements/registry.js";
 import {
   FONT_SIZE_ELEMENT_TYPES,
   MAX_FONT_SIZE_PT,
   MIN_FONT_SIZE_PT,
   normalizeFontSizePt,
   resolveElementFontSizePt,
-} from "./font-scale.js?v=4";
+} from "./font-scale.js";
 import {
   buildLedSpecificationFields,
   ledSpecificationFieldValue,
@@ -57,26 +57,26 @@ import {
 import {
   computeGroundplanFitCrop,
   normalizeGroundplanCrop,
-} from "./groundplan-svg.js?v=8";
-import { computeSignalFlowFitCrop } from "./signal-flow-svg.js?v=9";
-import { formatNumberInput, roundTo } from "./numbers.js?v=1";
+} from "./groundplan-svg.js";
+import { computeSignalFlowFitCrop } from "./signal-flow-svg.js";
+import { formatNumberInput, roundTo } from "./numbers.js";
 import { PAPER_SIZES, resolvePaper } from "./paper-sizes.js";
-import { createSceneEditor } from "./scene-editor.js?v=15";
-import "./sheets/cable-runs.js?v=4";
-import "./sheets/cover.js?v=5";
-import "./sheets/custom-plate.js?v=1";
-import "./sheets/led-wall-spec.js?v=7";
-import "./sheets/raster.js?v=5";
-import "./sheets/signal-flow.js?v=3";
-import "./sheets/surface.js?v=3";
+import { createSceneEditor } from "./scene-editor.js";
+import "./sheets/cable-runs.js";
+import "./sheets/cover.js";
+import "./sheets/custom-plate.js";
+import "./sheets/led-wall-spec.js";
+import "./sheets/raster.js";
+import "./sheets/signal-flow.js";
+import "./sheets/surface.js";
 import {
   normalizeSurfaceDimensionUnit,
   resolveSurfacePpi,
-} from "./surface-scale.js?v=1";
+} from "./surface-scale.js";
 import {
   isShareableElementType,
   sharedElementsForSheet,
-} from "./shared-elements.js?v=1";
+} from "./shared-elements.js";
 import {
   createElement,
   createManualSheet,
@@ -86,17 +86,20 @@ import {
   normalizeGrid,
   normalizePaperworkState,
   normalizeTitleBlockLogo,
-} from "./state.js?v=14";
+} from "./state.js";
 import { titleBlockFrame } from "./title-block-layout.js";
-import { refreshSheetBindings, resetSheetLayout, syncSheetsFromSources } from "./sync.js?v=2";
+import { refreshSheetBindings, resetSheetLayout, syncSheetsFromSources } from "./sync.js";
 
 export { emptyPaperworkState };
 
 function collectSiteExports() {
+  const signalFlow = getCalculatorExport("signalFlow");
+  const places = Array.isArray(signalFlow?.places) ? signalFlow.places : [];
   return {
+    places,
     led: getCalculatorExport("led"),
     projector: getCalculatorExport("projector"),
-    signalFlow: getCalculatorExport("signalFlow"),
+    signalFlow,
     groundplan: getCalculatorExport("groundplan"),
     contentMaps: getCalculatorExport("contentMaps"),
     cable: getCalculatorExport("cable"),
@@ -2262,6 +2265,7 @@ export function initPaperworkComposer() {
       decorations: state.decorations,
       drawStyle: state.drawStyle,
       activeSheetId: state.activeSheetId,
+      selectedElementId: state.selectedElementId,
       selectedDecorationId: state.selectedDecorationId,
       rightPanelCollapsed: state.rightPanelCollapsed ?? false,
       collapsedFolders: state.collapsedFolders ?? {},

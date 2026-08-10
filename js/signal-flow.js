@@ -1,9 +1,9 @@
-import { connectorColor, resolveGearType } from "./signal-flow-data.js?v=42";
+import { connectorColor, resolveGearType } from "./signal-flow-data.js";
 import {
   normalizeGearEntry,
   serializeGearForCatalog,
-} from "./signal-flow-gear-schema.js?v=3";
-import { renderPremadeGearBrowser } from "./signal-flow-gear-browser.js?v=48";
+} from "./signal-flow-gear-schema.js";
+import { renderPremadeGearBrowser } from "./signal-flow-gear-browser.js";
 import {
   mergeGearFolders,
   BUILTIN_FOLDERS,
@@ -14,13 +14,13 @@ import {
   renameGearFolder,
   deleteGearFolder,
   isBuiltinGearId,
-} from "./signal-flow-gear-library.js?v=47";
+} from "./signal-flow-gear-library.js";
 import {
   openGearBuilderModal,
   renderGearNoteRowHtml,
   renderGearPortRowsHtml,
-} from "./signal-flow-gear-ui.js?v=46";
-import { renderPlacesPanel } from "./signal-flow-places-ui.js?v=33";
+} from "./signal-flow-gear-ui.js";
+import { renderPlacesPanel } from "./signal-flow-places-ui.js";
 import { queryCalcShell } from "./shared/calc-shell.js";
 import { deepClone } from "./shared/clone.js";
 import { escapeXml } from "./shared/dom.js";
@@ -35,11 +35,46 @@ import {
   resolveConnectionRoute,
   roundedOrthoPath,
   roundedOrthoPolyline,
-} from "./shared/ortho-path.js?v=2";
+} from "./shared/ortho-path.js";
 import { clampZoom, createTransformPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
+import {
+  SIGNAL_FLOW_GRID_DEFAULT_SIZE as GRID_DEFAULT_SIZE,
+  SIGNAL_FLOW_GRID_MAX_SIZE as GRID_MAX_SIZE,
+  SIGNAL_FLOW_GRID_MIN_SIZE as GRID_MIN_SIZE,
+  emptySignalFlowState,
+  normalizeSignalFlowGrid,
+  normalizeSignalFlowState,
+} from "./domain/signal-flow.js";
 
-/** @typedef {{ id: string, typeId: string, name: string, x: number, y: number, placeId?: string | null, gearOverride?: object }} FlowNode */
+export {
+  emptySignalFlowState,
+  normalizeNodeLayout,
+  normalizeSignalFlowGrid,
+  normalizeSignalFlowState,
+} from "./domain/signal-flow.js";
+
+/**
+ * @typedef {{
+ *   w: number,
+ *   h: number,
+ *   inColW: number,
+ *   outColW: number,
+ *   portTop: number,
+ *   portRowH: number,
+ * }} FlowNodeLayout
+ *
+ * @typedef {{
+ *   id: string,
+ *   typeId: string,
+ *   name: string,
+ *   x: number,
+ *   y: number,
+ *   placeId?: string | null,
+ *   gearOverride?: object,
+ *   layout?: FlowNodeLayout,
+ * }} FlowNode
+ */
 
 /** @typedef {{ id: string, name: string }} FlowPlace */
 
@@ -74,11 +109,6 @@ const WORLD_NODE_H = 240;
 /** Default canvas size before any gear is placed. */
 const WORLD_DEFAULT_W = 8000;
 const WORLD_DEFAULT_H = 6000;
-
-/** Default snap grid size (world px). */
-const GRID_DEFAULT_SIZE = 20;
-const GRID_MIN_SIZE = 4;
-const GRID_MAX_SIZE = 400;
 
 export function initSignalFlow() {
   const shell = queryCalcShell("signal-flow", {
@@ -791,6 +821,69 @@ export function initSignalFlow() {
     bindNodeEvents();
   }
 
+  /**
+   * Capture live DOM chrome so Paperwork can rebuild the same port anchors
+   * the interactive canvas used when routing wires. Skip zero-size nodes
+   * (hidden tab) so a prior good layout is kept.
+   */
+  function measureNodeLayouts() {
+    for (const node of state.nodes) {
+      const nodeEl = /** @type {HTMLElement | null} */ (
+        els.nodes.querySelector(`.sf-node[data-node-id="${node.id}"]`)
+      );
+      if (!nodeEl) continue;
+      const w = nodeEl.offsetWidth;
+      const h = nodeEl.offsetHeight;
+      if (w < 1 || h < 1) continue;
+
+      const inPort = /** @type {HTMLElement | null} */ (
+        nodeEl.querySelector('[data-port-col="input"]')
+      );
+      const outPort = /** @type {HTMLElement | null} */ (
+        nodeEl.querySelector('[data-port-col="output"]')
+      );
+      let inColW = inPort?.offsetWidth ?? 0;
+      let outColW = outPort?.offsetWidth ?? 0;
+      if (inColW < 1 && outColW < 1) {
+        inColW = w / 2;
+        outColW = w / 2;
+      } else if (inColW < 1) {
+        inColW = Math.max(1, w - outColW);
+      } else if (outColW < 1) {
+        outColW = Math.max(1, w - inColW);
+      }
+
+      const firstPort = /** @type {HTMLElement | null} */ (
+        nodeEl.querySelector('[data-port-row="0"]') ??
+          nodeEl.querySelector("[data-port-row]")
+      );
+      let portTop = 0;
+      let portRowH = 22;
+      if (firstPort) {
+        // Match portAnchor(): offsets relative to the node chrome.
+        if (firstPort.offsetParent && firstPort.offsetParent !== nodeEl) {
+          const nodeRect = nodeEl.getBoundingClientRect();
+          const portRect = firstPort.getBoundingClientRect();
+          const zoom = panZoom.view.zoom || 1;
+          portTop = Math.max(0, (portRect.top - nodeRect.top) / zoom);
+          portRowH = Math.max(1, portRect.height / zoom);
+        } else {
+          portTop = Math.max(0, firstPort.offsetTop);
+          portRowH = Math.max(1, firstPort.offsetHeight || 22);
+        }
+      }
+
+      node.layout = {
+        w: Math.round(w),
+        h: Math.round(h),
+        inColW: Math.round(inColW),
+        outColW: Math.round(outColW),
+        portTop: Math.round(portTop),
+        portRowH: Math.round(portRowH),
+      };
+    }
+  }
+
   function renderNodes() {
     els.nodes.innerHTML = state.nodes
       .map((node) => {
@@ -835,6 +928,7 @@ export function initSignalFlow() {
       </div>`;
       })
       .join("");
+    measureNodeLayouts();
   }
 
   function bindNodeEvents() {
@@ -1875,6 +1969,7 @@ export function initSignalFlow() {
   });
 
   function exportState() {
+    measureNodeLayouts();
     return deepClone(state);
   }
 
@@ -1894,7 +1989,7 @@ export function initSignalFlow() {
     state.places = Array.isArray(data.places) ? deepClone(data.places) : [];
     state.colorByCableType = Boolean(data.colorByCableType);
     syncColorToggle();
-    state.grid = normalizeGrid(data.grid);
+    state.grid = normalizeSignalFlowGrid(data.grid);
     syncGridControls();
     expandedGearFolderIds = new Set(["fld-library", "fld-brands"]);
     activeGearFolderId = null;
@@ -1912,16 +2007,6 @@ export function initSignalFlow() {
 
   function syncColorToggle() {
     els.colorToggle?.setAttribute("aria-pressed", String(state.colorByCableType));
-  }
-
-  /** @param {unknown} raw @returns {{ snap: boolean, size: number }} */
-  function normalizeGrid(raw) {
-    const data = /** @type {{ snap?: unknown, size?: unknown } | null | undefined} */ (raw);
-    const parsed = Math.round(Number(data?.size));
-    const size = Number.isFinite(parsed)
-      ? Math.max(GRID_MIN_SIZE, Math.min(GRID_MAX_SIZE, parsed))
-      : GRID_DEFAULT_SIZE;
-    return { snap: data?.snap !== false, size: size || GRID_DEFAULT_SIZE };
   }
 
   function syncGridControls() {
@@ -1995,37 +2080,8 @@ export const calculatorPlugin = {
     stateKey: "signalFlow",
     label: "Signal Flow Chart",
     requiredForSave: false,
-    emptyState: () => ({
-      nodes: [],
-      connections: [],
-      customGearTypes: [],
-      gearLibraryFolders: [],
-      places: [],
-    }),
-    /** @param {unknown} data */
-    validateState(data) {
-      if (data == null) {
-        return {
-          nodes: [],
-          connections: [],
-          customGearTypes: [],
-          gearLibraryFolders: [],
-          places: [],
-        };
-      }
-      if (typeof data !== "object" || !Array.isArray(data.nodes)) {
-        throw new Error("The file is missing valid signal flow data.");
-      }
-      return {
-        nodes: data.nodes,
-        connections: Array.isArray(data.connections) ? data.connections : [],
-        customGearTypes: Array.isArray(data.customGearTypes)
-          ? data.customGearTypes.filter((g) => g?.kind !== "blank")
-          : [],
-        gearLibraryFolders: Array.isArray(data.gearLibraryFolders) ? data.gearLibraryFolders : [],
-        places: Array.isArray(data.places) ? data.places : [],
-      };
-    },
+    emptyState: emptySignalFlowState,
+    validateState: normalizeSignalFlowState,
   },
   init: initSignalFlow,
 };

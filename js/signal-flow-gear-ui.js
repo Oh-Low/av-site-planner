@@ -6,8 +6,8 @@ import {
   connectorColor,
   gearPortsToSideLists,
   sideListsToGearPorts,
-} from "./signal-flow-gear-schema.js?v=3";
-import { createGearType } from "./signal-flow-data.js?v=42";
+} from "./signal-flow-gear-schema.js";
+import { createGearType } from "./signal-flow-data.js";
 
 /**
  * @param {string} label

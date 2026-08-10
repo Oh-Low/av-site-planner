@@ -7,7 +7,7 @@ import {
   nextUniqueLibraryFolderName,
   renameLibraryFolder,
   normalizeLibraryFolders,
-} from "./element-library.js?v=1";
+} from "./element-library.js";
 import {
   isCableRunsSheet,
   isLedWallSheet,

@@ -1,23 +1,17 @@
 import {
   buildGroundplanSvg,
   normalizeGroundplanCrop,
-} from "../groundplan-svg.js?v=8";
-import { resolveElementFontSizePt } from "../font-scale.js?v=4";
-import { registerElementRenderer } from "./registry.js?v=3";
+} from "../groundplan-svg.js";
+import { resolveElementFontSizePt } from "../font-scale.js";
+import { placesFromSiteExports } from "../../domain/places.js";
+import { registerElementRenderer } from "./registry.js";
 
 /**
  * @param {Record<string, unknown>} siteExports
  * @returns {{ id: string, name: string }[]}
  */
 function listPlaces(siteExports) {
-  const sf = /** @type {{ places?: { id?: string, name?: string }[] } | null} */ (
-    siteExports?.signalFlow
-  );
-  const places = Array.isArray(sf?.places) ? sf.places : [];
-  return places.map((place, index) => ({
-    id: String(place?.id ?? `place-${index}`),
-    name: String(place?.name ?? `Place ${index + 1}`),
-  }));
+  return placesFromSiteExports(siteExports);
 }
 
 registerElementRenderer({

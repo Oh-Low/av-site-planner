@@ -1,7 +1,7 @@
 import { escapeXml } from "../../shared/dom.js";
-import { resolveElementFontSizePt } from "../font-scale.js?v=4";
-import { buildRasterSvg } from "../raster-svg.js?v=9";
-import { registerElementRenderer } from "./registry.js?v=3";
+import { resolveElementFontSizePt } from "../font-scale.js";
+import { buildRasterSvg } from "../raster-svg.js";
+import { registerElementRenderer } from "./registry.js";
 
 /**
  * @param {Record<string, unknown>} siteExports

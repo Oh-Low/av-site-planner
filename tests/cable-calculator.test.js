@@ -10,7 +10,7 @@ import {
   matchRouteConnections,
   normalizeCableState,
   pruneManualCables,
-} from "../js/cable-calculator.js";
+} from "../js/domain/cable.js";
 
 const nodes = [
   { id: "n1", typeId: "switcher", name: "Switcher", placeId: "p-a" },

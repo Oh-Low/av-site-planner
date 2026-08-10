@@ -1,14 +1,14 @@
 /* AV Site Planner — assembled styles */
-@import url("tokens.css?v=33");
-@import url("chrome.css?v=36");
+@import url("tokens.css");
+@import url("chrome.css");
 @import url("calc-shell.css");
-@import url("led.css?v=4");
+@import url("led.css");
 @import url("projector.css");
 @import url("canvas.css");
-@import url("signal-flow.css?v=57");
-@import url("groundplan.css?v=43");
-@import url("cable-calculator.css?v=6");
-@import url("content-maps.css?v=13");
+@import url("signal-flow.css");
+@import url("groundplan.css");
+@import url("cable-calculator.css");
+@import url("content-maps.css");
 @import url("labor-calculator.css");
-@import url("paperwork.css?v=44");
+@import url("paperwork.css");
 @import url("print.css");

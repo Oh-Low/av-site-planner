@@ -1,9 +1,9 @@
 import {
   buildSignalFlowSvg,
   normalizeSignalFlowCrop,
-} from "../signal-flow-svg.js?v=9";
-import { resolveElementFontSizePt } from "../font-scale.js?v=4";
-import { registerElementRenderer } from "./registry.js?v=3";
+} from "../signal-flow-svg.js";
+import { resolveElementFontSizePt } from "../font-scale.js";
+import { registerElementRenderer } from "./registry.js";
 
 /**
  * @param {import("../state.js").PageElement} element

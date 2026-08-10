@@ -1,4 +1,4 @@
-import { BITRATE_PIXEL_FACTOR, MAX_AMPS } from "../led-data.js?v=2";
+import { BITRATE_PIXEL_FACTOR, MAX_AMPS } from "../led-data.js";
 
 /**
  * @param {Record<string, unknown>} siteExports

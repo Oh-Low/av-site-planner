@@ -1,7 +1,7 @@
 import {
   createLedSpecificationElement,
   createLedWiringElement,
-} from "../element-catalog.js?v=3";
+} from "../element-catalog.js";
 import { listLedWalls } from "../led-spec-data.js";
 import { createElement } from "../state.js";
 import { registerSheetType } from "../sheet-registry.js";

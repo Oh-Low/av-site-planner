@@ -1,5 +1,5 @@
 import { uid } from "../shared/id.js";
-import { listAddableElements } from "./element-catalog.js?v=13";
+import { listAddableElements } from "./element-catalog.js";
 
 /**
  * @typedef {{ id: string, name: string, parentId: string | null }} LibraryFolder

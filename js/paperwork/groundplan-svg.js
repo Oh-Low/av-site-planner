@@ -2,10 +2,10 @@ import {
   formatDistance,
   getMetersPerPixel,
   routeLengthMeters,
-} from "../groundplan-units.js?v=3";
+} from "../groundplan-units.js";
 import { DEFAULT_PALETTE_COLOR, normalizeHexColor } from "../shared/color-palette.js";
 import { escapeXml } from "../shared/dom.js";
-import { fontSizePtToUserUnits, normalizeFontSizePt } from "./font-scale.js?v=4";
+import { fontSizePtToUserUnits, normalizeFontSizePt } from "./font-scale.js";
 
 const DEFAULT_MARKER_W = 120;
 const DEFAULT_MARKER_H = 36;

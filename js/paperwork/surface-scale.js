@@ -1,4 +1,4 @@
-import { screenPixelSize } from "../projector-calculator.js?v=5";
+import { screenPixelSize } from "../projector-calculator.js";
 
 /**
  * @param {unknown} raw

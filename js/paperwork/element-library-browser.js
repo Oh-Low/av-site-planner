@@ -6,7 +6,7 @@ import {
   listItemsInLibraryFolder,
   mergeLibraryFolders,
   nextUniqueLibraryFolderName,
-} from "./element-library.js?v=1";
+} from "./element-library.js";
 
 /**
  * @param {import("./element-catalog.js").AddableElement} item

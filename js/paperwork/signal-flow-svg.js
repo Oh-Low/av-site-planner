@@ -6,7 +6,8 @@
  * aligned with ports the way they do on the interactive canvas.
  */
 
-import { connectorColor, resolveGearType } from "../signal-flow-data.js?v=42";
+import { connectorColor, resolveGearType } from "../signal-flow-data.js";
+import { normalizeNodeLayout } from "../domain/signal-flow.js";
 import { escapeXml } from "../shared/dom.js";
 import {
   buildPath,
@@ -19,8 +20,8 @@ import {
   buildCropEditorMarkup,
   fullImageCrop,
   normalizeGroundplanCrop,
-} from "./groundplan-svg.js?v=8";
-import { normalizeFontSizePt } from "./font-scale.js?v=4";
+} from "./groundplan-svg.js";
+import { normalizeFontSizePt } from "./font-scale.js";
 
 /**
  * Chrome sizes in interactive canvas px (root ~16px, table font 0.8rem).
@@ -215,8 +216,9 @@ function nodeLayoutHeight(gear, placeId, places, m) {
  * @param {ReturnType<typeof layoutMetrics>} m
  */
 function portAnchor(layout, col, end, row, m) {
+  const rowH = Number(layout.portRowH) > 0 ? Number(layout.portRowH) : m.portRowH;
   const y =
-    layout.y + layout.portTop + Math.max(0, row) * m.portRowH + m.portRowH / 2;
+    layout.y + layout.portTop + Math.max(0, row) * rowH + rowH / 2;
   const splitX = layout.x + layout.inColW;
   if (col === "output") {
     return end === "start"
@@ -319,17 +321,34 @@ function layoutSignalFlow(signalFlow) {
     const x = Number(node.x) || 0;
     const y = Number(node.y) || 0;
     const name = String(node.name ?? gear.defaultName ?? "Device");
-    const cols = estimateNodeColumns(name, gear, m);
-    const h = nodeLayoutHeight(gear, node.placeId, places, m);
     const hasPlace = Boolean(
       node.placeId && places.some((p) => p.id === node.placeId)
     );
     const hasNote = typeof gear?.note === "string" && gear.note.trim();
-    const portTop =
-      m.headerH +
-      (hasPlace ? m.placeH : 0) +
-      (hasNote ? m.noteH : 0) +
-      m.colLabelH;
+    const measured = normalizeNodeLayout(node.layout);
+    let cols;
+    let h;
+    let portTop;
+    let portRowH;
+    if (measured) {
+      cols = {
+        w: measured.w,
+        inColW: measured.inColW,
+        outColW: measured.outColW,
+      };
+      h = measured.h;
+      portTop = measured.portTop;
+      portRowH = measured.portRowH;
+    } else {
+      cols = estimateNodeColumns(name, gear, m);
+      h = nodeLayoutHeight(gear, node.placeId, places, m);
+      portTop =
+        m.headerH +
+        (hasPlace ? m.placeH : 0) +
+        (hasNote ? m.noteH : 0) +
+        m.colLabelH;
+      portRowH = m.portRowH;
+    }
     layouts.set(String(node.id), {
       id: String(node.id),
       name,
@@ -342,6 +361,7 @@ function layoutSignalFlow(signalFlow) {
       outColW: cols.outColW,
       h,
       portTop,
+      portRowH,
       hasPlace,
       hasNote,
     });
@@ -411,6 +431,7 @@ function applyContentScale(laid, scale) {
     layout.outColW = mul(layout.outColW);
     layout.h = mul(layout.h);
     layout.portTop = mul(layout.portTop);
+    if (layout.portRowH != null) layout.portRowH = mul(layout.portRowH);
   }
   for (const wire of laid.wirePaths) {
     wire.points = wire.points.map((p) => ({ x: mul(p.x), y: mul(p.y) }));
@@ -579,10 +600,11 @@ function buildNodeSvg(layout, places, m, colorByCableType) {
   );
 
   const rowCount = Math.max(1, ports.length);
+  const rowH = Number(layout.portRowH) > 0 ? Number(layout.portRowH) : m.portRowH;
   for (let index = 0; index < rowCount; index += 1) {
     const port = ports[index] ?? {};
-    const rowY = layout.portTop + index * m.portRowH;
-    const cy = rowY + m.portRowH * 0.68;
+    const rowY = layout.portTop + index * rowH;
+    const cy = rowY + rowH * 0.68;
     const input = port?.input && port.input !== "—" ? String(port.input) : "";
     const output = port?.output && port.output !== "—" ? String(port.output) : "";
     const inputType =
@@ -768,3 +790,6 @@ export {
   normalizeGroundplanCrop as normalizeSignalFlowCrop,
   fullImageCrop as fullSignalFlowCrop,
 };
+
+/** @internal Exported for unit tests. */
+export { layoutSignalFlow };

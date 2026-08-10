@@ -2,19 +2,23 @@
 
 Planning tools for AV professionals. Build LED walls, projectors, signal paths, cable lists, groundplans, rigging plans, and printable site paperwork — all in the browser.
 
-**Live demo:** Enable [GitHub Pages](https://docs.github.com/en/pages) on this repository (Settings → Pages → Deploy from branch → `main` / root).
+**Live demo:** Enable [GitHub Pages](https://docs.github.com/en/pages) (Settings → Pages → Source: **GitHub Actions**). The deploy workflow builds with Vite and publishes `dist/`.
 
 ## Tools
 
 | Tab | Status |
 |-----|--------|
-| **LED Calculator** | Full — tile presets, wall grid, power & data line drawing, resource meters |
+| **LED Calculator** | Full — tile presets, wall grid, power & data line drawing, processors, resource meters |
 | **Projector Calculator** | Full — screen sizing, throw/lens math, multi-screen & multi-projector (blend, stack, tile) |
-| **Signal Flow Chart** | Full — drag gear onto canvas, port-to-port wiring, pan/zoom; premade catalogs in `data/gear/` |
-| Cable Calculator | Placeholder |
-| Groundplan | Placeholder |
-| Rigging Calculator | Placeholder |
-| Paperwork Composer | Placeholder |
+| **Signal Flow Chart** | Full — gear library, custom gear, port-to-port wiring, places, pan/zoom; catalogs in `data/gear/` |
+| **Groundplan** | Full — floor-plan image, scale calibration, place markers, cable routes, ruler |
+| **Content Maps** | Full — surfaces/zones, rasters/output groups, test patterns, import from LED/projector |
+| **Cable Calculator** | Full — auto cables from signal flow + groundplan lengths; manual cables per route/place |
+| **Labor Calculator** | Full — call hours, hourly rate, after-10h / after-14h / night premiums |
+| **Paperwork Composer** | Full (v1) — printable packet, generate/update from calculators, draw tools, title block |
+| Rigging Calculator | Placeholder — UI stub only; not in `.AVP` yet |
+
+Format and plugin contracts: [`docs/AVP-v2.md`](docs/AVP-v2.md), [`docs/PLUGIN-APIS.md`](docs/PLUGIN-APIS.md).
 
 ## LED Calculator
 
@@ -61,7 +65,7 @@ Gear lives under [`data/gear/`](data/gear/). Multiple JSON files are merged in o
 1. Create e.g. `data/gear/acme.json` with your gear (folders are optional — omitted by default).
 2. Register it in `CATALOG_MODULES` inside [`js/signal-flow-gear-presets.js`](js/signal-flow-gear-presets.js).
 3. Add `"acme.json"` to the `catalogs` array in `data/gear/index.json`.
-4. Hard-refresh the page.
+4. Restart or refresh the Vite dev server (HMR usually picks up JSON imports).
 
 Overlay files (everything except `presets.json`) automatically appear under **Library** in a folder named after the file (e.g. `inventory.json` → `inventory`). Gear in that file is placed in that folder; you do not need a `folderId`.
 
@@ -110,7 +114,7 @@ Gear can alternatively declare a `ports` array of rows, which also supports divi
 
 ## Site plans (`.AVP` files)
 
-Export saves a JSON site plan with extension `.AVP` (format version **2**). Import accepts version **1** or **2** — older files are migrated automatically on load.
+Export saves a JSON site plan with extension `.AVP` (format version **2**). Import accepts version **1** or **2** — older files are migrated automatically on load. Full field reference: [`docs/AVP-v2.md`](docs/AVP-v2.md).
 
 ```json
 {
@@ -118,53 +122,75 @@ Export saves a JSON site plan with extension `.AVP` (format version **2**). Impo
   "app": "av-site-planner",
   "exportedAt": "2026-06-30T12:00:00.000Z",
   "activeTab": "led-calculator",
+  "places": [],
   "led": { "grids": [], "activeGridId": null, "voltage": 120, "bitrate": 8 },
-  "projector": { "screens": [], "activeScreenId": null, "activeSidebarTab": "screen" },
-  "signalFlow": { "nodes": [], "connections": [] }
+  "projector": { "screens": [/* ≥1 required */], "activeScreenId": null, "activeSidebarTab": "screen" },
+  "signalFlow": { "nodes": [], "connections": [], "customGearTypes": [], "gearLibraryFolders": [], "colorByCableType": false, "grid": { "snap": true, "size": 20 } },
+  "groundplan": { },
+  "contentMaps": { },
+  "cable": { "routes": {}, "places": {} },
+  "labor": { },
+  "paperwork": { }
 }
 ```
 
 | Field | Required on import | Notes |
 |-------|-------------------|--------|
-| `led` | Yes | Must include a `grids` array |
-| `projector` | Yes | Must include at least one screen in `screens` |
-| `signalFlow` | No | Defaults to empty nodes/connections if omitted |
-| `activeTab` | No | Restores the tab that was open at export time |
+| `places` | No | Shared venues `{ id, name }[]` (also lifted from legacy `signalFlow.places`) |
+| `led` | Yes | Must include a `grids` array (may be empty) |
+| `projector` | Yes | Must include **at least one** screen in `screens` |
+| `signalFlow` | No | Graph only — places are at document root |
+| `groundplan` | No | Floor plan may embed a PNG data URL |
+| `contentMaps` | No | Surfaces, rasters, test patterns |
+| `cable` | No | Manual cables only; auto rows are derived |
+| `labor` | No | Start/end clock + rate + pay events |
+| `paperwork` | No | Packet sheets, elements, decorations |
+| `activeTab` | No | Restores the tab open at export time |
 
-Validation is driven by each calculator's `calculatorPlugin.meta.validateState` hook in `js/calculator-registry.js`.
+Validation is driven by each calculator's `calculatorPlugin.meta.validateState` (see registry + `docs/PLUGIN-APIS.md`).
 
 ## Local use
 
-No build step required. Open `index.html` in a browser, or serve locally:
+Requires Node 20+. Install once, then start the Vite dev server:
 
 ```bash
-cd av-site-planner
-python3 -m http.server 8080
-# visit http://localhost:8080
+npm install
+npm run dev
 ```
 
-ES modules require a local server (not `file://`).
+Or run `./launch` (installs if needed, then `npm run dev`). Open `http://localhost:8080`.
 
-Run unit tests with Node:
+| Script | Purpose |
+|--------|---------|
+| `npm run dev` | Dev server with HMR |
+| `npm run build` | Production build → `dist/` |
+| `npm run preview` | Serve the production build |
+| `npm test` | Node unit tests |
+| `npm run typecheck` | TypeScript check (`allowJs`) |
+| `npm run ci` | typecheck + test + build |
 
-```bash
-node --test tests/
-```
-
+Export / Import live in the app header (and again on the LED / Projector toolbars). There is **no** browser localStorage — the site plan is the `.AVP` file.
 ## Project layout
 
 | Path | Role |
 |------|------|
+| `package.json` / `vite.config.js` | Vite + TypeScript tooling |
+| `fixtures/default.avp` | Default site plan loaded on startup |
 | `js/app.js` | App shell — tabs, export/import, calculator bootstrap |
 | `js/calculator-registry.js` | Registers calculator plugins and initializes them |
 | `js/site-state.js` | `.AVP` export/import bundle (format version 2) |
+| `docs/AVP-v2.md` | Site-plan schema contract |
+| `docs/PLUGIN-APIS.md` | Per-tool instance API inventory |
+| `js/domain/` | Pure domain kernels for every .AVP section + `site-document` |
+| `js/site-document-runtime.js` | App singleton SiteDocument synced on import/export |
 | `js/projector-math.js` | Pure throw/lens math (unit-tested) |
+| `js/paperwork/` | Paperwork composer (state, sync, sheets, elements) |
 | `data/gear/` | Signal-flow catalog JSON files (`index.json`, `presets.json`, company overlays) |
 | `js/shared/` | Shared helpers — `dom`, `clone`, `id`, `calc-shell`, `inline-editor`, `pan-zoom`, `ortho-path` |
 | `css/calc-shell.css` | Shared calculator layout (`.calc-layout`, sidebar, viewport, toolbar) |
 | `css/main.css` | Assembled styles (`@import` of partials) |
 
-All three live calculators use the shared shell. Signal Flow uses `createTransformPanZoom`; LED and Projector use `createSvgViewBoxPanZoom` and `createListNameEditor`.
+Live calculators use the shared shell. Signal Flow uses `createTransformPanZoom`; LED, Projector, and Content Maps use `createSvgViewBoxPanZoom`.
 
 ## Adding a calculator
 
@@ -244,10 +270,10 @@ export const calculatorPlugin = {
 
 ## GitHub Pages
 
-1. Push this repo to GitHub.
-2. **Settings → Pages → Build and deployment → Deploy from a branch**
-3. Branch: `main`, folder: `/ (root)`
-4. Save — the site will be at `https://<user>.github.io/<repo>/`
+Push to `main` — the **Deploy to GitHub Pages** workflow builds with Vite and deploys `dist/`.
+
+1. **Settings → Pages → Build and deployment → Source: GitHub Actions**
+2. Site URL: `https://<user>.github.io/<repo>/`
 
 ## License
 

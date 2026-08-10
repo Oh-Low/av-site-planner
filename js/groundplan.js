@@ -1,6 +1,6 @@
-import { getCalculatorExport } from "./calculator-instances.js";
-import { renderPlacesPalette, bindPlacesAddForm } from "./groundplan-places-ui.js?v=6";
-import { emptyGroundplanScale, groundplanPluginMeta } from "./groundplan-meta.js?v=2";
+import { getCalculatorExport, getCalculatorInstance } from "./calculator-instances.js";
+import { renderPlacesPalette, bindPlacesAddForm } from "./groundplan-places-ui.js";
+import { emptyGroundplanScale, groundplanPluginMeta } from "./groundplan-meta.js";
 import {
   formatDistance,
   formatHeightOffset,
@@ -12,7 +12,7 @@ import {
   pixelDistance,
   polylineLengthMeters,
   routeLengthMeters,
-} from "./groundplan-units.js?v=3";
+} from "./groundplan-units.js";
 import { queryCalcShell } from "./shared/calc-shell.js";
 import {
   bindColorSwatchButtons,
@@ -75,6 +75,16 @@ const MIN_MARKER_H = 24;
 const TRIANGLE_HEIGHT_RATIO = Math.sqrt(3) / 2;
 
 export function initGroundplan(signalFlowApi = {}) {
+  /** Resolve places lazily so registry init order does not matter. */
+  const api = {
+    getPlaces:
+      signalFlowApi.getPlaces ??
+      (() => getCalculatorInstance("signalFlow")?.exportState?.()?.places ?? []),
+    addPlace:
+      signalFlowApi.addPlace ??
+      ((name) => getCalculatorInstance("signalFlow")?.addPlace?.(name) ?? false),
+  };
+
   const shell = queryCalcShell("groundplan", {
     statusId: "gp-status",
     hintId: "gp-hint",
@@ -234,7 +244,7 @@ export function initGroundplan(signalFlowApi = {}) {
   }
 
   function getSignalFlowPlaces() {
-    const fromApi = signalFlowApi.getPlaces?.();
+    const fromApi = api.getPlaces?.();
     if (Array.isArray(fromApi)) return /** @type {{ id: string, name: string }[]} */ (fromApi);
     const sf = getCalculatorExport("signalFlow");
     return Array.isArray(sf?.places) ? /** @type {{ id: string, name: string }[]} */ (sf.places) : [];
@@ -242,7 +252,7 @@ export function initGroundplan(signalFlowApi = {}) {
 
   /** @param {string} name */
   function addSignalFlowPlace(name) {
-    if (signalFlowApi.addPlace) return Boolean(signalFlowApi.addPlace(name));
+    if (api.addPlace) return Boolean(api.addPlace(name));
     return false;
   }
 

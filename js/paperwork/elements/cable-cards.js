@@ -4,9 +4,10 @@ import {
   groupRowsByCableType,
   manualCablesToRows,
   normalizeCableAmount,
-} from "../../cable-calculator.js?v=16";
+} from "../../cable-calculator.js";
+import { placesFromSiteExports } from "../../domain/places.js";
 import { escapeXml } from "../../shared/dom.js";
-import { registerElementRenderer } from "./registry.js?v=3";
+import { registerElementRenderer } from "./registry.js";
 
 const DEFAULT_CARD_SCALE = 1;
 const MIN_CARD_SCALE = 0.75;
@@ -32,7 +33,6 @@ registerElementRenderer({
   render(host, ctx) {
     const { element, siteExports } = ctx;
     const sf = /** @type {{
-      places?: object[],
       nodes?: object[],
       connections?: object[],
       customGearTypes?: object[],
@@ -45,7 +45,7 @@ registerElementRenderer({
       routes?: Record<string, object[]>,
     } | null} */ (siteExports?.cable ?? null);
 
-    const places = Array.isArray(sf?.places) ? sf.places : [];
+    const places = placesFromSiteExports(siteExports);
     const nodes = Array.isArray(sf?.nodes) ? sf.nodes : [];
     const connections = Array.isArray(sf?.connections) ? sf.connections : [];
     const customGearTypes = Array.isArray(sf?.customGearTypes) ? sf.customGearTypes : [];

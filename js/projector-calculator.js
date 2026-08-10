@@ -9,7 +9,7 @@ import {
   getProjectorModelsForManufacturer,
   inferProjectorAspectId,
   projectorResolutionOptions,
-} from "./projector-data.js?v=2";
+} from "./projector-data.js";
 import {
   clamp,
   convertLinearDistance,
@@ -21,12 +21,23 @@ import {
   throwDistanceFromImageWidthAndRatio,
   throwInRangeFromSpecs,
 } from "./projector-math.js";
+import {
+  createBlankProjectionScreen,
+  normalizeProjectorState,
+} from "./domain/projector.js";
 import { queryCalcShell, bindSidebarTabs } from "./shared/calc-shell.js";
 import { deepClone } from "./shared/clone.js";
 import { escapeXml } from "./shared/dom.js";
 import { createListNameEditor } from "./shared/inline-editor.js";
 import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
+
+export {
+  createBlankProjectionScreen,
+  emptyProjectorState,
+  normalizeProjectionScreen,
+  normalizeProjectorState,
+} from "./domain/projector.js";
 
 /** @typedef {{ id: string, name: string, throwMin: number, throwMax: number }} ThrowRange */
 
@@ -463,19 +474,7 @@ function projectorFromTemplate(template, index) {
 }
 
 function newScreen(index = 0) {
-  const screen = {
-    id: uid("screen"),
-    name: defaultScreenName(index),
-    unit: "ft",
-    aspectId: "16:9",
-    width: 16,
-    height: 9,
-    projectors: [],
-    projectorGroups: [],
-    activeProjectorId: null,
-    activeGroupId: null,
-    view: null,
-  };
+  const screen = createBlankProjectionScreen(index);
   linkFromWidth(screen);
   return screen;
 }
@@ -2688,16 +2687,11 @@ export function initProjectorCalculator() {
 
   /** @param {object} data */
   function importState(data) {
-    if (!data || !Array.isArray(data.screens) || !data.screens.length) {
-      throw new Error("Invalid projector calculator state.");
-    }
+    const normalized = normalizeProjectorState(data);
     closeScreenNameEditor();
-    state.screens = deepClone(data.screens);
-    state.activeScreenId =
-      data.activeScreenId && state.screens.some((s) => s.id === data.activeScreenId)
-        ? data.activeScreenId
-        : state.screens[0].id;
-    setSidebarTab(data.activeSidebarTab === "projectors" ? "projectors" : "screen");
+    state.screens = deepClone(normalized.screens);
+    state.activeScreenId = normalized.activeScreenId;
+    setSidebarTab(normalized.activeSidebarTab);
     const screen = getActiveScreen();
     if (screen?.view) {
       Object.assign(projView, screen.view);
@@ -2722,18 +2716,7 @@ export const calculatorPlugin = {
     stateKey: "projector",
     label: "Projector Calculator",
     requiredForSave: true,
-    /** @param {unknown} data */
-    validateState(data) {
-      if (
-        !data ||
-        typeof data !== "object" ||
-        !Array.isArray(data.screens) ||
-        !data.screens.length
-      ) {
-        throw new Error("The file is missing projection screen data.");
-      }
-      return data;
-    },
+    validateState: normalizeProjectorState,
   },
   init: initProjectorCalculator,
 };

@@ -40,6 +40,10 @@
   color: var(--danger);
 }
 
+#export-btn.is-dirty {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
 .import-file-label {
   display: inline-flex;
   align-items: center;

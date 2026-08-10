@@ -9,7 +9,7 @@ import {
   payTierAt,
   resolveCallRange,
   snapMinutes,
-} from "../js/labor-calculator.js";
+} from "../js/domain/labor.js";
 
 const MS_PER_HOUR = 3_600_000;
 

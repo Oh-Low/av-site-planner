@@ -1,7 +1,7 @@
 import { escapeXml } from "../../shared/dom.js";
-import { resolveElementFontSizePt } from "../font-scale.js?v=4";
-import { buildLedWiringSvg } from "../led-wiring-svg.js?v=7";
-import { registerElementRenderer } from "./registry.js?v=3";
+import { resolveElementFontSizePt } from "../font-scale.js";
+import { buildLedWiringSvg } from "../led-wiring-svg.js";
+import { registerElementRenderer } from "./registry.js";
 
 /**
  * @param {Record<string, unknown>} siteExports
