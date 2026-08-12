@@ -6,6 +6,7 @@ import {
   BITRATE_PIXEL_FACTOR,
 } from "./led-data.js";
 import { normalizeLedGrid, normalizeLedState } from "./domain/led.js";
+import { buildLedSpecificationFields } from "./paperwork/led-spec-data.js";
 import { queryCalcShell, bindSidebarTabs } from "./shared/calc-shell.js";
 import { deepClone } from "./shared/clone.js";
 import { escapeXml } from "./shared/dom.js";
@@ -146,7 +147,14 @@ export function initLedCalculator() {
     expandAllSections: document.getElementById("expand-all-sections"),
     collapseAllSections: document.getElementById("collapse-all-sections"),
     wallSvg: document.getElementById("wall-svg"),
+    layout: document.getElementById("led-layout"),
+    rightCollapse: document.getElementById("led-right-collapse"),
+    specEmpty: document.getElementById("led-spec-empty"),
+    specFields: document.getElementById("led-spec-fields"),
   };
+
+  /** Session-only; not persisted in .AVP. */
+  let rightPanelCollapsed = false;
 
   /** Blocks form → grid sync while programmatically loading a grid (import / grid switch). */
   let suspendFormSync = false;
@@ -735,6 +743,7 @@ export function initLedCalculator() {
   function render() {
     const grid = getActiveGrid();
     renderGridList();
+    renderSpecPanel();
     if (!grid?.generated) {
       els.wallCanvasContainer.classList.remove("has-grid");
       els.wallSvg.hidden = true;
@@ -751,6 +760,63 @@ export function initLedCalculator() {
     renderResourceBars();
     refreshActiveLine();
     updateStaleHint();
+  }
+
+  function applyRightPanelCollapsed() {
+    els.layout?.classList.toggle("is-right-collapsed", rightPanelCollapsed);
+    if (els.rightCollapse) {
+      els.rightCollapse.textContent = rightPanelCollapsed ? "‹" : "›";
+      els.rightCollapse.setAttribute(
+        "aria-expanded",
+        rightPanelCollapsed ? "false" : "true"
+      );
+      els.rightCollapse.title = rightPanelCollapsed ? "Expand panel" : "Collapse panel";
+    }
+  }
+
+  /** Same fields as the paperwork LED Specifications element for the active wall. */
+  function renderSpecPanel() {
+    if (!els.specEmpty || !els.specFields) return;
+    const grid = getActiveGrid();
+    if (!grid) {
+      els.specEmpty.hidden = false;
+      els.specEmpty.textContent = "Add an LED wall to see specifications.";
+      els.specFields.hidden = true;
+      els.specFields.innerHTML = "";
+      return;
+    }
+
+    const fields = buildLedSpecificationFields(
+      {
+        led: {
+          grids: state.grids,
+          voltage: state.voltage,
+          bitrate: state.bitrate,
+          activeGridId: state.activeGridId,
+        },
+      },
+      grid.id
+    );
+
+    if (!fields.length) {
+      els.specEmpty.hidden = false;
+      els.specEmpty.textContent = "No specification data for this wall.";
+      els.specFields.hidden = true;
+      els.specFields.innerHTML = "";
+      return;
+    }
+
+    els.specEmpty.hidden = true;
+    els.specFields.hidden = false;
+    els.specFields.innerHTML = `<table class="led-spec-table"><tbody>${fields
+      .map((field) =>
+        "section" in field
+          ? `<tr class="led-spec-section"><th colspan="2">${escapeXml(field.section)}</th></tr>`
+          : `<tr><th scope="row">${escapeXml(field.label)}</th><td>${escapeXml(
+              field.auto || "—"
+            )}</td></tr>`
+      )
+      .join("")}</tbody></table>`;
   }
 
   function refreshActiveLine() {
@@ -1976,9 +2042,14 @@ export function initLedCalculator() {
       section.open = false;
     });
   });
+  els.rightCollapse?.addEventListener("click", () => {
+    rightPanelCollapsed = !rightPanelCollapsed;
+    applyRightPanelCollapsed();
+  });
   els.wallSvg?.addEventListener("lostpointercapture", onWallPointerEnd);
   document.addEventListener("keydown", onDocumentKeyDown);
 
+  applyRightPanelCollapsed();
   render();
   setStatus("Ready.");
 

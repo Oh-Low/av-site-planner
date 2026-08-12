@@ -50,7 +50,7 @@
   <main class="app-main">
     <!-- LED Calculator -->
     <section id="led-calculator" class="tab-panel active" role="tabpanel">
-      <div class="calc-layout">
+      <div class="calc-layout led-layout" id="led-layout">
         <aside class="calc-sidebar" id="led-sidebar">
           <div class="sidebar-toolbar">
             <nav class="local-nav sidebar-tabs" role="tablist" aria-label="LED planner sections">
@@ -222,6 +222,19 @@
             <span class="legend-item"><span class="swatch tile-swatch"></span> Tile outline</span>
           </div>
         </div>
+
+        <aside class="calc-sidebar-right" id="led-sidebar-right">
+          <button type="button" class="calc-right-collapse" id="led-right-collapse" title="Collapse panel" aria-expanded="true" aria-controls="led-right-body">›</button>
+          <div class="calc-right-body" id="led-right-body">
+            <details class="panel-section" open>
+              <summary>LED Specifications</summary>
+              <div class="panel-section-body" id="led-spec-panel">
+                <p class="resource-empty" id="led-spec-empty">Add an LED wall to see specifications.</p>
+                <div id="led-spec-fields" hidden></div>
+              </div>
+            </details>
+          </div>
+        </aside>
       </div>
     </section>
 
