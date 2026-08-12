@@ -25,6 +25,7 @@ import { deepClone } from "./shared/clone.js";
 import { escapeXml, isPanPointerDown } from "./shared/dom.js";
 import { uid } from "./shared/id.js";
 import { createTransformPanZoom } from "./shared/pan-zoom.js";
+import { recordBefore } from "./undo-runtime.js";
 
 /** @typedef {"metric" | "imperial"} DistanceUnit */
 
@@ -576,6 +577,7 @@ export function initGroundplan(signalFlowApi = {}) {
     const route = getRouteById(routeId);
     if (!route || route.points.length <= 2) return;
     if (pointIndex <= 0 || pointIndex >= route.points.length - 1) return;
+    recordBefore("groundplan", "delete-waypoint");
     route.points.splice(pointIndex, 1);
     if (
       heightEditorTarget?.routeId === routeId &&
@@ -681,6 +683,7 @@ export function initGroundplan(signalFlowApi = {}) {
     const route = getRouteById(routeId);
     if (!route) return;
     if (segmentIndex < 0 || segmentIndex >= route.points.length - 1) return;
+    recordBefore("groundplan", "add-waypoint");
     route.points.splice(segmentIndex + 1, 0, { x: point.x, y: point.y });
     setSelectedRoutePoint(routeId, segmentIndex + 1);
     setStatus(`Added waypoint to ${formatRouteLabel(route)}.`);
@@ -801,6 +804,7 @@ export function initGroundplan(signalFlowApi = {}) {
         heightEditorEl.querySelector(".gp-route-height-input")
       );
       if (route && input) {
+        recordBefore("groundplan", "height");
         const meters = parseHeightInput(input.value, state.scale.unit);
         const point = route.points[pointIndex];
         if (point) {
@@ -935,6 +939,7 @@ export function initGroundplan(signalFlowApi = {}) {
   function deleteRoute(routeId) {
     const route = state.cableRoutes.find((r) => r.id === routeId);
     if (!route) return;
+    recordBefore("groundplan", "delete-route");
     state.cableRoutes = state.cableRoutes.filter((r) => r.id !== routeId);
     if (selectedRouteId === routeId) {
       selectedRouteId = null;
@@ -987,6 +992,7 @@ export function initGroundplan(signalFlowApi = {}) {
         const routeId = wrap.dataset.routeId;
         const route = routeId ? getRouteById(routeId) : null;
         if (!route) return;
+        recordBefore("groundplan", "route-color");
         route.color = normalizeRouteColor(color);
         renderRouteLabels();
         renderOverlay();
@@ -1045,6 +1051,7 @@ export function initGroundplan(signalFlowApi = {}) {
   }
 
   function updateScaleFromInputs() {
+    recordBefore("groundplan", "scale", { coalesceMs: 400 });
     if (state.scale.unit === "metric") {
       const meters = Number(els.scaleMeters?.value);
       state.scale.distanceMeters = Number.isFinite(meters) && meters > 0 ? meters : null;
@@ -1296,6 +1303,7 @@ export function initGroundplan(signalFlowApi = {}) {
         e.stopPropagation();
         const marker = getPlaceMarker(placeId);
         if (!marker) return;
+        recordBefore("groundplan", "move-place");
         draggingPlaceId = placeId;
         placeDrag.startX = e.clientX;
         placeDrag.startY = e.clientY;
@@ -1315,6 +1323,7 @@ export function initGroundplan(signalFlowApi = {}) {
         const edge = /** @type {HTMLElement} */ (handle).dataset.resizeEdge;
         const marker = placeId ? getPlaceMarker(placeId) : null;
         if (!placeId || !marker || !edge) return;
+        recordBefore("groundplan", "resize-place");
         placeResize.active = true;
         placeResize.placeId = placeId;
         placeResize.edge = edge;
@@ -1511,10 +1520,12 @@ export function initGroundplan(signalFlowApi = {}) {
   function handleScaleClick(p) {
     if (!isOnImage(p)) return;
     if (scalePickStep === 0) {
+      recordBefore("groundplan", "scale-pick");
       state.scale.pointA = p;
       state.scale.pointB = null;
       scalePickStep = 1;
     } else {
+      recordBefore("groundplan", "scale-pick");
       state.scale.pointB = p;
       scalePickStep = 0;
     }
@@ -1562,6 +1573,7 @@ export function initGroundplan(signalFlowApi = {}) {
       return;
     }
 
+    recordBefore("groundplan", "add-route");
     routeDraft.points.push(routePoint);
     const fromPlaceId = routeDraft.fromPlaceId;
     state.cableRoutes.push({
@@ -1591,6 +1603,7 @@ export function initGroundplan(signalFlowApi = {}) {
 
   /** @param {string} placeId @param {Point} p */
   function placeMarkerAt(placeId, p) {
+    recordBefore("groundplan", "place-marker");
     const existing = getPlaceMarker(placeId);
     if (existing) {
       existing.x = p.x;
@@ -1638,6 +1651,7 @@ export function initGroundplan(signalFlowApi = {}) {
       img.src = dataUrl;
     });
 
+    recordBefore("groundplan", "load-image");
     state.imageDataUrl = dataUrl;
     state.imageWidth = dims.w;
     state.imageHeight = dims.h;
@@ -1657,6 +1671,7 @@ export function initGroundplan(signalFlowApi = {}) {
     btn.addEventListener("click", () => {
       const unit = /** @type {DistanceUnit | undefined} */ (btn.dataset.gpUnit);
       if (!unit) return;
+      recordBefore("groundplan", "scale-unit");
       state.scale.unit = unit;
       populateScaleInputs();
       updateScaleFromInputs();
@@ -1788,6 +1803,7 @@ export function initGroundplan(signalFlowApi = {}) {
       const screenDx = e.clientX - routeJointDrag.startX;
       const screenDy = e.clientY - routeJointDrag.startY;
       if (Math.hypot(screenDx, screenDy) >= 4) {
+        recordBefore("groundplan", "move-joint");
         clearRoutePointTap();
         routeJointDrag.active = true;
         routeJointDrag.armed = false;

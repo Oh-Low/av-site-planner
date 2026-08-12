@@ -50,16 +50,16 @@ export function renderPlacesPanel({
           })
           .join("");
 
-  let assignHint = "Drag on the canvas to select devices, then click a place to assign them.";
+  let assignHint = "";
   if (selectedNodes.length === 1) {
-    assignHint = `Selected: <strong>${escapeXml(selectedNodes[0].name)}</strong> — click a place to assign it.`;
+    assignHint = `<strong>${escapeXml(selectedNodes[0].name)}</strong>`;
   } else if (selectedNodes.length > 1) {
-    assignHint = `<strong>${selectedNodes.length} devices selected</strong> — click a place to assign them all.`;
+    assignHint = `<strong>${selectedNodes.length} selected</strong>`;
   }
 
   container.innerHTML = `
     <div class="sf-places-panel">
-      <p class="sf-places-assign-hint">${assignHint}</p>
+      ${assignHint ? `<p class="sf-places-assign-hint">${assignHint}</p>` : ""}
       ${
         sharedPlaceId
           ? `<button type="button" class="btn btn-secondary btn-sm sf-place-clear" id="sf-place-clear">Clear assignment</button>`
@@ -68,7 +68,6 @@ export function renderPlacesPanel({
       <div class="sf-places-list" role="list">${placeRows}</div>
       <button type="button" class="sf-palette-action sf-palette-action-primary" id="sf-add-place">
         <span class="sf-palette-action-label">Add place</span>
-        <span class="sf-palette-action-hint">Site location for gear</span>
       </button>
       <form class="sf-places-new-form" id="sf-new-place-form" hidden>
         <input type="text" name="placeName" maxlength="48" placeholder="e.g. FOH, Stage, AV rack" aria-label="Place name" required />

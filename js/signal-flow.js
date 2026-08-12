@@ -38,6 +38,7 @@ import {
 } from "./shared/ortho-path.js";
 import { clampZoom, createTransformPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
+import { recordBefore } from "./undo-runtime.js";
 import {
   SIGNAL_FLOW_GRID_DEFAULT_SIZE as GRID_DEFAULT_SIZE,
   SIGNAL_FLOW_GRID_MAX_SIZE as GRID_MAX_SIZE,
@@ -742,6 +743,7 @@ export function initSignalFlow() {
 
   /** @param {import("./signal-flow-data.js").GearType} gearType @param {number} x @param {number} y */
   function createNode(gearType, x, y) {
+    recordBefore("signalFlow", "create-node");
     const node = {
       id: uid("sf"),
       typeId: gearType.id,
@@ -811,7 +813,9 @@ export function initSignalFlow() {
       els.nodes.querySelector(`.sf-node[data-node-id="${editingNodeNameId}"] .sf-node-name.is-editing`)
     );
     if (save && node && input) {
-      node.name = input.value.trim() || editingNodeNameOriginal || node.name;
+      const next = input.value.trim() || editingNodeNameOriginal || node.name;
+      if (next !== node.name) recordBefore("signalFlow", "rename-node");
+      node.name = next;
     } else if (node) {
       node.name = editingNodeNameOriginal || node.name;
     }
@@ -1084,6 +1088,7 @@ export function initSignalFlow() {
     if (!trimmed) return false;
     const duplicate = state.places.some((p) => p.name.toLowerCase() === trimmed.toLowerCase());
     if (duplicate) return false;
+    recordBefore("signalFlow", "add-place");
     state.places.push({ id: uid("place"), name: trimmed });
     state.places.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
     populatePalette();
@@ -1099,6 +1104,7 @@ export function initSignalFlow() {
       (p) => p.id !== placeId && p.name.toLowerCase() === trimmed.toLowerCase()
     );
     if (duplicate) return false;
+    recordBefore("signalFlow", "rename-place");
     place.name = trimmed;
     state.places.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
     renderNodes();
@@ -1111,6 +1117,7 @@ export function initSignalFlow() {
   function deletePlace(placeId) {
     const place = state.places.find((p) => p.id === placeId);
     if (!place) return;
+    recordBefore("signalFlow", "delete-place");
     state.places = state.places.filter((p) => p.id !== placeId);
     for (const node of state.nodes) {
       if (node.placeId === placeId) node.placeId = null;
@@ -1128,6 +1135,7 @@ export function initSignalFlow() {
       return;
     }
 
+    recordBefore("signalFlow", "assign-place");
     for (const id of ids) {
       const node = state.nodes.find((n) => n.id === id);
       if (node) node.placeId = placeId;
@@ -1162,6 +1170,7 @@ export function initSignalFlow() {
   }
 
   function addCustomGearType(gear) {
+    recordBefore("signalFlow", "add-gear");
     gear.folderId = activeGearFolderId;
     gear.kind = "premade";
     state.customGearTypes.push(gear);
@@ -1177,6 +1186,7 @@ export function initSignalFlow() {
    * @param {CustomGearType} updated
    */
   function applyGearEdit(gearId, updated) {
+    recordBefore("signalFlow", "edit-gear");
     updated.id = gearId;
     updated.kind = "premade";
     const existing = state.customGearTypes.find((g) => g.id === gearId);
@@ -1290,6 +1300,7 @@ export function initSignalFlow() {
       const entries = Array.isArray(data) ? data : Array.isArray(data?.gear) ? data.gear : null;
       if (!entries) throw new Error('expected a JSON file with a "gear" array');
 
+      recordBefore("signalFlow", "import-gear");
       let added = 0;
       let updated = 0;
       let skipped = 0;
@@ -1334,6 +1345,7 @@ export function initSignalFlow() {
   }
 
   function addGearLibraryFolder(folder) {
+    recordBefore("signalFlow", "add-folder");
     state.gearLibraryFolders.push(folder);
     if (folder.parentId) expandedGearFolderIds.add(folder.parentId);
     expandedGearFolderIds.add(folder.id);
@@ -1358,6 +1370,7 @@ export function initSignalFlow() {
   /** @param {string} folderId @param {string} name */
   function commitRenameGearFolder(folderId, name) {
     const allFolders = mergeGearFolders(BUILTIN_FOLDERS, state.gearLibraryFolders);
+    recordBefore("signalFlow", "rename-folder");
     const ok = renameGearFolder(state.gearLibraryFolders, folderId, name, allFolders);
     if (!ok) return false;
     renamingGearFolderId = null;
@@ -1369,6 +1382,7 @@ export function initSignalFlow() {
 
   /** @param {string} folderId */
   function removeGearLibraryFolder(folderId) {
+    recordBefore("signalFlow", "delete-folder");
     const result = deleteGearFolder(state.gearLibraryFolders, folderId);
     if (!result) {
       setStatus("Only custom folders can be deleted.");
@@ -1614,6 +1628,7 @@ export function initSignalFlow() {
           snapDisplayY(pt.y),
           snapThreshold
         );
+        if (!routeDrag.moved) recordBefore("signalFlow", "route-drag");
         routeDrag.moved = true;
         persistConnectionRoute(conn, waypoints);
         renderWires();
@@ -1632,6 +1647,7 @@ export function initSignalFlow() {
       const dx = e.clientX - nodeDrag.startX;
       const dy = e.clientY - nodeDrag.startY;
       if (Math.abs(dx) > NODE_DRAG_THRESHOLD_PX || Math.abs(dy) > NODE_DRAG_THRESHOLD_PX) {
+        recordBefore("signalFlow", "move-nodes");
         nodeDrag.active = true;
         nodeDrag.pending = false;
         nodeDrag.moved = true;
@@ -1717,6 +1733,7 @@ export function initSignalFlow() {
       const targetNode = targetPort?.closest(".sf-node");
 
       if (targetPort && targetNode && targetNode.dataset.nodeId !== wireDrag.fromNodeId) {
+        recordBefore("signalFlow", "connect");
         state.connections.push({
           id: uid("wire"),
           fromNodeId: wireDrag.fromNodeId,
@@ -1950,6 +1967,7 @@ export function initSignalFlow() {
     if ((e.key === "Delete" || e.key === "Backspace") && (selectedNodeIds.size > 0 || selectedConnectionId)) {
       const active = document.activeElement;
       if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
+      recordBefore("signalFlow", "delete");
       if (selectedConnectionId) {
         state.connections = state.connections.filter((c) => c.id !== selectedConnectionId);
         selectedConnectionId = null;
@@ -2007,6 +2025,7 @@ export function initSignalFlow() {
 
   function syncColorToggle() {
     els.colorToggle?.setAttribute("aria-pressed", String(state.colorByCableType));
+    els.colorToggle?.classList.toggle("active", state.colorByCableType);
   }
 
   function syncGridControls() {
@@ -2031,12 +2050,14 @@ export function initSignalFlow() {
     document.addEventListener("click", () => setOpen(false));
 
     els.gridSnapInput?.addEventListener("change", () => {
+      recordBefore("signalFlow", "grid-snap");
       state.grid.snap = Boolean(els.gridSnapInput?.checked);
       syncGridBackground();
       setStatus(state.grid.snap ? `Snapping to ${state.grid.size}px grid.` : "Grid snapping off.");
     });
 
     els.gridSizeInput?.addEventListener("change", () => {
+      recordBefore("signalFlow", "grid-size");
       state.grid = normalizeGrid({ snap: state.grid.snap, size: els.gridSizeInput?.value });
       syncGridControls();
       if (state.grid.snap) setStatus(`Snapping to ${state.grid.size}px grid.`);
@@ -2044,6 +2065,7 @@ export function initSignalFlow() {
   }
 
   els.colorToggle?.addEventListener("click", () => {
+    recordBefore("signalFlow", "color-toggle");
     state.colorByCableType = !state.colorByCableType;
     syncColorToggle();
     render();

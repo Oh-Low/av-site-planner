@@ -17,6 +17,7 @@ import {
 } from "./domain/cable.js";
 import { escapeXml } from "./shared/dom.js";
 import { uid } from "./shared/id.js";
+import { recordBefore } from "./undo-runtime.js";
 
 export {
   buildPlaceCards,
@@ -297,6 +298,7 @@ export function initCableCalculator() {
       if (removeBtn instanceof HTMLElement) {
         const manualId = removeBtn.getAttribute("data-manual-id");
         if (!manualId) return;
+        recordBefore("cable", "remove-manual");
         const next = getManualList(ctx.kind, ctx.cardId).filter((c) => c.id !== manualId);
         setManualList(ctx.kind, ctx.cardId, next);
         refresh();
@@ -326,6 +328,7 @@ export function initCableCalculator() {
           : 1;
       if (!cableLabel) return;
 
+      recordBefore("cable", "add-manual");
       const cable = /** @type {ManualCable} */ ({
         id: uid("mcable"),
         cableLabel,

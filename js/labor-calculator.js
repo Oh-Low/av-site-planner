@@ -15,6 +15,7 @@ import {
   resolveCallRange,
   snapMinutes,
 } from "./domain/labor.js";
+import { recordBefore } from "./undo-runtime.js";
 
 export {
   defaultLaborEvents,
@@ -369,8 +370,12 @@ export function initLaborCalculator() {
       popover,
       onCommit(timeValue) {
         const active = clock?.getAnchor();
+        if (active !== startTrigger && active !== endTrigger) return;
+        const prev = active === startTrigger ? localState.startTime : localState.endTime;
+        if (prev === timeValue) return;
+        recordBefore("labor", "time");
         if (active === startTrigger) localState.startTime = timeValue;
-        else if (active === endTrigger) localState.endTime = timeValue;
+        else localState.endTime = timeValue;
         refresh();
       },
     });
@@ -395,11 +400,23 @@ export function initLaborCalculator() {
   bindTimeTrigger(startTrigger, "start");
   bindTimeTrigger(endTrigger, "end");
 
-  rateEl?.addEventListener("input", refresh);
+  rateEl?.addEventListener("input", () => {
+    recordBefore("labor", "form", { coalesceMs: 400 });
+    refresh();
+  });
   rateEl?.addEventListener("change", refresh);
-  after10El?.addEventListener("change", refresh);
-  after14El?.addEventListener("change", refresh);
-  nightEl?.addEventListener("change", refresh);
+  after10El?.addEventListener("change", () => {
+    recordBefore("labor", "events");
+    refresh();
+  });
+  after14El?.addEventListener("change", () => {
+    recordBefore("labor", "events");
+    refresh();
+  });
+  nightEl?.addEventListener("change", () => {
+    recordBefore("labor", "events");
+    refresh();
+  });
 
   refresh();
 

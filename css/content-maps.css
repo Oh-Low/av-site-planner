@@ -1,40 +1,44 @@
 /* Content Maps tab */
-.cm-subtabs {
+#content-maps:not([hidden]) {
+  flex: 1;
   display: flex;
-  gap: 0.35rem;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border);
+  flex-direction: column;
+  min-height: 0;
 }
 
-.cm-subtab {
-  padding: 0.35rem 0.9rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 0.8rem;
-  cursor: pointer;
+#content-maps:not([hidden]) .calc-layout {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
 }
 
-.cm-subtab:hover {
-  color: var(--text);
-  border-color: var(--text-muted);
+#content-maps:not([hidden]) .calc-sidebar {
+  max-height: none;
+  height: auto;
 }
 
-.cm-subtab.active {
-  background: var(--surface-2);
-  border-color: var(--accent);
-  color: var(--text);
+#content-maps:not([hidden]) .calc-canvas-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
 }
 
-.cm-subtab-panel {
+.cm-canvas-panel {
   display: none;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
-.cm-subtab-panel.active {
-  display: block;
+.cm-canvas-panel.active {
+  display: flex;
+}
+
+#content-maps:not([hidden]) .cm-viewport {
+  flex: 1;
+  height: auto;
+  min-height: 360px;
 }
 
 /* "Add surface from LED wall" dropdown */
@@ -228,6 +232,10 @@
   gap: 0.3rem;
 }
 
+.cm-tp-toggles .btn-toggle {
+  flex: 0 0 auto;
+}
+
 .cm-tp-toggles .btn-toggle[disabled] {
   opacity: 0.45;
   cursor: not-allowed;
@@ -296,8 +304,8 @@
 }
 
 .cm-zone.is-selected {
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 1px #38bdf8;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .cm-overlap-label {
@@ -447,6 +455,7 @@
 }
 
 .cm-label-toggles .btn-toggle {
+  flex: 0 0 auto;
   padding: 0.25rem 0.55rem;
   font-size: 0.72rem;
 }

@@ -60,25 +60,18 @@
   gap: 0.3rem;
 }
 
-.gp-unit-glyphs {
-  display: inline-flex;
-  gap: 0.15rem;
+.gp-unit-glyphs.segment {
+  width: auto;
+  min-width: 4.5rem;
 }
 
 .gp-unit-glyphs .gp-unit-glyph {
-  flex: 0 0 auto;
   min-width: 0;
-  width: 1.25rem;
-  height: 1.125rem;
-  padding: 0;
-  font-size: 0.625rem;
+  padding: 0.25rem 0.45rem;
+  font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1;
-}
-
-.gp-unit-glyphs .gp-unit-glyph[data-gp-unit="imperial"] {
-  width: 1.375rem;
 }
 
 .gp-scale-visibility-btn {
@@ -101,7 +94,7 @@
 .gp-scale-visibility-btn[aria-pressed="true"] {
   color: var(--accent);
   border-color: var(--accent);
-  background: rgba(56, 189, 248, 0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .gp-scale-visibility-btn:disabled {
@@ -121,12 +114,6 @@
 
 .gp-scale-visibility-btn[aria-pressed="false"] .gp-scale-eye-icon--open {
   display: none;
-}
-
-.gp-unit-glyphs .gp-unit-glyph.active {
-  background: rgba(56, 189, 248, 0.15);
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
 .gp-scale-metric,
@@ -219,7 +206,7 @@
 
 .gp-place-chip:hover {
   border-color: var(--accent);
-  background: rgba(56, 189, 248, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .gp-place-chip.is-placed {
@@ -304,7 +291,7 @@
 
 .gp-scale-point {
   fill: #fbbf24;
-  stroke: #0a0e14;
+  stroke: var(--diagram-ink);
   stroke-width: 2;
 }
 
@@ -329,7 +316,7 @@
 
 .gp-ruler-point {
   fill: #a78bfa;
-  stroke: #0a0e14;
+  stroke: var(--diagram-ink);
   stroke-width: 1.5;
 }
 
@@ -366,7 +353,7 @@
   font-size: 12px;
   font-family: system-ui, sans-serif;
   paint-order: stroke;
-  stroke: #0a0e14;
+  stroke: var(--diagram-ink);
   stroke-width: 3px;
   stroke-linejoin: round;
 }
@@ -406,10 +393,10 @@
   pointer-events: auto;
   line-height: 1.2;
   text-shadow:
-    1px 0 0 #0a0e14,
-    -1px 0 0 #0a0e14,
-    0 1px 0 #0a0e14,
-    0 -1px 0 #0a0e14;
+    1px 0 0 var(--diagram-ink),
+    -1px 0 0 var(--diagram-ink),
+    0 1px 0 var(--diagram-ink),
+    0 -1px 0 var(--diagram-ink);
 }
 
 .gp-route-label-tag:active {
@@ -475,10 +462,10 @@
   min-width: 1.85rem;
   height: 1.85rem;
   padding: 0 0.25rem;
-  border: 2px solid #0a0e14;
+  border: 2px solid var(--diagram-ink);
   border-radius: 50%;
   background: #fbbf24;
-  color: #0a0e14;
+  color: var(--diagram-ink);
   font-size: 0.62rem;
   font-weight: 700;
   font-family: system-ui, sans-serif;
@@ -510,16 +497,16 @@
   width: 2.85rem;
   height: 2.85rem;
   padding: 0 0.15rem;
-  border: 2px solid #0a0e14;
+  border: 2px solid var(--diagram-ink);
   border-radius: 50%;
   background: #fffbeb;
-  color: #0a0e14;
+  color: var(--diagram-ink);
   font-size: 0.62rem;
   font-weight: 700;
   font-family: system-ui, sans-serif;
   line-height: 1;
   text-align: center;
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.45), 0 2px 8px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 .gp-route-height-input:focus {
@@ -545,7 +532,7 @@
   display: block;
   width: 12px;
   height: 12px;
-  border: 2px solid #0a0e14;
+  border: 2px solid var(--diagram-ink);
   border-radius: 50%;
   background: #22d3ee;
   cursor: grab;
@@ -556,16 +543,16 @@
   width: 14px;
   height: 14px;
   background: #fbbf24;
-  border-color: #0a0e14;
+  border-color: var(--diagram-ink);
   box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.35);
 }
 
 .gp-route-joint--waypoint .gp-route-joint-grip {
-  background: #38bdf8;
+  background: var(--accent);
 }
 
 .gp-route-joint.is-selected .gp-route-joint-grip {
-  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.55);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .gp-route-joint-grip:active {
@@ -888,7 +875,7 @@
 
 .gp-route-item.is-selected {
   border-color: var(--accent);
-  background: rgba(56, 189, 248, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .gp-route-item-select {
@@ -956,7 +943,7 @@
 
 .gp-route-point {
   fill: #22d3ee;
-  stroke: #0a0e14;
+  stroke: var(--diagram-ink);
   stroke-width: 1.5;
 }
 
@@ -990,7 +977,7 @@
   padding: 0;
   border: 2px solid var(--place-color, #22d3ee);
   border-radius: 50%;
-  background: var(--place-color, #0ea5e9);
+  background: var(--place-color, var(--accent-hover));
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--place-color, #22d3ee) 25%, transparent);
   cursor: crosshair;
   pointer-events: auto;

@@ -1,3 +1,5 @@
+import { syncLocalNavs } from "./local-nav.js";
+
 /**
  * Query the shared calculator shell inside a tab panel.
  * Supports new `.calc-*` markup and legacy layout class names during migration.
@@ -68,6 +70,7 @@ export function bindSidebarTabs(sidebar, options) {
       panel.hidden = !active;
     });
     options.onChange?.(tabId);
+    syncLocalNavs(sidebar, true);
   }
 
   tabs.forEach((tab) => {

@@ -15,6 +15,7 @@ import { PAPERWORK_DPI } from "./paper-sizes.js";
 import { isPanPointerDown } from "../shared/dom.js";
 import { createDoubleClickTracker } from "../shared/double-click.js";
 import { clampZoom, createTransformPanZoom } from "../shared/pan-zoom.js";
+import { recordBefore } from "../undo-runtime.js";
 
 const MIN_SIZE_IN = 0.35;
 const EDGE_HIT_PX = 10;
@@ -757,6 +758,7 @@ export function createSceneEditor(options) {
   function beginResize(kind, id, handle, e) {
     const frame = getFrame(kind, id);
     if (!frame) return;
+    recordBefore("paperwork", "resize");
     drag.mode = "resize";
     drag.targetKind = kind;
     drag.targetId = id;
@@ -924,6 +926,7 @@ export function createSceneEditor(options) {
     if (kind === "element") {
       const el = findElement(id);
       if (save && el && input instanceof HTMLElement && "value" in input) {
+        recordBefore("paperwork", "inline-edit");
         const value = String(/** @type {HTMLInputElement} */ (input).value);
         if (!commitField?.(el, fieldId, value)) {
           if (!el.overrides) el.overrides = {};
@@ -935,6 +938,7 @@ export function createSceneEditor(options) {
     } else {
       const dec = findDecoration(id);
       if (save && dec && input instanceof HTMLElement && "value" in input) {
+        recordBefore("paperwork", "inline-edit");
         const value = String(/** @type {HTMLTextAreaElement} */ (input).value);
         if (!commitDecorationField?.(dec, fieldId, value)) {
           if (!dec.content || typeof dec.content !== "object") dec.content = {};
@@ -982,6 +986,7 @@ export function createSceneEditor(options) {
     const startPt = clientToSvgPoint(svg, e.clientX, e.clientY);
     if (!startPt || width < 1 || height < 1) return;
     const stored = normalizeGroundplanCrop(el.content?.crop, width, height);
+    recordBefore("paperwork", "crop");
     drag.mode = "crop";
     drag.targetKind = "element";
     drag.targetId = elementId;
@@ -1238,6 +1243,7 @@ export function createSceneEditor(options) {
     if (drag.mode === "pending") {
       const dist = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
       if (dist < DRAG_THRESHOLD_PX) return;
+      recordBefore("paperwork", "move");
       drag.mode = "move";
       drag.fieldId = null;
       textDecorationClicks.reset();

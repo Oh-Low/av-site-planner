@@ -3,6 +3,7 @@ import { deepClone } from "../shared/clone.js";
 import { escapeXml } from "../shared/dom.js";
 import { createDoubleClickTracker } from "../shared/double-click.js";
 import { createListNameEditor } from "../shared/inline-editor.js";
+import { recordBefore } from "../undo-runtime.js";
 import { listLinkedSourceOptions } from "./element-catalog.js";
 import { renderElementLibraryBrowser } from "./element-library-browser.js";
 import {
@@ -433,6 +434,7 @@ export function initPaperworkComposer() {
     },
     getElementById: (id) => findElementById(id),
     onDeleteElement: (id) => {
+      recordBefore("paperwork", "delete-element");
       deleteElementById(id);
     },
     renderDecoration,
@@ -444,6 +446,7 @@ export function initPaperworkComposer() {
       return false;
     },
     onDeleteDecoration: (id) => {
+      recordBefore("paperwork", "delete-decoration");
       state.decorations = state.decorations.filter((d) => d.id !== id);
       if (state.selectedDecorationId === id) state.selectedDecorationId = null;
     },
@@ -451,6 +454,7 @@ export function initPaperworkComposer() {
     getDrawStyle: () => state.drawStyle,
     getGrid: () => state.grid,
     onCreateDecoration: (partial) => {
+      recordBefore("paperwork", "create-decoration");
       const sheet = getActiveSheet();
       const page = resolvePaper(state.paper.size, state.paper.orientation);
       const maxZ = maxZOnSheet(sheet);
@@ -875,6 +879,8 @@ export function initPaperworkComposer() {
 
   function bumpZ(delta) {
     const el = state.selectedElementId ? findElementById(state.selectedElementId) : null;
+    if (!el && !state.selectedDecorationId) return;
+    recordBefore("paperwork", "z-order");
     if (el) {
       el.z += delta;
     } else if (state.selectedDecorationId) {
@@ -1464,6 +1470,7 @@ export function initPaperworkComposer() {
 
   function generatePacket() {
     if (!generatedSheetsExist()) {
+      recordBefore("paperwork", "generate");
       syncSheetsFromSources(state, siteExports(), { mode: "merge" });
       for (const sheet of state.sheets) {
         refreshSheetBindings(sheet, siteExports(), state.identity);
@@ -1484,6 +1491,7 @@ export function initPaperworkComposer() {
       setStatus("Generate cancelled.");
       return;
     }
+    recordBefore("paperwork", "generate");
     const mode = choice.toLowerCase().startsWith("replace") ? "replace" : "add-missing";
     syncSheetsFromSources(state, siteExports(), { mode });
     for (const sheet of state.sheets) {
@@ -1500,6 +1508,7 @@ export function initPaperworkComposer() {
   }
 
   function updateLinkedElements() {
+    recordBefore("paperwork", "update-linked");
     for (const sheet of state.sheets) {
       refreshSheetBindings(sheet, siteExports(), state.identity);
     }
@@ -1726,6 +1735,7 @@ export function initPaperworkComposer() {
     element.y = frame.y;
     element.w = frame.w;
     element.h = frame.h;
+    recordBefore("paperwork", "library-drop");
     element.z = maxZOnSheet(sheet) + 1;
     sheet.elements.push(element);
     state.selectedElementId = element.id;
@@ -1749,6 +1759,7 @@ export function initPaperworkComposer() {
       setStatus("Blank plates have no generated layout to reset.");
       return;
     }
+    recordBefore("paperwork", "reset-layout");
     resetSheetLayout(sheet, state, siteExports());
     state.selectedElementId = null;
     render();
@@ -1767,6 +1778,7 @@ export function initPaperworkComposer() {
     const number =
       state.sheets.filter((sheet) => sheet.manual || sheet.typeId === "custom-plate")
         .length + 1;
+    recordBefore("paperwork", "new-sheet");
     const sheet = createManualSheet(state.sheets.length, `Blank Plate ${number}`);
     if (activeSheetFolderId) {
       sheet.folderId = activeSheetFolderId;
@@ -1789,6 +1801,7 @@ export function initPaperworkComposer() {
   els.duplicateSheetBtn?.addEventListener("click", () => {
     const sheet = getActiveSheet();
     if (!sheet) return;
+    recordBefore("paperwork", "duplicate-sheet");
     const sorted = [...state.sheets].sort((a, b) => a.order - b.order);
     const index = sorted.findIndex((item) => item.id === sheet.id);
     const insertAt = index >= 0 ? index + 1 : sorted.length;
@@ -1824,6 +1837,7 @@ export function initPaperworkComposer() {
   els.deleteSheetBtn?.addEventListener("click", () => {
     const sheet = getActiveSheet();
     if (!sheet) return;
+    recordBefore("paperwork", "delete-sheet");
     const sorted = [...state.sheets].sort((a, b) => a.order - b.order);
     const index = sorted.findIndex((item) => item.id === sheet.id);
     state.sheets = state.sheets.filter((item) => item.id !== sheet.id);
@@ -1843,6 +1857,7 @@ export function initPaperworkComposer() {
 
   els.deleteElementBtn?.addEventListener("click", () => {
     if (state.selectedDecorationId) {
+      recordBefore("paperwork", "delete-decoration");
       state.decorations = state.decorations.filter((d) => d.id !== state.selectedDecorationId);
       state.selectedDecorationId = null;
       render();
@@ -1850,6 +1865,7 @@ export function initPaperworkComposer() {
     }
     const sheet = getActiveSheet();
     if (!sheet || !state.selectedElementId) return;
+    recordBefore("paperwork", "delete-element");
     deleteElementById(state.selectedElementId);
     render();
   });

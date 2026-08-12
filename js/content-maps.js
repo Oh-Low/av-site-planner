@@ -16,6 +16,7 @@ import { uid } from "./shared/id.js";
 import { createListNameEditor } from "./shared/inline-editor.js";
 import { evaluateMathExpression } from "./shared/math-expression.js";
 import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
+import { recordBefore } from "./undo-runtime.js";
 
 import {
   emptyContentMapsState,
@@ -615,19 +616,22 @@ export function initContentMaps() {
   function updateTpViewHint() {
     if (!els.tpViewHint) return;
     const pct = Math.round(tpView.zoom * 100);
-    els.tpViewHint.textContent = `${pct}% · scroll to zoom · right-drag to pan`;
+    els.tpViewHint.hidden = false;
+    els.tpViewHint.textContent = `${pct}%`;
   }
 
   function updateViewHint() {
     if (!els.viewHint) return;
     const pct = Math.round(view.zoom * 100);
-    els.viewHint.textContent = `${pct}% · scroll to zoom · right-drag to pan`;
+    els.viewHint.hidden = false;
+    els.viewHint.textContent = `${pct}%`;
   }
 
   function updateOutViewHint() {
     if (!els.outViewHint) return;
     const pct = Math.round(outView.zoom * 100);
-    els.outViewHint.textContent = `${pct}% · scroll to zoom · right-drag to pan`;
+    els.outViewHint.hidden = false;
+    els.outViewHint.textContent = `${pct}%`;
   }
 
   function getActiveSurface() {
@@ -654,6 +658,7 @@ export function initContentMaps() {
       getItemId: (item) => item.dataset.surfaceId,
       getName: (id) => state.surfaces.find((s) => s.id === id)?.name,
       setName: (id, name) => {
+        recordBefore("contentMaps", "rename");
         const surface = state.surfaces.find((s) => s.id === id);
         if (surface) surface.name = name;
       },
@@ -672,6 +677,7 @@ export function initContentMaps() {
       getItemId: (item) => item.dataset.rasterId,
       getName: (id) => state.rasters.find((r) => r.id === id)?.name,
       setName: (id, name) => {
+        recordBefore("contentMaps", "rename");
         const raster = state.rasters.find((r) => r.id === id);
         if (raster) raster.name = name;
       },
@@ -683,6 +689,7 @@ export function initContentMaps() {
     });
 
   function addSurface() {
+    recordBefore("contentMaps", "add-surface");
     const surface = normalizeSurface(
       { name: `Surface ${state.surfaces.length + 1}` },
       state.surfaces.length
@@ -883,6 +890,7 @@ export function initContentMaps() {
   function addSurfaceFromImport(type, id) {
     const item = findImportItem(type, id);
     if (!item) return;
+    recordBefore("contentMaps", "import-surface");
     const surface = normalizeSurface(
       {
         name: item.name,
@@ -926,6 +934,7 @@ export function initContentMaps() {
           }))
         : [{ name: item.name, x: 0, y: 0, width: item.width, height: item.height, source: { type, id } }];
 
+    recordBefore("contentMaps", "import-zones");
     const added = specs.map((spec, i) => {
       const zone = normalizeZone(spec, surface.zones.length + i);
       surface.zones.push(zone);
@@ -946,6 +955,7 @@ export function initContentMaps() {
       setStatus("No surface selected to remove.");
       return;
     }
+    recordBefore("contentMaps", "remove-surface");
     const name = state.surfaces[idx].name;
     state.surfaces.splice(idx, 1);
     state.activeSurfaceId = state.surfaces[Math.min(idx, state.surfaces.length - 1)]?.id ?? null;
@@ -967,6 +977,7 @@ export function initContentMaps() {
       setStatus("Add a surface first.");
       return;
     }
+    recordBefore("contentMaps", "add-zone");
     const zone = normalizeZone({ name: `Zone ${surface.zones.length + 1}` }, surface.zones.length);
     surface.zones.push(zone);
     render();
@@ -985,6 +996,7 @@ export function initContentMaps() {
     if (!surface) return;
     const idx = surface.zones.findIndex((z) => z.id === zoneId);
     if (idx < 0) return;
+    recordBefore("contentMaps", "remove-zone");
     const name = surface.zones[idx].name;
     surface.zones.splice(idx, 1);
     render();
@@ -1114,6 +1126,7 @@ export function initContentMaps() {
   // ── Output (rasters, output zones, groups) ────────────────────────────────
 
   function addRaster() {
+    recordBefore("contentMaps", "add-raster");
     const raster = normalizeRaster(
       { name: `Raster ${state.rasters.length + 1}` },
       state.rasters.length
@@ -1130,6 +1143,7 @@ export function initContentMaps() {
       setOutStatus("No raster selected to remove.");
       return;
     }
+    recordBefore("contentMaps", "remove-raster");
     const name = state.rasters[idx].name;
     state.rasters.splice(idx, 1);
     state.activeRasterId = state.rasters[Math.min(idx, state.rasters.length - 1)]?.id ?? null;
@@ -1149,6 +1163,7 @@ export function initContentMaps() {
   function addRasterFromImport(type, id) {
     const item = findImportItem(type, id);
     if (!item) return;
+    recordBefore("contentMaps", "import-raster");
     const raster = normalizeRaster(
       {
         name: item.name,
@@ -1182,6 +1197,7 @@ export function initContentMaps() {
     }
     const item = findImportItem(type, id);
     if (!item) return;
+    recordBefore("contentMaps", "import-group");
 
     let rects;
     if (type === "led") {
@@ -1225,6 +1241,7 @@ export function initContentMaps() {
       setOutStatus("Add a raster first.");
       return;
     }
+    recordBefore("contentMaps", "add-out-zone");
     const zone = normalizeZone(
       { name: `Zone ${raster.zones.length + 1}` },
       rasterAllZones(raster).length
@@ -1252,6 +1269,7 @@ export function initContentMaps() {
   }
 
   function removeOutputZone(zoneId) {
+    recordBefore("contentMaps", "remove-out-zone");
     const raster = getActiveRaster();
     if (!raster) return;
     for (const group of raster.groups) {
@@ -1273,6 +1291,7 @@ export function initContentMaps() {
   }
 
   function removeOutputGroup(groupId) {
+    recordBefore("contentMaps", "remove-out-group");
     const raster = getActiveRaster();
     if (!raster) return;
     const idx = raster.groups.findIndex((g) => g.id === groupId);
@@ -1753,10 +1772,18 @@ export function initContentMaps() {
 
   ensureColorPalettePopover();
 
-  bindSidebarTabs(root, {
-    tabSelector: ".cm-subtab",
-    panelSelector: ".cm-subtab-panel",
-    panelIdForTab: (tabId) => `cm-${tabId}`,
+  const cmSidebar = document.getElementById("cm-sidebar");
+  bindSidebarTabs(cmSidebar ?? root, {
+    tabSelector: ".local-nav__item",
+    panelSelector: ".local-nav-panel",
+    panelIdForTab: (tabId) => `cm-side-${tabId}`,
+    onChange(tabId) {
+      root.querySelectorAll(".cm-canvas-panel").forEach((panel) => {
+        const active = panel.id === `cm-canvas-${tabId}`;
+        panel.classList.toggle("active", active);
+        panel.hidden = !active;
+      });
+    },
   });
 
   els.labelToggles?.addEventListener("click", (e) => {
@@ -1861,6 +1888,7 @@ export function initContentMaps() {
     input?.addEventListener("input", () => {
       const surface = getActiveSurface();
       if (!surface) return;
+      recordBefore("contentMaps", "surface-size", { coalesceMs: 400 });
       surface[key] = parseFieldValue(input.value, surface[key], 1, MAX_SURFACE_DIMENSION);
       renderSurfaceList();
       renderPreview();
@@ -1878,6 +1906,7 @@ export function initContentMaps() {
   els.zoneList?.addEventListener("input", (e) => {
     const field = /** @type {HTMLInputElement|null} */ (e.target.closest("[data-zone-field]"));
     if (!field) return;
+    recordBefore("contentMaps", "zone-field", { coalesceMs: 400 });
     const zoneEl = field.closest("[data-zone-id]");
     const surface = getActiveSurface();
     const zone = surface?.zones.find((z) => z.id === zoneEl?.dataset.zoneId);
@@ -1951,6 +1980,7 @@ export function initContentMaps() {
     input?.addEventListener("input", () => {
       const raster = getActiveRaster();
       if (!raster) return;
+      recordBefore("contentMaps", "raster-size", { coalesceMs: 400 });
       raster[key] = parseFieldValue(input.value, raster[key], 1, MAX_SURFACE_DIMENSION);
       renderRasterList();
       renderOutputPreview();
@@ -1971,6 +2001,7 @@ export function initContentMaps() {
     if (removeBtn) removeOutputZone(removeBtn.dataset.zoneRemove);
   });
   els.outZoneList?.addEventListener("input", (e) => {
+    recordBefore("contentMaps", "out-zone-field", { coalesceMs: 400 });
     const field = /** @type {HTMLInputElement|null} */ (e.target.closest("[data-zone-field]"));
     if (!field) return;
     const zoneEl = field.closest("[data-zone-id]");

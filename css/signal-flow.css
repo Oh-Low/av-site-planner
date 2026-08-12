@@ -40,35 +40,13 @@
   height: auto;
 }
 
-.sf-gear-mode-toggle {
-  display: flex;
-  gap: 0.35rem;
-  margin-bottom: 0.75rem;
+.sf-color-toggle,
+#sf-color-toggle {
+  flex: 0 0 auto;
 }
 
-.sf-gear-mode {
-  flex: 1;
-  padding: 0.4rem 0.55rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-
-.sf-gear-mode:hover {
-  border-color: var(--accent);
-  color: var(--text);
-}
-
-.sf-gear-mode.active {
-  border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.12);
-  color: var(--accent);
+.sf-gear-palette {
+  margin-top: 0.75rem;
 }
 
 .sf-places-panel {
@@ -105,7 +83,7 @@
 
 .sf-place-row.is-assigned .sf-place-assign {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .sf-place-assign {
@@ -228,7 +206,7 @@
 
 .sf-gear-glyph-btn:hover {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.1);
+  background: var(--accent-soft);
   color: var(--accent);
 }
 
@@ -413,7 +391,7 @@
 .sf-gear-tree-root-drop.is-drop-target,
 .sf-gear-tree-row.is-drop-target {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.14);
+  background: var(--accent-muted);
   color: var(--accent);
 }
 
@@ -433,8 +411,8 @@
 }
 
 .sf-gear-tree-row.is-active {
-  background: rgba(59, 130, 246, 0.1);
-  outline: 1px solid rgba(59, 130, 246, 0.25);
+  background: var(--accent-soft);
+  outline: 1px solid var(--accent-ring);
 }
 
 .sf-gear-tree-toggle {
@@ -515,7 +493,7 @@
 
 .sf-gear-tree-folder-rename:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 0 0 2px var(--accent-ring);
 }
 
 .sf-gear-tree-children {
@@ -556,7 +534,7 @@
 }
 
 .sf-palette-item-tree:hover {
-  background: rgba(59, 130, 246, 0.1);
+  background: var(--accent-soft);
 }
 
 .sf-gear-leaf-edit {
@@ -582,7 +560,7 @@
 }
 
 .sf-gear-leaf-edit:hover {
-  background: rgba(59, 130, 246, 0.18);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent);
 }
 
@@ -666,7 +644,7 @@
 
 .sf-palette-item:hover {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.1);
+  background: var(--accent-soft);
 }
 
 .sf-palette-item:active {
@@ -704,7 +682,7 @@
 
 .sf-palette-action:hover {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .sf-palette-action-primary {
@@ -898,7 +876,7 @@
   outline: 1px dashed var(--accent);
   outline-offset: 1px;
   border-radius: 4px;
-  background: rgba(59, 130, 246, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .sf-port-item-btn {
@@ -1089,7 +1067,7 @@
   min-height: 360px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: #0a0e14;
+  background: var(--viewport-bg);
 }
 
 .sf-gear-preview-mount {
@@ -1171,7 +1149,7 @@
   position: absolute;
   z-index: 3;
   border: 1px solid var(--accent);
-  background: rgba(59, 130, 246, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   pointer-events: none;
 }
 
@@ -1309,7 +1287,7 @@
 
 .sf-node-name.is-editing:focus {
   outline: none;
-  background: rgba(59, 130, 246, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .sf-node-note {
@@ -1384,7 +1362,7 @@
 }
 
 .sf-port:hover {
-  background: rgba(59, 130, 246, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 /* Divider drawn above this cell: a thicker separator between two ports. */

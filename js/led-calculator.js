@@ -12,6 +12,7 @@ import { escapeXml } from "./shared/dom.js";
 import { createListNameEditor } from "./shared/inline-editor.js";
 import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
+import { recordBefore } from "./undo-runtime.js";
 
 export { emptyLedState, normalizeLedGrid, normalizeLedState } from "./domain/led.js";
 
@@ -208,7 +209,9 @@ export function initLedCalculator() {
       getName: (id) => findProcessor(getActiveGrid(), id)?.name,
       setName: (id, name) => {
         const proc = findProcessor(getActiveGrid(), id);
-        if (proc) proc.name = name;
+        if (!proc || proc.name === name) return;
+        recordBefore("led", "rename-processor");
+        proc.name = name;
       },
       onCommit: (_id, previousName, newName) => {
         renderResourceBars();
@@ -228,7 +231,9 @@ export function initLedCalculator() {
       getName: (id) => state.grids.find((g) => g.id === id)?.name,
       setName: (id, name) => {
         const grid = state.grids.find((g) => g.id === id);
-        if (grid) grid.name = name;
+        if (!grid || grid.name === name) return;
+        recordBefore("led", "rename-grid");
+        grid.name = name;
       },
       onCommit: (_id, previousName, newName) => {
         renderGridList();
@@ -428,6 +433,7 @@ export function initLedCalculator() {
   }
 
   function addGrid() {
+    recordBefore("led", "add-grid");
     persistFormToActiveGrid();
     saveWallViewToGrid();
     const grid = buildGridFromForm(defaultGridName(state.grids.length));
@@ -448,6 +454,7 @@ export function initLedCalculator() {
       setStatus("No grid selected to remove.", true);
       return;
     }
+    recordBefore("led", "remove-grid");
     const name = state.grids[idx].name;
     state.grids.splice(idx, 1);
     state.activeGridId = state.grids[0]?.id ?? null;
@@ -698,6 +705,7 @@ export function initLedCalculator() {
   }
 
   function generateGrid() {
+    recordBefore("led", "generate-grid");
     let grid = getActiveGrid();
     if (!grid) {
       grid = buildGridFromForm(defaultGridName(state.grids.length));
@@ -873,6 +881,9 @@ export function initLedCalculator() {
     const commit = () => {
       if (dismissed) return;
       const text = input.value.trim();
+      if ((line[key] ?? "") !== text || (line[draftKey] ?? "") !== input.value) {
+        recordBefore("led", "label");
+      }
       applyLabelToLine(line, role, input.value);
       closeLabelEditor();
       render();
@@ -926,6 +937,7 @@ export function initLedCalculator() {
       setStatus("Select or create a line first.", true);
       return;
     }
+    recordBefore("led", "clear-label");
 
     if (which === "start") {
       line.startLabel = "";
@@ -967,6 +979,7 @@ export function initLedCalculator() {
       return;
     }
 
+    recordBefore("led", "label");
     if (which === "start") {
       line.startLabel = text;
       line.startLabelDraft = text;
@@ -1252,8 +1265,10 @@ export function initLedCalculator() {
   }
 
   function setStatus(msg, isError = false) {
-    els.drawHint.textContent = msg;
-    els.drawHint.style.color = isError ? "var(--danger)" : "";
+    const el = els.canvasStatus ?? els.drawHint;
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = isError ? "var(--danger)" : "";
   }
 
   function tileIndexFromPointer(clientX, clientY) {
@@ -1373,7 +1388,8 @@ export function initLedCalculator() {
   function updateViewHint() {
     if (!els.viewHint) return;
     const pct = Math.round(wallView.zoom * 100);
-    els.viewHint.textContent = `${pct}% · scroll to zoom · right-drag to pan`;
+    els.viewHint.hidden = false;
+    els.viewHint.textContent = `${pct}%`;
   }
 
   function onWallPointerDown(e) {
@@ -1412,6 +1428,7 @@ export function initLedCalculator() {
 
     if (!pointerDrag.moved) {
       pointerDrag.moved = true;
+      recordBefore("led", "paint-line");
       if (pointerDrag.startTile != null) {
         applyTileToLine(pointerDrag.startTile, "drag");
         pointerDrag.lastTile = pointerDrag.startTile;
@@ -1436,6 +1453,7 @@ export function initLedCalculator() {
     }
 
     if (!pointerDrag.moved && pointerDrag.startTile != null) {
+      recordBefore("led", "paint-line");
       applyTileToLine(pointerDrag.startTile, "click");
       render();
     } else if (pointerDrag.moved) {
@@ -1496,6 +1514,7 @@ export function initLedCalculator() {
   function createLine({ silent = false } = {}) {
     const grid = getActiveGrid();
     if (!grid) return null;
+    if (!silent) recordBefore("led", "create-line");
     syncLineNumbersIfNeeded(grid);
     const lines = getLines();
     const n = lines.length + 1;
@@ -1529,6 +1548,7 @@ export function initLedCalculator() {
       setStatus("Create an LED wall first.", true);
       return;
     }
+    recordBefore("led", "create-processor");
     ensureGridShape(grid);
     const n = grid.processors.length + 1;
     const proc = {
@@ -1560,6 +1580,7 @@ export function initLedCalculator() {
     if (!grid) return;
     const idx = grid.processors.findIndex((p) => p.id === processorId);
     if (idx < 0) return;
+    recordBefore("led", "remove-processor");
     const name = grid.processors[idx].name;
     grid.processors.splice(idx, 1);
     for (const line of grid.dataLines) {
@@ -1573,6 +1594,7 @@ export function initLedCalculator() {
   function setProcessorColor(processorId, color) {
     const proc = findProcessor(getActiveGrid(), processorId);
     if (!proc) return;
+    if (proc.color !== color) recordBefore("led", "processor-color");
     proc.color = color;
     render();
     setStatus(`Updated ${proc.name} color.`);
@@ -1585,6 +1607,7 @@ export function initLedCalculator() {
     const list = grid.processors;
     const from = list.findIndex((p) => p.id === processorId);
     if (from < 0 || !list.some((p) => p.id === targetId)) return;
+    recordBefore("led", "reorder-processor");
     const [proc] = list.splice(from, 1);
     const insert = list.findIndex((p) => p.id === targetId) + (before ? 0 : 1);
     list.splice(insert, 0, proc);
@@ -1599,6 +1622,7 @@ export function initLedCalculator() {
     if (!grid || !line) return;
     const target = findProcessor(grid, processorId);
     if ((line.processorId ?? null) === (target?.id ?? null)) return;
+    recordBefore("led", "assign-line");
     line.processorId = target?.id ?? null;
     if (grid.activeLineId === line.id) grid.activeProcessorId = target?.id ?? null;
     render();
@@ -1631,6 +1655,7 @@ export function initLedCalculator() {
       return;
     }
 
+    recordBefore("led", "remove-line");
     const removedName = lines[idx].name;
     lines.splice(idx, 1);
     renumberLines(lines, type);
@@ -1648,7 +1673,8 @@ export function initLedCalculator() {
 
   function clearActiveLineTiles() {
     const line = getActiveLine();
-    if (!line) return;
+    if (!line || !line.tiles.length) return;
+    recordBefore("led", "clear-line");
     line.tiles = [];
     render();
     refreshActiveLine();
@@ -1669,6 +1695,7 @@ export function initLedCalculator() {
   }
 
   function syncFromForm() {
+    recordBefore("led", "form", { coalesceMs: 400 });
     readWallDimensions();
     readTileFromForm();
     updateWallSummary();
@@ -1682,12 +1709,14 @@ export function initLedCalculator() {
   }
 
   function onWallSizeInput() {
+    recordBefore("led", "form", { coalesceMs: 400 });
     readWallDimensions();
     updateWallSummary();
   }
 
   function onSourceChange() {
     if (suspendFormSync) return;
+    recordBefore("led", "tile-source");
     const custom = isCustomSource();
     applyTileSourceUi(custom ? "custom" : "prebuilt");
     if (!custom) {
@@ -1806,6 +1835,7 @@ export function initLedCalculator() {
     if (bitrateBtn) {
       const bitrate = Number(bitrateBtn.dataset.bitrate);
       if (bitrate === 8 || bitrate === 10 || bitrate === 12) {
+        if (state.bitrate !== bitrate) recordBefore("led", "bitrate");
         state.bitrate = bitrate;
         render();
         setStatus(
@@ -1818,6 +1848,7 @@ export function initLedCalculator() {
     if (voltageBtn) {
       const voltage = Number(voltageBtn.dataset.voltage);
       if (voltage === 120 || voltage === 208) {
+        if (state.voltage !== voltage) recordBefore("led", "voltage");
         state.voltage = voltage;
         render();
         setStatus(`Power lines calculated at ${voltage}V (max 20A per line).`);
@@ -1837,6 +1868,7 @@ export function initLedCalculator() {
     if (!colorInput) return;
     const proc = findProcessor(getActiveGrid(), colorInput.dataset.processorColor);
     if (!proc) return;
+    recordBefore("led", "processor-color", { coalesceMs: 400 });
     proc.color = colorInput.value;
     renderWall();
   });
@@ -1948,7 +1980,7 @@ export function initLedCalculator() {
   document.addEventListener("keydown", onDocumentKeyDown);
 
   render();
-  setStatus("Set wall size and click Generate Grid, then click or drag across tiles to wire.");
+  setStatus("Ready.");
 
   function exportState() {
     // Read-only snapshot. Do not persist form fields here — paperwork and other

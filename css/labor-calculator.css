@@ -20,7 +20,7 @@
 .labor-calculator-title {
   margin: 0;
   font-size: 1.15rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .labor-calculator-subtitle {
@@ -329,7 +329,7 @@
 
 .labor-clock-part.is-active {
   color: var(--accent);
-  background: rgba(59, 130, 246, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .labor-clock-colon {
@@ -382,7 +382,7 @@
 
 .labor-clock-mark:hover,
 .labor-clock-mark:focus-visible {
-  background: rgba(59, 130, 246, 0.18);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   outline: none;
 }
 

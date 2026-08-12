@@ -1,3 +1,5 @@
+import { syncLocalNavs } from "./local-nav.js";
+
 /** @param {PointerEvent | MouseEvent} e */
 export function isPanPointerDown(e) {
   return e.button === 2;
@@ -31,6 +33,9 @@ export function bindTabBar(tabSelector = ".tab", panelSelector = ".tab-panel") {
         t.setAttribute("aria-selected", String(active));
       });
 
+      /** @type {HTMLElement | null} */
+      let shownPanel = null;
+
       panels.forEach((panel) => {
         const active = panel.id === target;
         const wasHidden = panel.hidden;
@@ -39,9 +44,19 @@ export function bindTabBar(tabSelector = ".tab", panelSelector = ".tab-panel") {
         // Let calculators re-render layout-dependent UI (e.g. wire paths)
         // that cannot be measured while the panel is display:none.
         if (active && wasHidden) {
+          shownPanel = panel instanceof HTMLElement ? panel : null;
           panel.dispatchEvent(new CustomEvent("tab-shown"));
         }
       });
+
+      const nav = tab.closest(".local-nav, .tab-bar");
+      if (nav instanceof HTMLElement) syncLocalNavs(nav, true);
+      // Sidebar local-navs inside the newly shown calculator were 0×0 while hidden.
+      if (shownPanel) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => syncLocalNavs(shownPanel, false));
+        });
+      }
     });
   });
 }

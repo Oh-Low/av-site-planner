@@ -1,21 +1,115 @@
-/* AV Site Planner — professional print-ready styling */
+/* AV Site Planner — console chrome tokens + palettes */
 
 :root {
-  --bg: #0f1419;
-  --surface: #1a2332;
-  --surface-2: #243044;
-  --border: #3d4f66;
-  --text: #e8edf4;
-  --text-muted: #94a3b8;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
+  /* Semantic (overridden only by light palette where needed) */
   --data-color: #22d3ee;
   --power-color: #f59e0b;
   --danger: #ef4444;
   --success: #22c55e;
-  --radius: 8px;
-  --font: "Segoe UI", system-ui, -apple-system, sans-serif;
-  --mono: "SF Mono", "Consolas", monospace;
+
+  /* Layout chrome (theme-independent sizing) */
+  --radius: 6px;
+  --control-height: 1.85rem;
+  --font: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", "SF Mono", "Consolas", monospace;
+
+  /* Default palette: Graphite */
+  --bg: #0c1014;
+  --surface: #151b22;
+  --surface-2: #1c2430;
+  --border: #2e3a4a;
+  --text: #e6edf5;
+  --text-muted: #8b9bb0;
+  --accent: #38bdf8;
+  --accent-hover: #0ea5e9;
+  --accent-ink: #041018;
+  --nav-track: #10161e;
+  --nav-active: #243041;
+  --viewport-bg: #080b10;
+  --shadow: rgba(0, 0, 0, 0.45);
+  --diagram-ink: #0a0e14;
+}
+
+[data-theme="graphite"] {
+  --bg: #0c1014;
+  --surface: #151b22;
+  --surface-2: #1c2430;
+  --border: #2e3a4a;
+  --text: #e6edf5;
+  --text-muted: #8b9bb0;
+  --accent: #38bdf8;
+  --accent-hover: #0ea5e9;
+  --accent-ink: #041018;
+  --nav-track: #10161e;
+  --nav-active: #243041;
+  --viewport-bg: #080b10;
+  --shadow: rgba(0, 0, 0, 0.45);
+  --diagram-ink: #0a0e14;
+}
+
+[data-theme="ember"] {
+  --bg: #120e0c;
+  --surface: #1c1512;
+  --surface-2: #2a1f1a;
+  --border: #4a352c;
+  --text: #f3ebe4;
+  --text-muted: #b09a8c;
+  --accent: #f59e0b;
+  --accent-hover: #d97706;
+  --accent-ink: #1a0f05;
+  --nav-track: #140f0d;
+  --nav-active: #3a2a22;
+  --viewport-bg: #0c0908;
+  --shadow: rgba(0, 0, 0, 0.5);
+  --diagram-ink: #0c0908;
+}
+
+[data-theme="sea"] {
+  --bg: #0a1214;
+  --surface: #12201f;
+  --surface-2: #1a2e2c;
+  --border: #2d4a46;
+  --text: #e4f1ef;
+  --text-muted: #8aada8;
+  --accent: #2dd4bf;
+  --accent-hover: #14b8a6;
+  --accent-ink: #04201c;
+  --nav-track: #0d1817;
+  --nav-active: #243f3c;
+  --viewport-bg: #071010;
+  --shadow: rgba(0, 0, 0, 0.48);
+  --diagram-ink: #071010;
+}
+
+[data-theme="chalk"] {
+  --bg: #e8edf2;
+  --surface: #f4f7fa;
+  --surface-2: #ffffff;
+  --border: #c5d0dc;
+  --text: #1a2332;
+  --text-muted: #5b6b7c;
+  --accent: #0284c7;
+  --accent-hover: #0369a1;
+  --accent-ink: #ffffff;
+  --nav-track: #d7e0ea;
+  --nav-active: #ffffff;
+  --viewport-bg: #dbe3ec;
+  --shadow: rgba(15, 23, 42, 0.18);
+  --data-color: #0891b2;
+  --power-color: #d97706;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --diagram-ink: #1a2332;
+}
+
+/* Derived accent washes — always follow --accent */
+:root,
+[data-theme] {
+  --accent-muted: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-soft: color-mix(in srgb, var(--accent) 10%, transparent);
+  --accent-faint: color-mix(in srgb, var(--accent) 7%, transparent);
+  --accent-ring: color-mix(in srgb, var(--accent) 28%, transparent);
+  --accent-strong: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 *,

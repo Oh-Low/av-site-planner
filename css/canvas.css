@@ -23,6 +23,10 @@
   gap: 0.5rem;
 }
 
+.canvas-toolbar-actions .btn-toggle {
+  flex: 0 0 auto;
+}
+
 .view-hint {
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -74,7 +78,7 @@
 
 .wall-canvas-container,
 .calc-viewport--svg {
-  background: #0a0e14;
+  background: var(--viewport-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;

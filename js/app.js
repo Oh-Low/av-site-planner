@@ -1,4 +1,5 @@
 import { bindTabBar } from "./shared/dom.js";
+import { initLocalNavs, syncLocalNavs } from "./shared/local-nav.js";
 import { setCalculatorInstances } from "./calculator-instances.js";
 import {
   CALCULATOR_PLUGINS,
@@ -10,6 +11,12 @@ import {
   syncSiteDocumentFromPlan,
 } from "./site-document-runtime.js";
 import { downloadSiteState, parseSiteState } from "./site-state.js";
+import { initThemeControls } from "./theme.js";
+import {
+  clearUndoHistory,
+  initUndoKeyboard,
+  setUndoDirtyMarker,
+} from "./undo-runtime.js";
 
 /** Auto-loaded on startup. Served from fixtures/ via the Vite fixtures plugin. */
 const DEFAULT_AVP_PATH = "fixtures/default.avp";
@@ -49,11 +56,6 @@ function setSiteDirty(dirty) {
 
 /** @param {string} message @param {boolean} [isError] */
 function showSaveStatus(message, isError = false) {
-  const headerStatus = document.getElementById("app-save-status");
-  if (headerStatus) {
-    headerStatus.textContent = message;
-    headerStatus.classList.toggle("is-error", isError);
-  }
   for (const id of ["canvas-status", "proj-canvas-status"]) {
     const el = document.getElementById(id);
     if (!el) continue;
@@ -66,6 +68,7 @@ function showSaveStatus(message, isError = false) {
 function applySiteState(state) {
   ensureCalculatorsReady(calculators);
   syncSiteDocumentFromPlan(state);
+  clearUndoHistory();
 
   suppressDirty = true;
   try {
@@ -179,12 +182,18 @@ function initSaveControls() {
 }
 
 function initApp() {
+  initThemeControls();
+  initLocalNavs();
   bindTabBar();
   calculators = initCalculatorInstances();
   setCalculatorInstances(calculators);
+  setUndoDirtyMarker(setSiteDirty);
+  initUndoKeyboard();
   initDirtyTracking();
   initSaveControls();
   void loadDefaultSiteState();
+  // Fonts / late layout can shift item widths.
+  requestAnimationFrame(() => syncLocalNavs(document, false));
 }
 
 if (document.readyState === "loading") {

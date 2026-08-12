@@ -31,6 +31,7 @@ import { escapeXml } from "./shared/dom.js";
 import { createListNameEditor } from "./shared/inline-editor.js";
 import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
+import { recordBefore } from "./undo-runtime.js";
 
 export {
   createBlankProjectionScreen,
@@ -1020,6 +1021,7 @@ export function initProjectorCalculator() {
       getName: (id) => state.screens.find((s) => s.id === id)?.name,
       setName: (id, name) => {
         const screen = state.screens.find((s) => s.id === id);
+        if (screen && screen.name !== name) recordBefore("projector", "rename-screen");
         if (screen) screen.name = name;
       },
       onCommit: (_id, previousName, newName) => {
@@ -1194,6 +1196,7 @@ export function initProjectorCalculator() {
       clearListDropIndicators();
       if (!screen || !payload || !target) return;
 
+      recordBefore("projector", "list-drop");
       if (payload.type === "projector") {
         applyProjectorDrop(screen, payload, target);
       } else if (payload.type === "group") {
@@ -1960,6 +1963,7 @@ export function initProjectorCalculator() {
   }
 
   function addScreen() {
+    recordBefore("projector", "add-screen");
     persistScreenFromForm();
     persistProjectorFromForm();
     const screen = newScreen(state.screens.length);
@@ -1975,6 +1979,7 @@ export function initProjectorCalculator() {
       setStatus("At least one projection screen is required.", true);
       return;
     }
+    recordBefore("projector", "remove-screen");
     const name = screen.name;
     state.screens = state.screens.filter((s) => s.id !== screen.id);
     selectScreen(state.screens[0].id);
@@ -2051,6 +2056,7 @@ export function initProjectorCalculator() {
   function addGroup() {
     const screen = getActiveScreen();
     if (!screen) return;
+    recordBefore("projector", "add-group");
     persistProjectorFromForm();
     const group = newProjectorGroup(screen);
     screen.projectorGroups.push(group);
@@ -2061,6 +2067,7 @@ export function initProjectorCalculator() {
   function addProjector() {
     const screen = getActiveScreen();
     if (!screen) return;
+    recordBefore("projector", "add-projector");
     if (getActiveProjector()) persistProjectorFromForm();
 
     const template = getActiveProjector();
@@ -2109,6 +2116,7 @@ export function initProjectorCalculator() {
     const screen = getActiveScreen();
     if (!screen) return;
 
+    recordBefore("projector", "remove-selection");
     if (isGroupSelection()) {
       const group = getProjectorGroup(screen, screen.activeGroupId);
       if (!group) return;
@@ -2182,9 +2190,10 @@ export function initProjectorCalculator() {
     if (els.projLegendCoverage) els.projLegendCoverage.hidden = !showCoverage;
     if (els.projLegendOverlap) els.projLegendOverlap.hidden = !showCoverage;
     if (els.projLegendHint) {
+      els.projLegendHint.hidden = !showCoverage;
       els.projLegendHint.textContent = showCoverage
-        ? "Red coverage indicates throw outside lens range. Right-drag to pan, scroll to zoom."
-        : "Right-drag to pan, scroll to zoom.";
+        ? "Red = outside lens throw range"
+        : "";
     }
   }
 
@@ -2308,6 +2317,7 @@ export function initProjectorCalculator() {
   }
 
   function onScreenDimInput(field) {
+    recordBefore("projector", "screen-dim", { coalesceMs: 400 });
     if (syncingForm) return;
     const screen = getActiveScreen();
     if (!screen) return;
@@ -2373,6 +2383,7 @@ export function initProjectorCalculator() {
 
   function commitThrowField(source) {
     if (syncingForm) return;
+    recordBefore("projector", "throw-field");
     const editedField =
       source === "imageWidth" || source === "imageHeight"
         ? "image"
@@ -2420,6 +2431,7 @@ export function initProjectorCalculator() {
     const screen = getActiveScreen();
     const projector = getActiveProjector();
     if (!projector) return;
+    recordBefore("projector", "throw-lock");
     const locks = new Set(projector.throwLocks ?? ["throw"]);
     if (locks.has(field)) {
       locks.delete(field);
@@ -2493,6 +2505,7 @@ export function initProjectorCalculator() {
   on(els.screenHeight, "blur", () => onScreenDimBlur("height"));
 
   function onProjectorFormChange(recalcThrow = false) {
+    recordBefore("projector", "form", { coalesceMs: 400 });
     persistProjectorFromForm();
     const p = getActiveProjector();
     if (p && recalcThrow) {

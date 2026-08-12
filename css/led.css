@@ -188,7 +188,7 @@
 .processor-drop.is-drop-target {
   outline: 1px dashed var(--accent);
   outline-offset: -1px;
-  background: rgba(59, 130, 246, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .processor-group {
@@ -201,7 +201,7 @@
 
 .processor-group.selected {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.07);
+  background: var(--accent-faint);
 }
 
 .processor-row {
@@ -353,7 +353,7 @@
 
 .grid-item.selected {
   border-color: var(--accent);
-  background: rgba(59, 130, 246, 0.1);
+  background: var(--accent-soft);
 }
 
 #grid-list {
