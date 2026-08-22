@@ -4,6 +4,8 @@ import { escapeXml } from "../shared/dom.js";
 import { createDoubleClickTracker } from "../shared/double-click.js";
 import { createListNameEditor } from "../shared/inline-editor.js";
 import { recordBefore } from "../undo-runtime.js";
+import { offsetPoint } from "../copy-paste.js";
+import { uid } from "../shared/id.js";
 import { listLinkedSourceOptions } from "./element-catalog.js";
 import { renderElementLibraryBrowser } from "./element-library-browser.js";
 import {
@@ -172,6 +174,21 @@ export function initPaperworkComposer() {
     exportPaperworkBtn: /** @type {HTMLButtonElement|null} */ (
       document.getElementById("pw-export-paperwork")
     ),
+    exportOrderModal: /** @type {HTMLElement|null} */ (
+      document.getElementById("pw-export-order-modal")
+    ),
+    exportOrderList: /** @type {HTMLOListElement|null} */ (
+      document.getElementById("pw-export-order-list")
+    ),
+    exportOrderClose: /** @type {HTMLButtonElement|null} */ (
+      document.getElementById("pw-export-order-close")
+    ),
+    exportOrderCancel: /** @type {HTMLButtonElement|null} */ (
+      document.getElementById("pw-export-order-cancel")
+    ),
+    exportOrderConfirm: /** @type {HTMLButtonElement|null} */ (
+      document.getElementById("pw-export-order-confirm")
+    ),
   };
 
   /** @type {import("./element-catalog.js").AddableElement[]} */
@@ -335,8 +352,18 @@ export function initPaperworkComposer() {
     return state.sheets.filter((s) => s.included).sort((a, b) => a.order - b.order);
   }
 
+  /** Export-time sheet order for title-block page numbers (null = normal included order). */
+  /** @type {import("./state.js").SheetInstance[] | null} */
+  let exportSheetOrder = null;
+
+  /** @type {string[]} */
+  let exportOrderDraftIds = [];
+
+  /** @type {{ sheetId: string | null }} */
+  const exportOrderDrag = { sheetId: null };
+
   function sheetNumbering(sheet) {
-    const list = includedSheets();
+    const list = exportSheetOrder ?? includedSheets();
     const idx = list.findIndex((s) => s.id === sheet.id);
     return {
       number: idx >= 0 ? idx + 1 : 0,
@@ -547,8 +574,7 @@ export function initPaperworkComposer() {
   }
 
   /**
-   * Build print pages for included sheets and open the system print dialog
-   * (Save as PDF from there).
+   * Open the page-order dialog, then print / Save as PDF in that order.
    */
   function exportPaperwork() {
     const sheets = includedSheets();
@@ -556,7 +582,99 @@ export function initPaperworkComposer() {
       setStatus("No included sheets to export — check sheets in the list first.");
       return;
     }
+    openExportOrderModal(sheets);
+  }
 
+  /** @param {import("./state.js").SheetInstance[]} sheets */
+  function openExportOrderModal(sheets) {
+    exportOrderDraftIds = sheets.map((sheet) => sheet.id);
+    renderExportOrderList();
+    if (els.exportOrderModal) els.exportOrderModal.hidden = false;
+    setStatus("Reorder PDF pages, then continue to print.");
+    els.exportOrderConfirm?.focus();
+  }
+
+  function closeExportOrderModal() {
+    if (els.exportOrderModal) els.exportOrderModal.hidden = true;
+    exportOrderDrag.sheetId = null;
+  }
+
+  function renderExportOrderList() {
+    if (!els.exportOrderList) return;
+    const byId = new Map(state.sheets.map((sheet) => [sheet.id, sheet]));
+    els.exportOrderList.innerHTML = exportOrderDraftIds
+      .map((id, index) => {
+        const sheet = byId.get(id);
+        const title = sheet?.title ?? id;
+        return `
+          <li class="pw-export-order-row" data-sheet-id="${escapeXml(id)}" draggable="true">
+            <span class="pw-export-order-index">${index + 1}</span>
+            <span class="pw-export-order-grip" aria-hidden="true">⋮⋮</span>
+            <span class="pw-export-order-title">${escapeXml(title)}</span>
+            <span class="pw-export-order-moves">
+              <button type="button" class="btn btn-secondary" data-export-move="up" title="Move up" ${
+                index === 0 ? "disabled" : ""
+              }>↑</button>
+              <button type="button" class="btn btn-secondary" data-export-move="down" title="Move down" ${
+                index === exportOrderDraftIds.length - 1 ? "disabled" : ""
+              }>↓</button>
+            </span>
+          </li>`;
+      })
+      .join("");
+  }
+
+  /**
+   * @param {string} sheetId
+   * @param {"up" | "down"} direction
+   */
+  function moveExportOrderDraft(sheetId, direction) {
+    const index = exportOrderDraftIds.indexOf(sheetId);
+    if (index < 0) return;
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (target < 0 || target >= exportOrderDraftIds.length) return;
+    const next = [...exportOrderDraftIds];
+    const [item] = next.splice(index, 1);
+    next.splice(target, 0, item);
+    exportOrderDraftIds = next;
+    renderExportOrderList();
+  }
+
+  /**
+   * @param {string} fromId
+   * @param {string} toId
+   * @param {"before" | "after"} place
+   */
+  function reorderExportOrderDraft(fromId, toId, place) {
+    if (!fromId || !toId || fromId === toId) return;
+    const next = exportOrderDraftIds.filter((id) => id !== fromId);
+    let insertAt = next.indexOf(toId);
+    if (insertAt < 0) return;
+    if (place === "after") insertAt += 1;
+    next.splice(insertAt, 0, fromId);
+    exportOrderDraftIds = next;
+    renderExportOrderList();
+  }
+
+  function confirmExportOrder() {
+    const byId = new Map(state.sheets.map((sheet) => [sheet.id, sheet]));
+    const sheets = exportOrderDraftIds
+      .map((id) => byId.get(id))
+      .filter((sheet) => sheet && sheet.included);
+    closeExportOrderModal();
+    if (!sheets.length) {
+      setStatus("No included sheets to export — check sheets in the list first.");
+      return;
+    }
+    printSheets(/** @type {import("./state.js").SheetInstance[]} */ (sheets));
+  }
+
+  /**
+   * Build print pages for the given sheets and open the system print dialog
+   * (Save as PDF from there).
+   * @param {import("./state.js").SheetInstance[]} sheets
+   */
+  function printSheets(sheets) {
     const paper = resolvePaper(state.paper.size, state.paper.orientation);
     let root = document.getElementById("pw-print-root");
     if (!root) {
@@ -574,6 +692,8 @@ export function initPaperworkComposer() {
       document.head.appendChild(pageStyle);
     }
     pageStyle.textContent = `@page { size: ${paper.widthIn}in ${paper.heightIn}in; margin: 0; }`;
+
+    exportSheetOrder = sheets;
 
     for (const sheet of sheets) {
       const page = document.createElement("div");
@@ -623,6 +743,7 @@ export function initPaperworkComposer() {
     const cleanup = () => {
       if (!document.documentElement.classList.contains("pw-exporting")) return;
       document.documentElement.classList.remove("pw-exporting");
+      exportSheetOrder = null;
       root.innerHTML = "";
       window.removeEventListener("afterprint", cleanup);
     };
@@ -1774,6 +1895,79 @@ export function initPaperworkComposer() {
     exportPaperwork();
   });
 
+  els.exportOrderClose?.addEventListener("click", () => {
+    closeExportOrderModal();
+    setStatus("Export cancelled.");
+  });
+  els.exportOrderCancel?.addEventListener("click", () => {
+    closeExportOrderModal();
+    setStatus("Export cancelled.");
+  });
+  els.exportOrderConfirm?.addEventListener("click", () => {
+    confirmExportOrder();
+  });
+  els.exportOrderModal?.addEventListener("click", (e) => {
+    if (e.target === els.exportOrderModal) {
+      closeExportOrderModal();
+      setStatus("Export cancelled.");
+    }
+  });
+  els.exportOrderList?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-export-move]");
+    if (!(btn instanceof HTMLElement)) return;
+    const row = btn.closest("[data-sheet-id]");
+    const sheetId = row?.dataset.sheetId;
+    const direction = btn.dataset.exportMove;
+    if (!sheetId || (direction !== "up" && direction !== "down")) return;
+    moveExportOrderDraft(sheetId, direction);
+  });
+  els.exportOrderList?.addEventListener("dragstart", (e) => {
+    const row = e.target.closest(".pw-export-order-row");
+    if (!(row instanceof HTMLElement) || !row.dataset.sheetId) {
+      e.preventDefault();
+      return;
+    }
+    exportOrderDrag.sheetId = row.dataset.sheetId;
+    row.classList.add("is-dragging");
+    e.dataTransfer?.setData("text/pw-export-order", exportOrderDrag.sheetId);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+  });
+  els.exportOrderList?.addEventListener("dragend", () => {
+    exportOrderDrag.sheetId = null;
+    els.exportOrderList
+      ?.querySelectorAll(".is-dragging, .is-drop-before, .is-drop-after")
+      .forEach((el) => el.classList.remove("is-dragging", "is-drop-before", "is-drop-after"));
+  });
+  els.exportOrderList?.addEventListener("dragover", (e) => {
+    if (!exportOrderDrag.sheetId) return;
+    const row = e.target.closest(".pw-export-order-row");
+    if (!(row instanceof HTMLElement)) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    const rect = row.getBoundingClientRect();
+    const before = e.clientY < rect.top + rect.height / 2;
+    els.exportOrderList
+      ?.querySelectorAll(".is-drop-before, .is-drop-after")
+      .forEach((el) => el.classList.remove("is-drop-before", "is-drop-after"));
+    row.classList.add(before ? "is-drop-before" : "is-drop-after");
+  });
+  els.exportOrderList?.addEventListener("drop", (e) => {
+    const fromId = exportOrderDrag.sheetId;
+    const row = e.target.closest(".pw-export-order-row");
+    if (!fromId || !(row instanceof HTMLElement) || !row.dataset.sheetId) return;
+    e.preventDefault();
+    const rect = row.getBoundingClientRect();
+    const place = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+    reorderExportOrderDraft(fromId, row.dataset.sheetId, place);
+    exportOrderDrag.sheetId = null;
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!els.exportOrderModal || els.exportOrderModal.hidden) return;
+    closeExportOrderModal();
+    setStatus("Export cancelled.");
+  });
+
   els.newSheetBtn?.addEventListener("click", () => {
     const number =
       state.sheets.filter((sheet) => sheet.manual || sheet.typeId === "custom-plate")
@@ -2308,7 +2502,77 @@ export function initPaperworkComposer() {
     render();
   }
 
-  return { exportState, importState };
+
+  const PW_PASTE_OFFSET = 0.25;
+
+  function copySelection() {
+    if (state.selectedDecorationId) {
+      const dec = state.decorations.find((d) => d.id === state.selectedDecorationId);
+      if (!dec) return null;
+      return { kind: "decoration", decoration: deepClone(dec) };
+    }
+    if (state.selectedElementId) {
+      const el = findElementById(state.selectedElementId);
+      if (!el) return null;
+      const sheet = getActiveSheet();
+      const inShared = state.sharedElements.some((item) => item.id === el.id);
+      return {
+        kind: "element",
+        element: deepClone(el),
+        shared: inShared,
+        sheetId: sheet?.id ?? null,
+      };
+    }
+    return null;
+  }
+
+  /** @param {{ kind?: string, decoration?: object, element?: object, shared?: boolean }} payload */
+  function pasteSelection(payload) {
+    if (!payload || typeof payload !== "object") return false;
+    const sheet = getActiveSheet();
+    if (!sheet) return false;
+
+    if (payload.kind === "decoration" && payload.decoration) {
+      const src = deepClone(payload.decoration);
+      delete src.id;
+      const frame = offsetPoint(
+        { x: src.x, y: src.y },
+        PW_PASTE_OFFSET,
+        PW_PASTE_OFFSET
+      );
+      const dec = createDecoration({
+        ...src,
+        x: frame.x,
+        y: frame.y,
+        sheetId: src.showOnAllSheets ? null : sheet.id,
+      });
+      state.decorations.push(dec);
+      state.selectedDecorationId = dec.id;
+      state.selectedElementId = null;
+      render();
+      setStatus("Pasted drawing.");
+      return true;
+    }
+
+    if (payload.kind === "element" && payload.element) {
+      const el = deepClone(payload.element);
+      el.id = uid("el");
+      const frame = offsetPoint({ x: el.x, y: el.y }, PW_PASTE_OFFSET, PW_PASTE_OFFSET);
+      el.x = frame.x;
+      el.y = frame.y;
+      // Always paste onto the active sheet as a local element.
+      sheet.elements.push(el);
+      state.selectedElementId = el.id;
+      state.selectedDecorationId = null;
+      render();
+      setStatus(`Pasted ${el.type}.`);
+      return true;
+    }
+
+    return false;
+  }
+
+  return { exportState, importState, copySelection, pasteSelection };
 }
 
 export const calculatorPlugin = {

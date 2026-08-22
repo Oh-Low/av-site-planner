@@ -532,14 +532,6 @@
           <div id="sf-gear-palette" class="sf-gear-palette"></div>
         </aside>
         <div class="calc-canvas-wrap">
-          <div class="canvas-toolbar">
-            <span id="sf-status"></span>
-            <div class="canvas-toolbar-actions">
-              <span class="view-hint" id="sf-hint" hidden></span>
-              <button type="button" class="btn btn-toggle" id="sf-color-toggle" aria-pressed="false" title="Color lines and ports by cable type">Color by cable</button>
-              <button type="button" class="btn btn-secondary" id="sf-reset-view" title="Fit all gear in view">Fit view</button>
-            </div>
-          </div>
           <div class="calc-viewport" id="sf-viewport">
             <div class="calc-world" id="sf-world">
               <svg id="sf-svg" class="sf-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
@@ -548,13 +540,17 @@
               <svg id="sf-wire-ui" class="sf-wire-ui" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
             </div>
             <div class="sf-grid-ui" id="sf-grid-ui">
-              <button type="button" class="sf-grid-btn" id="sf-grid-btn" title="Grid settings" aria-label="Grid settings" aria-expanded="false">
+              <button type="button" class="sf-grid-btn" id="sf-grid-btn" title="Canvas settings" aria-label="Canvas settings" aria-expanded="false">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <circle cx="12" cy="12" r="3"></circle>
                   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                 </svg>
               </button>
               <div class="sf-grid-popover" id="sf-grid-popover" hidden>
+                <div class="sf-grid-actions">
+                  <button type="button" class="btn btn-toggle btn-sm" id="sf-color-toggle" aria-pressed="false" title="Color lines and ports by cable type">Color by cable</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="sf-reset-view" title="Fit all gear in view">Fit view</button>
+                </div>
                 <label class="sf-grid-row">
                   <input type="checkbox" id="sf-grid-snap" />
                   <span>Snap to grid</span>
@@ -1232,6 +1228,21 @@
         <div class="labor-clock-hand" aria-hidden="true"></div>
         <div class="labor-clock-center" aria-hidden="true"></div>
         <div class="labor-clock-dial"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pw-export-order-modal" class="pw-export-order-modal" hidden>
+    <div class="pw-export-order-dialog" role="dialog" aria-modal="true" aria-labelledby="pw-export-order-title">
+      <div class="pw-export-order-header">
+        <h3 id="pw-export-order-title">Order PDF pages</h3>
+        <button type="button" class="pw-export-order-close" id="pw-export-order-close" aria-label="Close">×</button>
+      </div>
+      <p class="pw-export-order-hint">Drag pages into the order you want in the PDF, then continue to Save as PDF.</p>
+      <ol id="pw-export-order-list" class="pw-export-order-list"></ol>
+      <div class="pw-export-order-footer">
+        <button type="button" class="btn btn-secondary" id="pw-export-order-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="pw-export-order-confirm">Continue to print</button>
       </div>
     </div>
   </div>

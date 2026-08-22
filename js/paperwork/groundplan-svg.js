@@ -10,6 +10,17 @@ import { fontSizePtToUserUnits, normalizeFontSizePt } from "./font-scale.js";
 const DEFAULT_MARKER_W = 120;
 const DEFAULT_MARKER_H = 36;
 
+/** Unique SVG def ids per build (print + live scene must not share clipPath ids). */
+let groundplanSvgSeq = 0;
+
+/**
+ * @param {string} prefix
+ */
+function nextGroundplanDefId(prefix) {
+  groundplanSvgSeq += 1;
+  return `${prefix}-${groundplanSvgSeq}`;
+}
+
 /**
  * @typedef {{ x: number, y: number, w: number, h: number }} GroundplanCrop
  */
@@ -319,7 +330,9 @@ export function buildGroundplanSvg(groundplan, places = [], options = {}) {
   // Clip to the viewBox rect. With preserveAspectRatio=meet, content outside the
   // viewBox can otherwise paint into letterbox gutters — which makes left/right
   // crops look ignored when the crop is taller than the container aspect.
-  const clipId = "pw-gp-view-clip";
+  // Id must be unique per SVG instance so print/PDF does not resolve the live
+  // scene's full-canvas clipPath (especially while the diagram is selected).
+  const clipId = nextGroundplanDefId("pw-gp-view-clip");
   const body = `<defs><clipPath id="${clipId}"><rect x="${viewX}" y="${viewY}" width="${viewW}" height="${viewH}" /></clipPath></defs><g clip-path="url(#${clipId})">${parts.join("")}</g>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewX} ${viewY} ${viewW} ${viewH}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" overflow="hidden" data-gp-image-width="${imageWidth}" data-gp-image-height="${imageHeight}" data-crop-width="${imageWidth}" data-crop-height="${imageHeight}">${body}</svg>`;
   return {

@@ -17,6 +17,7 @@ import { createListNameEditor } from "./shared/inline-editor.js";
 import { evaluateMathExpression } from "./shared/math-expression.js";
 import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
 import { recordBefore } from "./undo-runtime.js";
+import { nextCopyName, offsetPoint } from "./copy-paste.js";
 
 import {
   emptyContentMapsState,
@@ -2153,8 +2154,8 @@ export function initContentMaps() {
       return;
     }
     if (root.hidden) return;
-    const mediaPanel = document.getElementById("cm-media");
-    const outputPanel = document.getElementById("cm-output");
+    const mediaPanel = document.getElementById("cm-side-media");
+    const outputPanel = document.getElementById("cm-side-output");
     if (mediaPanel && !mediaPanel.hidden && selectedZoneId) {
       e.preventDefault();
       const id = selectedZoneId;
@@ -2189,7 +2190,116 @@ export function initContentMaps() {
     renderOutput();
   }
 
-  return { exportState, importState };
+
+  const CM_PASTE_OFFSET = 40;
+
+  function copySelection() {
+    const mediaPanel = document.getElementById("cm-side-media");
+    const outputPanel = document.getElementById("cm-side-output");
+    if (mediaPanel && !mediaPanel.hidden && selectedZoneId) {
+      const surface = getActiveSurface();
+      const zone = surface?.zones.find((z) => z.id === selectedZoneId);
+      if (!zone) return null;
+      return { kind: "zone", target: "media", zone: deepClone(zone) };
+    }
+    if (outputPanel && !outputPanel.hidden && selectedOutZoneId) {
+      const raster = getActiveRaster();
+      const zone = findOutputZone(raster, selectedOutZoneId);
+      if (!zone) return null;
+      return { kind: "zone", target: "output", zone: deepClone(zone) };
+    }
+    const surface = getActiveSurface();
+    if (surface && mediaPanel && !mediaPanel.hidden) {
+      return { kind: "surface", surface: deepClone(surface) };
+    }
+    const raster = getActiveRaster();
+    if (raster && outputPanel && !outputPanel.hidden) {
+      return { kind: "raster", raster: deepClone(raster) };
+    }
+    return null;
+  }
+
+  /** @param {{ kind?: string, target?: string, zone?: object, surface?: object, raster?: object }} payload */
+  function pasteSelection(payload) {
+    if (!payload || typeof payload !== "object") return false;
+
+    if (payload.kind === "zone" && payload.zone) {
+      const zone = deepClone(payload.zone);
+      const moved = offsetPoint(zone, CM_PASTE_OFFSET, CM_PASTE_OFFSET);
+      zone.x = moved.x;
+      zone.y = moved.y;
+      zone.name = nextCopyName(zone.name);
+      if (payload.target === "output") {
+        const raster = getActiveRaster();
+        if (!raster) return false;
+        zone.id = uid("zone");
+        raster.zones.push(zone);
+        selectedOutZoneId = zone.id;
+        renderOutput();
+        setOutStatus(`Pasted ${zone.name}.`);
+        return true;
+      }
+      const surface = getActiveSurface();
+      if (!surface) return false;
+      zone.id = uid("zone");
+      surface.zones.push(zone);
+      selectedZoneId = zone.id;
+      render();
+      setStatus(`Pasted ${zone.name}.`);
+      return true;
+    }
+
+    if (payload.kind === "surface" && payload.surface) {
+      const surface = deepClone(payload.surface);
+      surface.id = uid("surface");
+      surface.name = nextCopyName(surface.name);
+      surface.zones = (surface.zones ?? []).map((z) => {
+        const zone = deepClone(z);
+        zone.id = uid("zone");
+        return zone;
+      });
+      state.surfaces.push(surface);
+      state.activeSurfaceId = surface.id;
+      selectedZoneId = null;
+      render();
+      setStatus(`Pasted ${surface.name}.`);
+      return true;
+    }
+
+    if (payload.kind === "raster" && payload.raster) {
+      const raster = deepClone(payload.raster);
+      raster.id = uid("raster");
+      raster.name = nextCopyName(raster.name);
+      const groupMap = new Map();
+      raster.groups = (raster.groups ?? []).map((g) => {
+        const group = deepClone(g);
+        const oldId = group.id;
+        group.id = uid("ogroup");
+        if (oldId) groupMap.set(oldId, group.id);
+        group.zones = (group.zones ?? []).map((z) => {
+          const zone = deepClone(z);
+          zone.id = uid("zone");
+          return zone;
+        });
+        return group;
+      });
+      raster.zones = (raster.zones ?? []).map((z) => {
+        const zone = deepClone(z);
+        zone.id = uid("zone");
+        return zone;
+      });
+      state.rasters.push(raster);
+      state.activeRasterId = raster.id;
+      selectedOutZoneId = null;
+      renderOutput();
+      setOutStatus(`Pasted ${raster.name}.`);
+      return true;
+    }
+
+    return false;
+  }
+
+  return { exportState, importState, copySelection, pasteSelection };
 }
 
 export const calculatorPlugin = {

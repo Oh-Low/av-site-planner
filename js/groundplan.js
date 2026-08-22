@@ -26,6 +26,7 @@ import { escapeXml, isPanPointerDown } from "./shared/dom.js";
 import { uid } from "./shared/id.js";
 import { createTransformPanZoom } from "./shared/pan-zoom.js";
 import { recordBefore } from "./undo-runtime.js";
+import { offsetPoints } from "./copy-paste.js";
 
 /** @typedef {"metric" | "imperial"} DistanceUnit */
 
@@ -2044,7 +2045,33 @@ export function initGroundplan(signalFlowApi = {}) {
     render();
   }
 
-  return { exportState, importState };
+
+  const GP_PASTE_OFFSET = 24;
+
+  function copySelection() {
+    if (!selectedRouteId) return null;
+    const route = getRouteById(selectedRouteId);
+    if (!route) return null;
+    return { kind: "route", route: deepClone(route) };
+  }
+
+  /** @param {{ kind?: string, route?: object }} payload */
+  function pasteSelection(payload) {
+    if (payload?.kind !== "route" || !payload.route) return false;
+    if (!state.imageDataUrl) return false;
+    const route = deepClone(payload.route);
+    route.id = uid("route");
+    route.points = offsetPoints(route.points ?? [], GP_PASTE_OFFSET, GP_PASTE_OFFSET);
+    if (route.labelX != null) route.labelX += GP_PASTE_OFFSET;
+    if (route.labelY != null) route.labelY += GP_PASTE_OFFSET;
+    state.cableRoutes.push(route);
+    setSelectedRoute(route.id);
+    render();
+    setStatus(`Pasted cable route: ${formatRouteLabel(route)}.`);
+    return true;
+  }
+
+  return { exportState, importState, copySelection, pasteSelection };
 }
 
 export const calculatorPlugin = {

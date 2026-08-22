@@ -39,6 +39,7 @@ import {
 import { clampZoom, createTransformPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
 import { recordBefore } from "./undo-runtime.js";
+import { nextCopyName, offsetPoint, offsetPoints } from "./copy-paste.js";
 import {
   SIGNAL_FLOW_GRID_DEFAULT_SIZE as GRID_DEFAULT_SIZE,
   SIGNAL_FLOW_GRID_MAX_SIZE as GRID_MAX_SIZE,
@@ -113,8 +114,8 @@ const WORLD_DEFAULT_H = 6000;
 
 export function initSignalFlow() {
   const shell = queryCalcShell("signal-flow", {
-    statusId: "sf-status",
-    hintId: "sf-hint",
+    statusId: undefined,
+    hintId: undefined,
     resetViewId: "sf-reset-view",
     viewportId: "sf-viewport",
     worldId: "sf-world",
@@ -188,6 +189,12 @@ export function initSignalFlow() {
     moved: false,
     /** @type {Map<string, { x: number, y: number }>} */
     startPositions: new Map(),
+    /**
+     * Routes wholly owned by the dragged selection (both ends moving).
+     * Snapshotted at drag start so waypoints translate with the group.
+     * @type {Map<string, { route?: { x: number, y: number }[], routeX?: number, routeWorld?: boolean }>}
+     */
+    startRoutes: new Map(),
   };
   const marqueeSelect = {
     pending: false,
@@ -288,9 +295,50 @@ export function initSignalFlow() {
 
   function captureNodeDragStarts() {
     nodeDrag.startPositions = new Map();
+    nodeDrag.startRoutes = new Map();
     for (const id of selectedNodeIds) {
       const node = state.nodes.find((n) => n.id === id);
       if (node) nodeDrag.startPositions.set(id, { x: node.x, y: node.y });
+    }
+    // When both ends of a wire move together, keep its drawn path rigid.
+    for (const conn of state.connections) {
+      if (
+        !nodeDrag.startPositions.has(conn.fromNodeId) ||
+        !nodeDrag.startPositions.has(conn.toNodeId)
+      ) {
+        continue;
+      }
+      if (!Array.isArray(conn.route) && conn.routeX == null) continue;
+      nodeDrag.startRoutes.set(conn.id, {
+        route: Array.isArray(conn.route) ? deepClone(conn.route) : undefined,
+        routeX: conn.routeX,
+        routeWorld: conn.routeWorld,
+      });
+    }
+  }
+
+  /**
+   * Translate snapshotted internal routes by the same delta as the dragged nodes.
+   * @param {number} dx
+   * @param {number} dy
+   */
+  function applyDraggedConnectionRoutes(dx, dy) {
+    if (!nodeDrag.startRoutes.size) return;
+    for (const [connId, start] of nodeDrag.startRoutes) {
+      const conn = state.connections.find((c) => c.id === connId);
+      if (!conn) continue;
+      if (Array.isArray(start.route)) {
+        conn.route = start.route.map((p) => ({
+          x: p.x + dx,
+          y: p.y + dy,
+        }));
+        conn.routeWorld = start.routeWorld !== false;
+        delete conn.routeX;
+      } else if (start.routeX != null) {
+        conn.routeX = start.routeX + dx;
+        if (start.routeWorld) conn.routeWorld = true;
+        delete conn.route;
+      }
     }
   }
 
@@ -1700,6 +1748,16 @@ export function initSignalFlow() {
         }
       }
 
+      // Use the lead node's snapped delta so internal wires stay aligned with ports.
+      const leadId = nodeDrag.nodeId;
+      const leadStart = leadId ? nodeDrag.startPositions.get(leadId) : null;
+      const leadNode = leadId ? state.nodes.find((n) => n.id === leadId) : null;
+      const routeDx =
+        leadNode && leadStart ? leadNode.x - leadStart.x : snapWorld(dx) - snapWorld(0);
+      const routeDy =
+        leadNode && leadStart ? leadNode.y - leadStart.y : snapWorld(dy) - snapWorld(0);
+      applyDraggedConnectionRoutes(routeDx, routeDy);
+
       syncWorldBounds();
       renderWires();
     }
@@ -1787,6 +1845,7 @@ export function initSignalFlow() {
       nodeDrag.active = false;
       nodeDrag.nodeId = null;
       nodeDrag.startPositions.clear();
+      nodeDrag.startRoutes.clear();
     }
   });
 
@@ -1817,6 +1876,7 @@ export function initSignalFlow() {
     nodeDrag.active = false;
     nodeDrag.nodeId = null;
     nodeDrag.startPositions.clear();
+    nodeDrag.startRoutes.clear();
     suppressWireClick = false;
     suppressClearSelection = false;
   }
@@ -2069,11 +2129,6 @@ export function initSignalFlow() {
     state.colorByCableType = !state.colorByCableType;
     syncColorToggle();
     render();
-    setStatus(
-      state.colorByCableType
-        ? "Coloring lines and ports by cable type."
-        : "Cable type coloring off."
-    );
   });
 
   // Wire endpoints are measured from port cell positions, which are wrong
@@ -2090,9 +2145,97 @@ export function initSignalFlow() {
   syncColorToggle();
   syncGridControls();
   render();
-  setStatus("Choose premade gear on the left, then drag devices onto the canvas.");
 
-  return { exportState, importState, addPlace, renamePlace, deletePlace };
+
+  const SF_PASTE_OFFSET = 40;
+
+  function copySelection() {
+    if (selectedNodeIds.size > 0) {
+      const ids = new Set(selectedNodeIds);
+      const nodes = state.nodes.filter((n) => ids.has(n.id)).map((n) => deepClone(n));
+      if (!nodes.length) return null;
+      const connections = state.connections
+        .filter((c) => ids.has(c.fromNodeId) && ids.has(c.toNodeId))
+        .map((c) => deepClone(c));
+      return { kind: "nodes", nodes, connections };
+    }
+    if (selectedConnectionId) {
+      const conn = state.connections.find((c) => c.id === selectedConnectionId);
+      if (!conn) return null;
+      return { kind: "connection", connection: deepClone(conn) };
+    }
+    return null;
+  }
+
+  /** @param {{ kind?: string, nodes?: object[], connections?: object[], connection?: object }} payload */
+  function pasteSelection(payload) {
+    if (!payload || typeof payload !== "object") return false;
+
+    if (payload.kind === "nodes" && Array.isArray(payload.nodes) && payload.nodes.length) {
+      /** @type {Map<string, string>} */
+      const idMap = new Map();
+      const pasted = [];
+      for (const node of payload.nodes) {
+        const next = deepClone(node);
+        const oldId = next.id;
+        next.id = uid("sf");
+        next.name = nextCopyName(next.name);
+        const moved = offsetPoint(next, SF_PASTE_OFFSET, SF_PASTE_OFFSET);
+        next.x = moved.x;
+        next.y = moved.y;
+        idMap.set(oldId, next.id);
+        state.nodes.push(next);
+        pasted.push(next.id);
+      }
+      for (const conn of payload.connections ?? []) {
+        const next = deepClone(conn);
+        next.id = uid("wire");
+        if (!idMap.has(conn.fromNodeId) || !idMap.has(conn.toNodeId)) continue;
+        next.fromNodeId = idMap.get(conn.fromNodeId);
+        next.toNodeId = idMap.get(conn.toNodeId);
+        if (Array.isArray(next.route)) {
+          next.route = offsetPoints(next.route, SF_PASTE_OFFSET, SF_PASTE_OFFSET);
+        }
+        if (next.routeX != null) next.routeX += SF_PASTE_OFFSET;
+        state.connections.push(next);
+      }
+      setNodeSelection(pasted);
+      selectedConnectionId = null;
+      render();
+      setStatus(`Pasted ${pasted.length} device${pasted.length === 1 ? "" : "s"}.`);
+      return true;
+    }
+
+    if (payload.kind === "connection" && payload.connection) {
+      // A lone wire needs its endpoints; skip unless both nodes exist.
+      const conn = deepClone(payload.connection);
+      const fromOk = state.nodes.some((n) => n.id === conn.fromNodeId);
+      const toOk = state.nodes.some((n) => n.id === conn.toNodeId);
+      if (!fromOk || !toOk) return false;
+      if (state.connections.some(
+        (c) =>
+          c.fromNodeId === conn.fromNodeId &&
+          c.toNodeId === conn.toNodeId &&
+          c.fromRow === conn.fromRow &&
+          c.toRow === conn.toRow &&
+          c.fromCol === conn.fromCol &&
+          c.toCol === conn.toCol
+      )) {
+        return false;
+      }
+      conn.id = uid("wire");
+      state.connections.push(conn);
+      selectedConnectionId = conn.id;
+      clearNodeSelection();
+      render();
+      setStatus("Pasted connection.");
+      return true;
+    }
+
+    return false;
+  }
+
+  return { exportState, importState, addPlace, renamePlace, deletePlace, copySelection, pasteSelection };
 }
 
 export const calculatorPlugin = {

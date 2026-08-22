@@ -17,6 +17,7 @@ import {
   initUndoKeyboard,
   setUndoDirtyMarker,
 } from "./undo-runtime.js";
+import { clearCopyPasteClipboard, initCopyPaste } from "./copy-paste.js";
 
 /** Auto-loaded on startup. Served from fixtures/ via the Vite fixtures plugin. */
 const DEFAULT_AVP_PATH = "fixtures/default.avp";
@@ -69,6 +70,7 @@ function applySiteState(state) {
   ensureCalculatorsReady(calculators);
   syncSiteDocumentFromPlan(state);
   clearUndoHistory();
+  clearCopyPasteClipboard();
 
   suppressDirty = true;
   try {
@@ -189,6 +191,7 @@ function initApp() {
   setCalculatorInstances(calculators);
   setUndoDirtyMarker(setSiteDirty);
   initUndoKeyboard();
+  initCopyPaste();
   initDirtyTracking();
   initSaveControls();
   void loadDefaultSiteState();

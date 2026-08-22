@@ -14,6 +14,7 @@ import { createListNameEditor } from "./shared/inline-editor.js";
 import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
 import { recordBefore } from "./undo-runtime.js";
+import { nextCopyName } from "./copy-paste.js";
 
 export { emptyLedState, normalizeLedGrid, normalizeLedState } from "./domain/led.js";
 
@@ -2083,11 +2084,60 @@ export function initLedCalculator() {
     state.bitrate = normalized.bitrate;
   }
 
+
+  function copySelection() {
+    const grid = getActiveGrid();
+    if (!grid) return null;
+    return { kind: "grid", grid: deepClone(grid) };
+  }
+
+  /** @param {{ kind?: string, grid?: object }} payload */
+  function pasteSelection(payload) {
+    if (payload?.kind !== "grid" || !payload.grid) return false;
+    persistFormToActiveGrid();
+    saveWallViewToGrid();
+    const grid = deepClone(payload.grid);
+    const procMap = new Map();
+    grid.id = uid("grid");
+    grid.name = nextCopyName(grid.name);
+    grid.processors = (grid.processors ?? []).map((proc) => {
+      const next = deepClone(proc);
+      const oldId = next.id;
+      next.id = uid("proc");
+      if (oldId) procMap.set(oldId, next.id);
+      return next;
+    });
+    if (grid.activeProcessorId && procMap.has(grid.activeProcessorId)) {
+      grid.activeProcessorId = procMap.get(grid.activeProcessorId);
+    }
+    const remapLines = (lines) =>
+      (lines ?? []).map((line) => {
+        const next = deepClone(line);
+        next.id = uid("line");
+        if (next.processorId && procMap.has(next.processorId)) {
+          next.processorId = procMap.get(next.processorId);
+        }
+        return next;
+      });
+    grid.dataLines = remapLines(grid.dataLines);
+    grid.powerLines = remapLines(grid.powerLines);
+    grid.activeLineId = grid.dataLines[0]?.id ?? grid.powerLines[0]?.id ?? null;
+    state.grids.push(grid);
+    state.activeGridId = grid.id;
+    loadGridToForm(grid);
+    restoreWallViewFromGrid(grid);
+    render();
+    setStatus(`Pasted ${grid.name}.`);
+    return true;
+  }
+
   return {
     exportState,
     importState,
     flushFormToState,
     refreshUi: refreshLedUiFromState,
+    copySelection,
+    pasteSelection,
   };
 }
 

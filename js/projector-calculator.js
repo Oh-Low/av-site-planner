@@ -32,6 +32,7 @@ import { createListNameEditor } from "./shared/inline-editor.js";
 import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
 import { recordBefore } from "./undo-runtime.js";
+import { nextCopyName } from "./copy-paste.js";
 
 export {
   createBlankProjectionScreen,
@@ -2719,7 +2720,115 @@ export function initProjectorCalculator() {
     render();
   }
 
-  return { exportState, importState, flushFormToState };
+
+  const PROJ_PASTE_OFFSET = 1;
+
+  function copySelection() {
+    const screen = getActiveScreen();
+    if (!screen) return null;
+    if (isGroupSelection() && screen.activeGroupId) {
+      const group = getProjectorGroup(screen, screen.activeGroupId);
+      if (!group) return null;
+      const members = getGroupMembers(screen, group.id).map((p) => deepClone(p));
+      return { kind: "group", group: deepClone(group), projectors: members };
+    }
+    const projector = getActiveProjector();
+    if (projector && screen.activeProjectorId) {
+      return { kind: "projector", projector: deepClone(projector) };
+    }
+    return { kind: "screen", screen: deepClone(screen) };
+  }
+
+  /** @param {{ kind?: string, screen?: object, projector?: object, group?: object, projectors?: object[] }} payload */
+  function pasteSelection(payload) {
+    if (!payload || typeof payload !== "object") return false;
+
+    if (payload.kind === "screen" && payload.screen) {
+      persistScreenFromForm();
+      persistProjectorFromForm();
+      const screen = deepClone(payload.screen);
+      const groupMap = new Map();
+      const projMap = new Map();
+      screen.id = uid("screen");
+      screen.name = nextCopyName(screen.name);
+      screen.projectorGroups = (screen.projectorGroups ?? []).map((g) => {
+        const next = deepClone(g);
+        const oldId = next.id;
+        next.id = uid("pgroup");
+        next.name = nextCopyName(next.name);
+        if (oldId) groupMap.set(oldId, next.id);
+        return next;
+      });
+      screen.projectors = (screen.projectors ?? []).map((p) => {
+        const next = deepClone(p);
+        const oldId = next.id;
+        next.id = uid("proj");
+        next.name = nextCopyName(next.name);
+        if (oldId) projMap.set(oldId, next.id);
+        if (next.groupId && groupMap.has(next.groupId)) next.groupId = groupMap.get(next.groupId);
+        return next;
+      });
+      if (screen.activeGroupId && groupMap.has(screen.activeGroupId)) {
+        screen.activeGroupId = groupMap.get(screen.activeGroupId);
+      }
+      if (screen.activeProjectorId && projMap.has(screen.activeProjectorId)) {
+        screen.activeProjectorId = projMap.get(screen.activeProjectorId);
+      }
+      state.screens.push(screen);
+      selectScreen(screen.id);
+      setStatus(`Pasted ${screen.name}.`);
+      return true;
+    }
+
+    const screen = getActiveScreen();
+    if (!screen) return false;
+
+    if (payload.kind === "projector" && payload.projector) {
+      persistProjectorFromForm();
+      const projector = deepClone(payload.projector);
+      projector.id = uid("proj");
+      projector.name = nextCopyName(projector.name);
+      projector.offsetX = Number(projector.offsetX || 0) + PROJ_PASTE_OFFSET;
+      projector.offsetY = Number(projector.offsetY || 0) + PROJ_PASTE_OFFSET;
+      // Pasted projector joins as ungrouped unless its group still exists on this screen.
+      if (projector.groupId && !getProjectorGroup(screen, projector.groupId)) {
+        projector.groupId = null;
+      }
+      screen.projectors.push(projector);
+      normalizeProjectorOrder(screen);
+      selectProjector(projector.id);
+      setStatus(`Pasted ${projector.name}.`);
+      return true;
+    }
+
+    if (payload.kind === "group" && payload.group && Array.isArray(payload.projectors)) {
+      persistProjectorFromForm();
+      const group = deepClone(payload.group);
+      const oldGroupId = group.id;
+      group.id = uid("pgroup");
+      group.name = nextCopyName(group.name);
+      screen.projectorGroups.push(group);
+      const pastedIds = [];
+      for (const raw of payload.projectors) {
+        const projector = deepClone(raw);
+        projector.id = uid("proj");
+        projector.name = nextCopyName(projector.name);
+        projector.groupId = group.id;
+        projector.offsetX = Number(projector.offsetX || 0) + PROJ_PASTE_OFFSET;
+        projector.offsetY = Number(projector.offsetY || 0) + PROJ_PASTE_OFFSET;
+        screen.projectors.push(projector);
+        pastedIds.push(projector.id);
+      }
+      normalizeProjectorOrder(screen);
+      selectGroup(group.id);
+      setStatus(`Pasted ${group.name} (${pastedIds.length} projector${pastedIds.length === 1 ? "" : "s"}).`);
+      return true;
+    }
+
+    return false;
+  }
+
+  return { exportState, importState, flushFormToState, copySelection, pasteSelection };
 }
 
 export const calculatorPlugin = {

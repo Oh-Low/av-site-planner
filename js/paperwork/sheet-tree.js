@@ -36,14 +36,40 @@ export function isCableRunsSheet(sheet) {
  * @param {import("./state.js").SheetInstance} sheet
  */
 export function sheetListTitle(sheet) {
-  if (sheet.typeId === "led-wall-cable") return "Cable wiring";
-  if (sheet.typeId === "led-wall-power") return "Power wiring";
-  if (isRasterSheet(sheet) || isSurfaceSheet(sheet)) {
-    return sourceNameFromTitle(sheet.title) || (isSurfaceSheet(sheet) ? "Surface" : "Raster");
+  const title = String(sheet.title ?? "").trim();
+  if (!title) return "Untitled";
+
+  // Nested role labels only while the title is still the generated default.
+  // Once the user renames the sheet, show their title in the hierarchy.
+  if (sheet.typeId === "led-wall-cable") {
+    return isGeneratedPrefixedTitle(title, "LED Cable") ? "Cable wiring" : title;
   }
-  if (isCableRunsSheet(sheet)) return "Overview";
-  if (sheet.typeId === "signal-flow") return "Signal Flow";
-  return sheet.title;
+  if (sheet.typeId === "led-wall-power") {
+    return isGeneratedPrefixedTitle(title, "LED Power") ? "Power wiring" : title;
+  }
+  if (isRasterSheet(sheet) || isSurfaceSheet(sheet)) {
+    const prefix = isSurfaceSheet(sheet) ? "Surface" : "Raster";
+    if (isGeneratedPrefixedTitle(title, prefix)) {
+      return sourceNameFromTitle(title) || prefix;
+    }
+    return title;
+  }
+  if (isCableRunsSheet(sheet)) {
+    return title === "Cable Runs" ? "Overview" : title;
+  }
+  if (sheet.typeId === "signal-flow") {
+    return title;
+  }
+  return title;
+}
+
+/**
+ * @param {string} title
+ * @param {string} prefix
+ */
+function isGeneratedPrefixedTitle(title, prefix) {
+  if (title === prefix) return true;
+  return title.startsWith(`${prefix} —`) || title.startsWith(`${prefix} -`);
 }
 
 /** @param {string} title */

@@ -60,6 +60,20 @@ export function recordBefore(stateKey, label, opts) {
 }
 
 /**
+ * Push a snapshot already captured before a mutation (e.g. paste that may no-op).
+ * @param {string} stateKey
+ * @param {unknown} before
+ * @param {string} [label]
+ * @param {{ coalesceMs?: number }} [opts]
+ */
+export function recordCaptured(stateKey, before, label, opts) {
+  if (before == null) return false;
+  const ok = stack.recordBefore({ stateKey, before, label }, opts);
+  if (ok) markDirty?.(true);
+  return ok;
+}
+
+/**
  * @template T
  * @param {string} stateKey
  * @param {() => T} fn

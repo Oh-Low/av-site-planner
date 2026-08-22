@@ -23,6 +23,9 @@ import {
 } from "./groundplan-svg.js";
 import { normalizeFontSizePt } from "./font-scale.js";
 
+/** Unique SVG def ids per build (print + live scene must not share clipPath/marker ids). */
+let signalFlowSvgSeq = 0;
+
 /**
  * Chrome sizes in interactive canvas px (root ~16px, table font 0.8rem).
  * Must stay at unit scale while routing so saved world routes still fit.
@@ -707,7 +710,7 @@ export function buildSignalFlowSvg(signalFlow, options = {}) {
 
   const uid = `n${Math.abs(
     (wirePaths.length * 997 + layouts.size * 131 + Math.round(contentWidth)) % 1e9
-  )}`;
+  )}-i${++signalFlowSvgSeq}`;
 
   /** @type {string[]} */
   const wireParts = [];
