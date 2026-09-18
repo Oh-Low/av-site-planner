@@ -456,7 +456,9 @@ export function initShowsManager(options) {
     const d = doc();
     const show = d.shows.find((s) => s.id === showId);
     if (!show) return;
-    d.activeShowId = showId;
+    // Do not mutate activeShowId before switchActiveRoom — that would make
+    // findActiveRoom fall back to the *new* show's room while calculators still
+    // hold the previous show, and flush would overwrite the destination room.
     const roomId = show.rooms.some((r) => r.id === d.activeRoomId)
       ? d.activeRoomId
       : show.rooms[0]?.id;

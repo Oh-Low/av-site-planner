@@ -9,6 +9,7 @@ import {
   normalizeShowDocument,
   reorderRoom,
   saveRoomAsTemplate,
+  writeActiveRoomPlan,
   wrapV2PlanAsShowDocument,
 } from "../js/domain/show-document.js";
 import {
@@ -28,6 +29,38 @@ describe("show-document domain", () => {
     assert.equal(doc.activeShowId, doc.shows[0].id);
     assert.equal(doc.activeRoomId, doc.shows[0].rooms[0].id);
     assert.equal(doc.templates.length, 0);
+  });
+
+  it("writeActiveRoomPlan refuses mismatched activeRoomId (no rooms[0] fallback)", () => {
+    // Reproduces show-switch contamination: activeShowId already points at show2
+    // while activeRoomId is still show1's room. Writing must not land on show2 room1.
+    const show1 = emptyShowDocument(emptyRoomPlan());
+    const show2Plan = emptyRoomPlan();
+    show2Plan.signalFlow = { nodes: [{ id: "keep" }], connections: [], groups: [], places: [] };
+    show1.shows.push({
+      id: "show-2",
+      name: "Show 2",
+      rooms: [{ id: "room-2", name: "Room 1", plan: show2Plan }],
+      paperwork: null,
+    });
+    const show1RoomId = show1.shows[0].rooms[0].id;
+    show1.shows[0].rooms[0].plan.signalFlow = {
+      nodes: [{ id: "from-show-1" }],
+      connections: [],
+      groups: [],
+      places: [],
+    };
+
+    show1.activeShowId = "show-2";
+    show1.activeRoomId = show1RoomId; // still show1's room id
+
+    const leaked = emptyRoomPlan();
+    leaked.signalFlow = { nodes: [{ id: "leaked" }], connections: [], groups: [], places: [] };
+    assert.equal(writeActiveRoomPlan(show1, leaked), false);
+    assert.equal(
+      /** @type {{ nodes?: { id: string }[] }} */ (show1.shows[1].rooms[0].plan.signalFlow).nodes[0].id,
+      "keep",
+    );
   });
 
   it("wrapV2PlanAsShowDocument nests the plan", () => {

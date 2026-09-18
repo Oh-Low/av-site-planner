@@ -161,11 +161,27 @@ export function loadActiveRoomIntoCalculators(instances) {
  * @param {string} roomId
  */
 export function switchActiveRoom(instances, showId, roomId) {
-  const current = findActiveRoom(ensureShowDoc());
-  if (current && (ensureShowDoc().activeShowId !== showId || ensureShowDoc().activeRoomId !== roomId)) {
-    flushActiveRoomFromCalculators(instances);
+  const doc = ensureShowDoc();
+  const prevShowId = doc.activeShowId;
+  const prevRoomId = doc.activeRoomId;
+
+  // Cancel a pending autosave so it cannot flush after pointers change.
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
   }
-  if (!setActiveRoom(ensureShowDoc(), showId, roomId)) return false;
+
+  // Flush only while active pointers still identify the previous room, and only
+  // when that room still exists (exact match — no rooms[0] fallback).
+  if (prevShowId !== showId || prevRoomId !== roomId) {
+    const prevShow = doc.shows.find((s) => s.id === prevShowId);
+    const prevRoom = prevShow?.rooms.find((r) => r.id === prevRoomId);
+    if (prevRoom) {
+      flushActiveRoomFromCalculators(instances);
+    }
+  }
+
+  if (!setActiveRoom(doc, showId, roomId)) return false;
   clearUndoHistory();
   loadActiveRoomIntoCalculators(instances);
   notifyDocumentChange();

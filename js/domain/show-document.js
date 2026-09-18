@@ -165,7 +165,7 @@ export function findActiveRoom(doc) {
  * @param {Record<string, unknown> | null | undefined} paperwork
  */
 export function writeActiveShowPaperwork(doc, paperwork) {
-  const show = findActiveShow(doc);
+  const show = doc.shows.find((s) => s.id === doc.activeShowId);
   if (!show) return false;
   show.paperwork = paperwork && typeof paperwork === "object" ? deepClone(paperwork) : null;
   return true;
@@ -223,13 +223,17 @@ export function setActiveRoom(doc, showId, roomId) {
 }
 
 /**
+ * Write a plan into the room identified by activeShowId + activeRoomId.
+ * Requires an exact room match (no rooms[0] fallback) so a mismatched
+ * activeRoomId cannot overwrite another show's first room.
  * @param {ShowDocument} doc
  * @param {RoomPlan} plan
  */
 export function writeActiveRoomPlan(doc, plan) {
-  const show = findActiveShow(doc);
-  const room = findActiveRoom(doc);
-  if (!show || !room) return false;
+  const show = doc.shows.find((s) => s.id === doc.activeShowId);
+  if (!show) return false;
+  const room = show.rooms.find((r) => r.id === doc.activeRoomId);
+  if (!room) return false;
   room.plan = deepClone(plan);
   return true;
 }
