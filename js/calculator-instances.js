@@ -15,3 +15,8 @@ export function getCalculatorExport(stateKey) {
 export function getCalculatorInstance(stateKey) {
   return calculatorInstances?.[stateKey] ?? null;
 }
+
+/** @returns {Record<string, { exportState?: () => object, importState?: (data: object) => void } | null> | null} */
+export function getCalculatorInstances() {
+  return calculatorInstances;
+}

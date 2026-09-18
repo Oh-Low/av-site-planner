@@ -1,4 +1,5 @@
 import { escapeXml } from "../shared/dom.js";
+import { sheetListPresentation, sheetListTitle } from "./sheet-tree.js";
 import {
   createSheetFolder,
   isBuiltinSheetFolderId,
@@ -6,9 +7,10 @@ import {
   listSheetsInFolder,
   mergeSheetFolders,
   nextUniqueSheetFolderName,
-  sheetTreeRowTitle,
 } from "./sheet-library.js";
-import { getSheetType } from "./sheet-registry.js";
+import { createDoubleClickTracker } from "../shared/double-click.js";
+
+const folderRenameClicks = createDoubleClickTracker();
 
 /**
  * @param {import("./state.js").SheetInstance} sheet
@@ -17,8 +19,11 @@ import { getSheetType } from "./sheet-registry.js";
  * @param {string | null} activeSheetId
  */
 function renderSheetLeaf(sheet, depth, folderId, activeSheetId) {
-  const type = getSheetType(sheet.typeId);
   const active = sheet.id === activeSheetId;
+  const { room, detail } = sheetListPresentation(sheet);
+  const roomHtml = room
+    ? `<span class="pw-sheet-line-room">${escapeXml(room)}</span>`
+    : "";
   return `
     <div class="pw-lib-tree-leaf" style="--pw-tree-depth: ${depth}">
       <div
@@ -39,10 +44,9 @@ function renderSheetLeaf(sheet, depth, folderId, activeSheetId) {
           <input type="checkbox" data-sheet-include ${sheet.included ? "checked" : ""} />
         </label>
         <button type="button" class="pw-sheet-select" data-sheet-select>
-          <span class="pw-sheet-title" title="Double-click to rename">${escapeXml(
-            sheetTreeRowTitle(sheet)
-          )}</span>
-          <span class="pw-sheet-meta">${escapeXml(type?.label ?? sheet.typeId)}</span>
+          <span class="pw-sheet-title" title="Double-click to rename">${roomHtml}<span class="pw-sheet-line-detail">${escapeXml(
+            detail
+          )}</span></span>
         </button>
       </div>
     </div>`;
@@ -53,9 +57,9 @@ function renderSheetLeaf(sheet, depth, folderId, activeSheetId) {
  * @param {string} query
  */
 function sheetMatchesQuery(sheet, query) {
-  const title = sheetTreeRowTitle(sheet).toLowerCase();
-  const full = String(sheet.title ?? "").toLowerCase();
-  return title.includes(query) || full.includes(query);
+  const { room, detail } = sheetListPresentation(sheet);
+  const haystack = `${room ?? ""} ${detail} ${sheet.title ?? ""} ${sheetListTitle(sheet)}`.toLowerCase();
+  return haystack.includes(query);
 }
 
 /**
@@ -319,15 +323,20 @@ export function renderSheetLibraryBrowser({
 
   container.querySelectorAll(".pw-lib-tree-folder-btn").forEach((btn) => {
     const button = /** @type {HTMLButtonElement} */ (btn);
-    button.addEventListener("click", () => {
-      onSelectFolder(button.dataset.folderId ?? null);
-    });
-    button.addEventListener("dblclick", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const id = button.dataset.folderId;
-      if (!id || isBuiltinSheetFolderId(id)) return;
-      onBeginRenameFolder?.(id);
+    button.addEventListener("click", (e) => {
+      const id = button.dataset.folderId ?? null;
+      if (
+        id &&
+        !isBuiltinSheetFolderId(id) &&
+        onBeginRenameFolder &&
+        folderRenameClicks.tap(id, e)
+      ) {
+        e.preventDefault();
+        onBeginRenameFolder(id);
+        return;
+      }
+      if (!id || isBuiltinSheetFolderId(id)) folderRenameClicks.reset();
+      onSelectFolder(id);
     });
   });
 

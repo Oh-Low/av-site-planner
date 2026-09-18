@@ -12,6 +12,7 @@ import { escapeXml } from "../../shared/dom.js";
  *   sheetCount: number,
  *   siteExports: Record<string, unknown>,
  *   paperSizeCode?: string,
+ *   titleBlockLogo?: string | null,
  *   editable?: boolean,
  *   selected?: boolean,
  * }} ElementRenderContext

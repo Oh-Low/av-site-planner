@@ -1,42 +1,55 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { sheetListTitle } from "../js/paperwork/sheet-tree.js";
+import { sheetHeadingText, sheetListPresentation, sheetListTitle } from "../js/paperwork/sheet-tree.js";
 
-describe("sheetListTitle", () => {
-  it("keeps generated role labels for default LED titles", () => {
-    assert.equal(
-      sheetListTitle({ typeId: "led-wall-cable", title: "LED Cable — Wall A" }),
-      "Cable wiring"
-    );
-    assert.equal(
-      sheetListTitle({ typeId: "led-wall-power", title: "LED Power — Wall A" }),
-      "Power wiring"
+describe("sheetListPresentation", () => {
+  it("formats LED cable sheets as Room / Wall | Cable Diagram", () => {
+    assert.deepEqual(
+      sheetListPresentation({
+        typeId: "led-wall-cable",
+        title: "Room 1 — LED Cable — Wall 1",
+      }),
+      { room: "Room 1", detail: "LED Wall 1 | Cable Diagram" }
     );
   });
 
-  it("shows a custom sheet title after rename", () => {
-    assert.equal(
-      sheetListTitle({ typeId: "led-wall-cable", title: "Main cable plate" }),
-      "Main cable plate"
-    );
-    assert.equal(
-      sheetListTitle({ typeId: "signal-flow", title: "SF overview" }),
-      "SF overview"
-    );
-    assert.equal(
-      sheetListTitle({ typeId: "cable-runs", title: "Site cables" }),
-      "Site cables"
-    );
-    assert.equal(
-      sheetListTitle({ typeId: "surface-map", title: "Lobby surface" }),
-      "Lobby surface"
+  it("formats LED power sheets", () => {
+    assert.deepEqual(
+      sheetListPresentation({
+        typeId: "led-wall-power",
+        title: "Ballroom — LED Power — Main",
+      }),
+      { room: "Ballroom", detail: "LED Main | Power Diagram" }
     );
   });
 
-  it("shortens generated surface/raster titles to the source name", () => {
+  it("formats room-scoped signal flow", () => {
+    assert.deepEqual(
+      sheetListPresentation({
+        typeId: "signal-flow",
+        title: "Room 1 — Signal Flow",
+      }),
+      { room: "Room 1", detail: "Signal Flow" }
+    );
+  });
+
+  it("sheetListTitle joins room and detail", () => {
     assert.equal(
-      sheetListTitle({ typeId: "surface-map", title: "Surface — Lobby" }),
-      "Lobby"
+      sheetListTitle({
+        typeId: "led-wall-cable",
+        title: "Room 1 — LED Cable — Wall 1",
+      }),
+      "Room 1 — LED Wall 1 | Cable Diagram"
+    );
+  });
+
+  it("sheetHeadingText uses a newline between room and detail", () => {
+    assert.equal(
+      sheetHeadingText({
+        typeId: "led-wall-cable",
+        title: "Room 1 — LED Cable — Wall 1",
+      }),
+      "Room 1\nLED Wall 1 | Cable Diagram"
     );
   });
 });

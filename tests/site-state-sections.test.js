@@ -23,7 +23,7 @@ import {
 } from "../js/domain/paperwork.js";
 import { emptyContentMapsState } from "../js/domain/content-maps.js";
 import {
-  SITE_STATE_VERSION,
+  ROOM_PLAN_VERSION,
   migrateSiteStateToV2,
   parseSiteState,
   validateSiteState,
@@ -66,7 +66,7 @@ describe("fixtures/default.avp", () => {
   it("parses and fills optional sections from emptyState", () => {
     const raw = readFileSync(fixturePath, "utf8");
     const parsed = parseSiteState(raw);
-    assert.equal(parsed.formatVersion, SITE_STATE_VERSION);
+    assert.equal(parsed.formatVersion, ROOM_PLAN_VERSION);
     assert.ok(Array.isArray(parsed.led.grids));
     assert.equal(parsed.projector.screens.length, 1);
     assert.equal("places" in parsed.signalFlow, false);

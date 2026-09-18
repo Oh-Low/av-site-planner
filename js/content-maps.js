@@ -13,6 +13,7 @@ import {
 } from "./shared/color-palette.js";
 import { escapeXml } from "./shared/dom.js";
 import { uid } from "./shared/id.js";
+import { createDoubleClickTracker } from "./shared/double-click.js";
 import { createListNameEditor } from "./shared/inline-editor.js";
 import { evaluateMathExpression } from "./shared/math-expression.js";
 import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
@@ -651,6 +652,9 @@ export function initContentMaps() {
     if (els.outStatus) els.outStatus.textContent = message;
   }
 
+  const surfaceNameClicks = createDoubleClickTracker();
+  const rasterNameClicks = createDoubleClickTracker();
+
   const surfaceNameEditor =
     els.surfaceList &&
     createListNameEditor({
@@ -1159,6 +1163,27 @@ export function initContentMaps() {
     const raster = getActiveRaster();
     if (raster) setOutStatus(`Viewing ${raster.name}.`);
   }
+
+  /** @param {string} surfaceId */
+  function beginSurfaceRename(surfaceId) {
+    if (!state.surfaces.some((s) => s.id === surfaceId)) return;
+    if (state.activeSurfaceId !== surfaceId) selectSurface(surfaceId);
+    const fresh = els.surfaceList?.querySelector(
+      `[data-surface-id="${CSS.escape(surfaceId)}"] .grid-item-name`
+    );
+    if (fresh instanceof HTMLElement) surfaceNameEditor?.open(fresh);
+  }
+
+  /** @param {string} rasterId */
+  function beginRasterRename(rasterId) {
+    if (!state.rasters.some((r) => r.id === rasterId)) return;
+    if (state.activeRasterId !== rasterId) selectRaster(rasterId);
+    const fresh = els.rasterList?.querySelector(
+      `[data-raster-id="${CSS.escape(rasterId)}"] .grid-item-name`
+    );
+    if (fresh instanceof HTMLElement) rasterNameEditor?.open(fresh);
+  }
+
 
   /** @param {"led" | "projector"} type @param {string} id */
   function addRasterFromImport(type, id) {
@@ -1870,16 +1895,22 @@ export function initContentMaps() {
   });
   els.surfaceRemove?.addEventListener("click", removeActiveSurface);
   els.surfaceList?.addEventListener("click", (e) => {
-    if (e.target.closest(".grid-name-editor")) return;
+    if (e.target.closest(".grid-name-editor")) {
+      surfaceNameClicks.reset();
+      return;
+    }
     const item = e.target.closest("[data-surface-id]");
-    if (item) selectSurface(item.dataset.surfaceId);
-  });
-  els.surfaceList?.addEventListener("dblclick", (e) => {
-    const nameEl = e.target.closest(".grid-item-name");
-    if (!nameEl) return;
-    e.preventDefault();
-    e.stopPropagation();
-    surfaceNameEditor?.open(nameEl);
+    if (!item) return;
+    const surfaceId = item.dataset.surfaceId;
+    if (!surfaceId) return;
+    const onName = e.target.closest(".grid-item-name");
+    if (onName && surfaceNameClicks.tap(surfaceId, e)) {
+      e.preventDefault();
+      beginSurfaceRename(surfaceId);
+      return;
+    }
+    if (!onName) surfaceNameClicks.reset();
+    selectSurface(surfaceId);
   });
 
   for (const [input, key] of [
@@ -1962,16 +1993,22 @@ export function initContentMaps() {
   });
   els.rasterRemove?.addEventListener("click", removeActiveRaster);
   els.rasterList?.addEventListener("click", (e) => {
-    if (e.target.closest(".grid-name-editor")) return;
+    if (e.target.closest(".grid-name-editor")) {
+      rasterNameClicks.reset();
+      return;
+    }
     const item = e.target.closest("[data-raster-id]");
-    if (item) selectRaster(item.dataset.rasterId);
-  });
-  els.rasterList?.addEventListener("dblclick", (e) => {
-    const nameEl = e.target.closest(".grid-item-name");
-    if (!nameEl) return;
-    e.preventDefault();
-    e.stopPropagation();
-    rasterNameEditor?.open(nameEl);
+    if (!item) return;
+    const rasterId = item.dataset.rasterId;
+    if (!rasterId) return;
+    const onName = e.target.closest(".grid-item-name");
+    if (onName && rasterNameClicks.tap(rasterId, e)) {
+      e.preventDefault();
+      beginRasterRename(rasterId);
+      return;
+    }
+    if (!onName) rasterNameClicks.reset();
+    selectRaster(rasterId);
   });
 
   for (const [input, key] of [

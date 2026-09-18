@@ -1,4 +1,8 @@
-import { getCalculatorExport } from "../calculator-instances.js";
+import { getCalculatorExport, getCalculatorInstances } from "../calculator-instances.js";
+import {
+  flushActiveRoomFromCalculators,
+  getShowDocument,
+} from "../show-document-access.js";
 import { deepClone } from "../shared/clone.js";
 import { escapeXml } from "../shared/dom.js";
 import { createDoubleClickTracker } from "../shared/double-click.js";
@@ -80,6 +84,7 @@ import {
   isShareableElementType,
   sharedElementsForSheet,
 } from "./shared-elements.js";
+import { sheetListTitle } from "./sheet-tree.js";
 import {
   createElement,
   createManualSheet,
@@ -89,11 +94,41 @@ import {
   normalizeGrid,
   normalizePaperworkState,
   normalizeTitleBlockLogo,
+  prepareTitleBlockLogo,
 } from "./state.js";
 import { titleBlockFrame } from "./title-block-layout.js";
 import { refreshSheetBindings, resetSheetLayout, syncSheetsFromSources } from "./sync.js";
 
 export { emptyPaperworkState };
+
+/**
+ * @param {Record<string, unknown> | null | undefined} plan
+ * @returns {Record<string, unknown>}
+ */
+function siteExportsFromPlan(plan) {
+  const source = plan && typeof plan === "object" ? plan : {};
+  const signalFlow = source.signalFlow && typeof source.signalFlow === "object"
+    ? { .../** @type {object} */ (source.signalFlow) }
+    : null;
+  const places = Array.isArray(source.places)
+    ? source.places
+    : Array.isArray(signalFlow?.places)
+      ? signalFlow.places
+      : [];
+  if (signalFlow) {
+    signalFlow.places = places;
+  }
+  return {
+    places,
+    led: source.led ?? null,
+    projector: source.projector ?? null,
+    signalFlow,
+    groundplan: source.groundplan ?? null,
+    contentMaps: source.contentMaps ?? null,
+    cable: source.cable ?? null,
+    labor: source.labor ?? null,
+  };
+}
 
 function collectSiteExports() {
   const signalFlow = getCalculatorExport("signalFlow");
@@ -108,6 +143,52 @@ function collectSiteExports() {
     cable: getCalculatorExport("cable"),
     labor: getCalculatorExport("labor"),
   };
+}
+
+/**
+ * Flush the active room, then build export bundles for every room in the
+ * active show (live calculators for the active room, saved plans for others).
+ * @returns {import("./sync.js").RoomExportBundle[]}
+ */
+function collectShowRoomBundles() {
+  const instances = getCalculatorInstances();
+  if (instances) flushActiveRoomFromCalculators(instances);
+  const doc = getShowDocument();
+  const show = doc.shows.find((s) => s.id === doc.activeShowId) ?? doc.shows[0] ?? null;
+  if (!show) {
+    return [
+      {
+        roomId: "room",
+        roomName: "Room",
+        siteExports: collectSiteExports(),
+      },
+    ];
+  }
+  return show.rooms.map((room) => {
+    const live = room.id === doc.activeRoomId;
+    return {
+      roomId: room.id,
+      roomName: room.name?.trim() || "Room",
+      siteExports: live
+        ? collectSiteExports()
+        : siteExportsFromPlan(/** @type {Record<string, unknown>} */ (room.plan)),
+    };
+  });
+}
+
+/**
+ * @param {import("./state.js").SheetInstance | null | undefined} sheet
+ * @returns {Record<string, unknown>}
+ */
+function siteExportsForSheet(sheet) {
+  const roomId = typeof sheet?.roomId === "string" ? sheet.roomId : null;
+  if (!roomId) return collectSiteExports();
+  const doc = getShowDocument();
+  if (roomId === doc.activeRoomId) return collectSiteExports();
+  const show = doc.shows.find((s) => s.id === doc.activeShowId) ?? doc.shows[0];
+  const room = show?.rooms.find((r) => r.id === roomId);
+  if (!room) return collectSiteExports();
+  return siteExportsFromPlan(/** @type {Record<string, unknown>} */ (room.plan));
 }
 
 export function initPaperworkComposer() {
@@ -129,7 +210,7 @@ export function initPaperworkComposer() {
     tbLogoClear: /** @type {HTMLButtonElement|null} */ (document.getElementById("pw-tb-logo-clear")),
     tbProject: /** @type {HTMLInputElement|null} */ (document.getElementById("pw-tb-project")),
     tbCompany: /** @type {HTMLInputElement|null} */ (document.getElementById("pw-tb-company")),
-    tbApproved: /** @type {HTMLInputElement|null} */ (document.getElementById("pw-tb-approved")),
+    tbJobNo: /** @type {HTMLInputElement|null} */ (document.getElementById("pw-tb-job-no")),
     tbChecked: /** @type {HTMLInputElement|null} */ (document.getElementById("pw-tb-checked")),
     tbDrawn: /** @type {HTMLInputElement|null} */ (document.getElementById("pw-tb-drawn")),
     tbRevision: /** @type {HTMLInputElement|null} */ (document.getElementById("pw-tb-revision")),
@@ -376,7 +457,15 @@ export function initPaperworkComposer() {
   }
 
   function siteExports() {
-    return collectSiteExports();
+    return siteExportsForSheet(getActiveSheet());
+  }
+
+  function syncGeneratedSheets(mode) {
+    const rooms = collectShowRoomBundles();
+    syncSheetsFromSources(state, rooms, { mode });
+    for (const sheet of state.sheets) {
+      refreshSheetBindings(sheet, siteExportsForSheet(sheet), state.identity);
+    }
   }
 
   /**
@@ -386,12 +475,13 @@ export function initPaperworkComposer() {
    */
   function applyIdentityField(fieldId, value) {
     if (!isIdentityField(fieldId)) return false;
+    recordBefore("paperwork", "title-block-identity", { coalesceMs: 600 });
     state.identity[/** @type {keyof import("./state.js").ProjectIdentity} */ (fieldId)] = value;
     for (const sheet of state.sheets) {
       for (const el of sheet.elements) {
         if (el.overrides && fieldId in el.overrides) delete el.overrides[fieldId];
       }
-      refreshSheetBindings(sheet, siteExports(), state.identity);
+      refreshSheetBindings(sheet, siteExportsForSheet(sheet), state.identity);
     }
     for (const el of state.sharedElements) {
       if (el.overrides && fieldId in el.overrides) delete el.overrides[fieldId];
@@ -456,7 +546,7 @@ export function initPaperworkComposer() {
       if (!sheet) return [];
       return [
         ...sheet.elements,
-        ...sharedElementsForSheet(state.sharedElements, sheet.id),
+        ...sharedElementsForSheet(state.sharedElements, sheet.id, sheet),
       ];
     },
     getElementById: (id) => findElementById(id),
@@ -565,7 +655,7 @@ export function initPaperworkComposer() {
       identity: state.identity,
       sheetNumber: number || 1,
       sheetCount: Math.max(1, count),
-      siteExports: siteExports(),
+      siteExports: siteExportsForSheet(sheet),
       paperSizeCode: sizeCode,
       titleBlockLogo: state.titleBlockLogo,
       editable: opts.editable !== false,
@@ -577,9 +667,9 @@ export function initPaperworkComposer() {
    * Open the page-order dialog, then print / Save as PDF in that order.
    */
   function exportPaperwork() {
-    const sheets = includedSheets();
+    const sheets = [...state.sheets].sort((a, b) => a.order - b.order);
     if (!sheets.length) {
-      setStatus("No included sheets to export — check sheets in the list first.");
+      setStatus("No sheets to export — generate or add sheets first.");
       return;
     }
     openExportOrderModal(sheets);
@@ -590,7 +680,7 @@ export function initPaperworkComposer() {
     exportOrderDraftIds = sheets.map((sheet) => sheet.id);
     renderExportOrderList();
     if (els.exportOrderModal) els.exportOrderModal.hidden = false;
-    setStatus("Reorder PDF pages, then continue to print.");
+    setStatus("Toggle page visibility, reorder, then continue to print.");
     els.exportOrderConfirm?.focus();
   }
 
@@ -599,29 +689,62 @@ export function initPaperworkComposer() {
     exportOrderDrag.sheetId = null;
   }
 
+  const EXPORT_EYE_OPEN =
+    '<svg class="pw-export-eye-icon pw-export-eye-icon--open" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8s2.5-4 7-4 7 4 7 4-2.5 4-7 4-7-4-7-4z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" /><circle cx="8" cy="8" r="1.75" fill="none" stroke="currentColor" stroke-width="1.25" /></svg>';
+  const EXPORT_EYE_CLOSED =
+    '<svg class="pw-export-eye-icon pw-export-eye-icon--closed" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8s2.5-4 7-4 7 4 7 4-2.5 4-7 4-7-4-7-4z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" /><circle cx="8" cy="8" r="1.75" fill="none" stroke="currentColor" stroke-width="1.25" /><path d="M2.5 13.5 13.5 2.5" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" /></svg>';
+
   function renderExportOrderList() {
     if (!els.exportOrderList) return;
     const byId = new Map(state.sheets.map((sheet) => [sheet.id, sheet]));
+    let pageNum = 0;
     els.exportOrderList.innerHTML = exportOrderDraftIds
-      .map((id, index) => {
+      .map((id) => {
         const sheet = byId.get(id);
-        const title = sheet?.title ?? id;
+        const title = sheet ? sheetListTitle(sheet) : id;
+        const visible = sheet?.included !== false;
+        if (visible) pageNum += 1;
+        const indexLabel = visible ? String(pageNum) : "—";
         return `
-          <li class="pw-export-order-row" data-sheet-id="${escapeXml(id)}" draggable="true">
-            <span class="pw-export-order-index">${index + 1}</span>
+          <li class="pw-export-order-row${visible ? "" : " is-excluded"}" data-sheet-id="${escapeXml(id)}" draggable="true">
+            <span class="pw-export-order-index">${indexLabel}</span>
             <span class="pw-export-order-grip" aria-hidden="true">⋮⋮</span>
             <span class="pw-export-order-title">${escapeXml(title)}</span>
+            <button
+              type="button"
+              class="btn btn-secondary pw-export-visibility-btn"
+              data-export-visibility
+              aria-pressed="${visible ? "true" : "false"}"
+              aria-label="${visible ? "Hide from export" : "Include in export"}"
+              title="${visible ? "Included in export" : "Excluded from export"}"
+            >${EXPORT_EYE_OPEN}${EXPORT_EYE_CLOSED}</button>
             <span class="pw-export-order-moves">
-              <button type="button" class="btn btn-secondary" data-export-move="up" title="Move up" ${
-                index === 0 ? "disabled" : ""
-              }>↑</button>
-              <button type="button" class="btn btn-secondary" data-export-move="down" title="Move down" ${
-                index === exportOrderDraftIds.length - 1 ? "disabled" : ""
-              }>↓</button>
+              <button type="button" class="btn btn-secondary" data-export-move="up" title="Move up">↑</button>
+              <button type="button" class="btn btn-secondary" data-export-move="down" title="Move down">↓</button>
             </span>
           </li>`;
       })
       .join("");
+
+    // Disable up/down based on position after render
+    els.exportOrderList.querySelectorAll(".pw-export-order-row").forEach((row, index) => {
+      const up = row.querySelector('[data-export-move="up"]');
+      const down = row.querySelector('[data-export-move="down"]');
+      if (up instanceof HTMLButtonElement) up.disabled = index === 0;
+      if (down instanceof HTMLButtonElement) {
+        down.disabled = index === exportOrderDraftIds.length - 1;
+      }
+    });
+  }
+
+  /** @param {string} sheetId */
+  function toggleExportSheetVisibility(sheetId) {
+    const sheet = state.sheets.find((s) => s.id === sheetId);
+    if (!sheet) return;
+    recordBefore("paperwork", "toggle-sheet-include");
+    sheet.included = !sheet.included;
+    renderExportOrderList();
+    renderSheetList();
   }
 
   /**
@@ -670,6 +793,22 @@ export function initPaperworkComposer() {
   }
 
   /**
+   * Default Save-as-PDF name from title-block Project + Job #.
+   * Browsers use document.title as the print filename suggestion.
+   */
+  function paperworkPdfBasename() {
+    const jobName = String(state.identity.show ?? "").trim() || "Job";
+    const jobNumber = String(state.identity.jobNo ?? "").trim() || "NoNumber";
+    const safe = (value) =>
+      value
+        .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 80) || "Untitled";
+    return `${safe(jobName)}-${safe(jobNumber)}`;
+  }
+
+  /**
    * Build print pages for the given sheets and open the system print dialog
    * (Save as PDF from there).
    * @param {import("./state.js").SheetInstance[]} sheets
@@ -703,7 +842,7 @@ export function initPaperworkComposer() {
 
       const elements = [
         ...sheet.elements,
-        ...sharedElementsForSheet(state.sharedElements, sheet.id),
+        ...sharedElementsForSheet(state.sharedElements, sheet.id, sheet),
       ].sort((a, b) => a.z - b.z);
 
       for (const el of elements) {
@@ -740,9 +879,14 @@ export function initPaperworkComposer() {
       root.appendChild(page);
     }
 
+    const previousTitle = document.title;
+    const pdfTitle = paperworkPdfBasename();
+    document.title = pdfTitle;
+
     const cleanup = () => {
       if (!document.documentElement.classList.contains("pw-exporting")) return;
       document.documentElement.classList.remove("pw-exporting");
+      document.title = previousTitle;
       exportSheetOrder = null;
       root.innerHTML = "";
       window.removeEventListener("afterprint", cleanup);
@@ -750,7 +894,7 @@ export function initPaperworkComposer() {
 
     document.documentElement.classList.add("pw-exporting");
     setStatus(
-      `Exporting ${sheets.length} sheet${sheets.length === 1 ? "" : "s"} — use Save as PDF in the print dialog.`
+      `Exporting ${sheets.length} sheet${sheets.length === 1 ? "" : "s"} as “${pdfTitle}” — use Save as PDF in the print dialog.`
     );
 
     requestAnimationFrame(() => {
@@ -777,7 +921,7 @@ export function initPaperworkComposer() {
     if (els.tbLogoClear) els.tbLogoClear.hidden = !state.titleBlockLogo;
     setIfIdle(els.tbProject, id.show);
     setIfIdle(els.tbCompany, id.company);
-    setIfIdle(els.tbApproved, id.approved);
+    setIfIdle(els.tbJobNo, id.jobNo);
     setIfIdle(els.tbChecked, id.checked);
     setIfIdle(els.tbDrawn, id.drawnBy);
     setIfIdle(els.tbRevision, id.revision);
@@ -834,7 +978,7 @@ export function initPaperworkComposer() {
     const gap = step;
     const titleBlock =
       sheet.elements.find((element) => element.type === "titleBlock") ??
-      sharedElementsForSheet(state.sharedElements, sheet.id).find(
+      sharedElementsForSheet(state.sharedElements, sheet.id, sheet).find(
         (element) => element.type === "titleBlock"
       );
     const items = sheet.elements.filter(
@@ -1063,7 +1207,7 @@ export function initPaperworkComposer() {
     sheetNameEditor?.close();
     if (!state.sheetFolders) state.sheetFolders = [];
     if (!state.sheets.length) {
-      els.sheetList.innerHTML = `<p class="resource-empty">No sheets yet — click Generate packet to create Cover, Cable Runs, and LED sheets.</p>`;
+      els.sheetList.innerHTML = `<p class="resource-empty">No sheets yet — click Generate packet to create sheets from every room in this show.</p>`;
       return;
     }
 
@@ -1535,7 +1679,7 @@ export function initPaperworkComposer() {
       for (const [id, label] of [
         ["company", "Company"],
         ["show", "Project"],
-        ["approved", "Approved"],
+        ["jobNo", "Job #"],
         ["checked", "Checked"],
         ["drawnBy", "Drawn"],
         ["size", "Size"],
@@ -1545,9 +1689,17 @@ export function initPaperworkComposer() {
       }
     }
     if (el.type === "notes" || el.type === "text" || el.type === "scopeSummary") {
-      const auto =
-        typeof el.content?.body === "string" ? el.content.body : "";
-      out.push(["body", "Text", auto]);
+      const bindKey =
+        el.type === "text" && typeof el.content?.bindIdentity === "string"
+          ? el.content.bindIdentity
+          : null;
+      if (bindKey && isIdentityField(bindKey)) {
+        out.push([bindKey, bindKey === "show" ? "Event / Project" : bindKey, ""]);
+      } else {
+        const auto =
+          typeof el.content?.body === "string" ? el.content.body : "";
+        out.push(["body", "Text", auto]);
+      }
     }
     return out;
   }
@@ -1592,15 +1744,12 @@ export function initPaperworkComposer() {
   function generatePacket() {
     if (!generatedSheetsExist()) {
       recordBefore("paperwork", "generate");
-      syncSheetsFromSources(state, siteExports(), { mode: "merge" });
-      for (const sheet of state.sheets) {
-        refreshSheetBindings(sheet, siteExports(), state.identity);
-      }
+      syncGeneratedSheets("merge");
       syncSharedTitleBlock();
       scene.fitArtboard();
       render();
       setStatus(
-        `Generated ${state.sheets.length} sheet${state.sheets.length === 1 ? "" : "s"} from calculators.`
+        `Generated ${state.sheets.length} sheet${state.sheets.length === 1 ? "" : "s"} from all rooms in this show.`
       );
       return;
     }
@@ -1614,10 +1763,7 @@ export function initPaperworkComposer() {
     }
     recordBefore("paperwork", "generate");
     const mode = choice.toLowerCase().startsWith("replace") ? "replace" : "add-missing";
-    syncSheetsFromSources(state, siteExports(), { mode });
-    for (const sheet of state.sheets) {
-      refreshSheetBindings(sheet, siteExports(), state.identity);
-    }
+    syncGeneratedSheets(mode);
     syncSharedTitleBlock();
     scene.fitArtboard();
     render();
@@ -1631,7 +1777,7 @@ export function initPaperworkComposer() {
   function updateLinkedElements() {
     recordBefore("paperwork", "update-linked");
     for (const sheet of state.sheets) {
-      refreshSheetBindings(sheet, siteExports(), state.identity);
+      refreshSheetBindings(sheet, siteExportsForSheet(sheet), state.identity);
     }
     render();
     setStatus("Updated linked elements from calculators (layouts and parameters preserved).");
@@ -1678,7 +1824,7 @@ export function initPaperworkComposer() {
   };
   bindTbIdentity(els.tbProject, "show");
   bindTbIdentity(els.tbCompany, "company");
-  bindTbIdentity(els.tbApproved, "approved");
+  bindTbIdentity(els.tbJobNo, "jobNo");
   bindTbIdentity(els.tbChecked, "checked");
   bindTbIdentity(els.tbDrawn, "drawnBy");
   bindTbIdentity(els.tbRevision, "revision");
@@ -1693,15 +1839,24 @@ export function initPaperworkComposer() {
     }
     const reader = new FileReader();
     reader.onload = () => {
-      state.titleBlockLogo = normalizeTitleBlockLogo(reader.result);
-      if (els.tbLogo) els.tbLogo.value = "";
-      renderTitleBlockControls();
-      renderPage();
-      setStatus(state.titleBlockLogo ? "Title block logo updated." : "Could not load logo.");
+      void (async () => {
+        recordBefore("paperwork", "title-block-logo");
+        const raw = typeof reader.result === "string" ? reader.result : "";
+        state.titleBlockLogo = await prepareTitleBlockLogo(raw);
+        if (els.tbLogo) els.tbLogo.value = "";
+        renderTitleBlockControls();
+        renderPage();
+        setStatus(
+          state.titleBlockLogo
+            ? "Title block logo updated."
+            : "Could not load logo (use a smaller image)."
+        );
+      })();
     };
     reader.readAsDataURL(file);
   });
   els.tbLogoClear?.addEventListener("click", () => {
+    recordBefore("paperwork", "title-block-logo");
     state.titleBlockLogo = null;
     if (els.tbLogo) els.tbLogo.value = "";
     renderTitleBlockControls();
@@ -1881,7 +2036,7 @@ export function initPaperworkComposer() {
       return;
     }
     recordBefore("paperwork", "reset-layout");
-    resetSheetLayout(sheet, state, siteExports());
+    resetSheetLayout(sheet, state, siteExportsForSheet(sheet));
     state.selectedElementId = null;
     render();
     setStatus(`Reset layout for ${sheet.title}.`);
@@ -1913,6 +2068,13 @@ export function initPaperworkComposer() {
     }
   });
   els.exportOrderList?.addEventListener("click", (e) => {
+    const visibility = e.target.closest("[data-export-visibility]");
+    if (visibility instanceof HTMLElement) {
+      const row = visibility.closest("[data-sheet-id]");
+      const sheetId = row?.dataset.sheetId;
+      if (sheetId) toggleExportSheetVisibility(sheetId);
+      return;
+    }
     const btn = e.target.closest("[data-export-move]");
     if (!(btn instanceof HTMLElement)) return;
     const row = btn.closest("[data-sheet-id]");
@@ -1922,6 +2084,10 @@ export function initPaperworkComposer() {
     moveExportOrderDraft(sheetId, direction);
   });
   els.exportOrderList?.addEventListener("dragstart", (e) => {
+    if (e.target instanceof Element && e.target.closest("button")) {
+      e.preventDefault();
+      return;
+    }
     const row = e.target.closest(".pw-export-order-row");
     if (!(row instanceof HTMLElement) || !row.dataset.sheetId) {
       e.preventDefault();
@@ -2493,10 +2659,11 @@ export function initPaperworkComposer() {
     // Only auto-merge calculator sheets if this packet was already generated.
     // Blank / custom-only packets stay empty until the user clicks Generate.
     if (generatedSheetsExist()) {
-      syncSheetsFromSources(state, siteExports(), { mode: "add-missing" });
-    }
-    for (const sheet of state.sheets) {
-      refreshSheetBindings(sheet, siteExports(), state.identity);
+      syncGeneratedSheets("add-missing");
+    } else {
+      for (const sheet of state.sheets) {
+        refreshSheetBindings(sheet, siteExportsForSheet(sheet), state.identity);
+      }
     }
     syncSharedTitleBlock();
     render();
@@ -2572,7 +2739,7 @@ export function initPaperworkComposer() {
     return false;
   }
 
-  return { exportState, importState, copySelection, pasteSelection };
+  return { exportState, importState, copySelection, pasteSelection, exportPaperwork };
 }
 
 export const calculatorPlugin = {

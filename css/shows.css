@@ -1,0 +1,122 @@
+/* Shows tab — three-column show / room / template manager */
+
+#shows:not([hidden]) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.shows-layout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+  min-height: min(70vh, 40rem);
+}
+
+.shows-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+}
+
+.shows-column h2 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.shows-column-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.shows-column .resource-toolbar {
+  margin-bottom: 0.5rem;
+}
+
+.shows-list {
+  position: relative;
+  flex: 1;
+  min-height: 12rem;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.shows-list.is-drop-target {
+  outline: 1px dashed var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.shows-list .grid-item[draggable="true"] {
+  cursor: grab;
+}
+
+.shows-list .shows-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  margin-bottom: 0;
+  padding: 0.35rem 0.4rem 0.35rem 0.55rem;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.shows-list .shows-list-item .grid-item-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.shows-list .shows-item-delete {
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+
+.shows-list .shows-list-item:hover .shows-item-delete,
+.shows-list .shows-list-item.selected .shows-item-delete {
+  opacity: 1;
+}
+
+.shows-list .shows-item-delete:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.shows-list .grid-item.is-dragging {
+  opacity: 0.5;
+}
+
+.shows-list .grid-item.is-drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.shows-list .grid-item.is-drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+#shows-status {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+#shows-status.status-error {
+  color: var(--danger);
+}
+
+@media (max-width: 900px) {
+  .shows-layout {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+}

@@ -10,6 +10,7 @@ import { buildLedSpecificationFields } from "./paperwork/led-spec-data.js";
 import { queryCalcShell, bindSidebarTabs } from "./shared/calc-shell.js";
 import { deepClone } from "./shared/clone.js";
 import { escapeXml } from "./shared/dom.js";
+import { createDoubleClickTracker } from "./shared/double-click.js";
 import { createListNameEditor } from "./shared/inline-editor.js";
 import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
@@ -17,6 +18,9 @@ import { recordBefore } from "./undo-runtime.js";
 import { nextCopyName } from "./copy-paste.js";
 
 export { emptyLedState, normalizeLedGrid, normalizeLedState } from "./domain/led.js";
+
+/** Max tiles along either wall axis (columns / rows). */
+const MAX_WALL_TILES = 999;
 
 /** @typedef {{ processorType: string, wiringType: string, pixelWidth: number, pixelHeight: number, totalPixels: number, maxPerPort: number, metricWidth: number, metricHeight: number, weight: number, wattage: number, id?: string }} TileConfig */
 
@@ -208,6 +212,8 @@ export function initLedCalculator() {
     onChange: () => updateViewHint(),
   });
 
+  const processorNameClicks = createDoubleClickTracker();
+  const gridNameClicks = createDoubleClickTracker();
   const processorNameEditor =
     els.resourceBars &&
     createListNameEditor({
@@ -230,6 +236,33 @@ export function initLedCalculator() {
         renderResourceBars();
       },
     });
+
+  /** @param {string} processorId */
+  function beginProcessorRename(processorId) {
+    const grid = getActiveGrid();
+    if (!grid || !findProcessor(grid, processorId)) return;
+    // Keep selection stable across the rename open (avoid toggle-off on 2nd click).
+    if (grid.activeProcessorId !== processorId) {
+      grid.activeProcessorId = processorId;
+      renderResourceBars();
+    }
+    const fresh = els.resourceBars?.querySelector(
+      `[data-processor-id="${CSS.escape(processorId)}"] .processor-name`
+    );
+    if (fresh instanceof HTMLElement) processorNameEditor?.open(fresh);
+  }
+
+  /** @param {string} gridId */
+  function beginGridRename(gridId) {
+    if (!state.grids.some((g) => g.id === gridId)) return;
+    if (state.activeGridId !== gridId) {
+      selectGrid(gridId, { silent: true });
+    }
+    const fresh = els.gridList?.querySelector(
+      `[data-grid-id="${CSS.escape(gridId)}"] .grid-item-name`
+    );
+    if (fresh instanceof HTMLElement) openGridNameEditor(fresh);
+  }
 
   const gridNameEditor =
     els.gridList &&
@@ -336,8 +369,8 @@ export function initLedCalculator() {
     const grid = getActiveGrid();
     if (!grid) return;
     grid.tile = getTileFromForm();
-    grid.rows = Math.max(1, Math.min(40, Number(els.wallRows.value) || 1));
-    grid.cols = Math.max(1, Math.min(40, Number(els.wallCols.value) || 1));
+    grid.rows = Math.max(1, Math.min(MAX_WALL_TILES, Number(els.wallRows.value) || 1));
+    grid.cols = Math.max(1, Math.min(MAX_WALL_TILES, Number(els.wallCols.value) || 1));
   }
 
   function loadGridToForm(grid) {
@@ -405,8 +438,8 @@ export function initLedCalculator() {
   }
 
   function buildGridFromForm(name) {
-    const rows = Math.max(1, Math.min(40, Number(els.wallRows.value) || 1));
-    const cols = Math.max(1, Math.min(40, Number(els.wallCols.value) || 1));
+    const rows = Math.max(1, Math.min(MAX_WALL_TILES, Number(els.wallRows.value) || 1));
+    const cols = Math.max(1, Math.min(MAX_WALL_TILES, Number(els.wallCols.value) || 1));
     return {
       id: uid("grid"),
       name,
@@ -702,8 +735,8 @@ export function initLedCalculator() {
   }
 
   function readWallDimensions() {
-    const rows = Math.max(1, Math.min(40, Number(els.wallRows.value) || 1));
-    const cols = Math.max(1, Math.min(40, Number(els.wallCols.value) || 1));
+    const rows = Math.max(1, Math.min(MAX_WALL_TILES, Number(els.wallRows.value) || 1));
+    const cols = Math.max(1, Math.min(MAX_WALL_TILES, Number(els.wallCols.value) || 1));
     const grid = getActiveGrid();
     if (grid) {
       grid.rows = rows;
@@ -1127,7 +1160,7 @@ export function initLedCalculator() {
               <svg class="processor-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
               </svg>
-              <span class="processor-name">${escapeXml(proc.name)}</span>
+              <span class="processor-name" title="Double-click to rename">${escapeXml(proc.name)}</span>
               <span class="processor-count">${procLines.length}</span>
             </button>
             <input type="color" class="processor-color" data-processor-color="${proc.id}" value="${escapeXml(proc.color)}" title="Line color for this processor" aria-label="Color for ${escapeXml(proc.name)}" />
@@ -1587,6 +1620,19 @@ export function initLedCalculator() {
     const n = lines.length + 1;
     const type = grid.activeLineType;
     const labels = defaultLabelsForLine(n, type);
+
+    // First data line on a wall with no processors → create "Processor 1".
+    if (type === "data" && !(grid.processors?.length) && !grid.activeProcessorId) {
+      ensureGridShape(grid);
+      const proc = {
+        id: uid("proc"),
+        name: "Processor 1",
+        color: PROCESSOR_COLORS[0],
+      };
+      grid.processors = [proc];
+      grid.activeProcessorId = proc.id;
+    }
+
     const line = {
       id: uid("line"),
       name: `${type === "data" ? "Data" : "Power"} ${n}`,
@@ -1604,7 +1650,12 @@ export function initLedCalculator() {
     renderResourceBars();
     render();
     if (!silent) {
-      setStatus(`Created ${line.name}. Click or drag across tiles to draw.`);
+      const proc = type === "data" ? findProcessor(grid, line.processorId) : null;
+      setStatus(
+        proc
+          ? `Created ${line.name} in ${proc.name}. Click or drag across tiles to draw.`
+          : `Created ${line.name}. Click or drag across tiles to draw.`
+      );
     }
     return line;
   }
@@ -1838,17 +1889,23 @@ export function initLedCalculator() {
   els.gridNew.addEventListener("click", addGrid);
   els.gridRemove.addEventListener("click", removeActiveGrid);
   els.gridList.addEventListener("click", (e) => {
-    if (e.target.closest(".grid-name-editor")) return;
+    if (e.target.closest(".grid-name-editor")) {
+      gridNameClicks.reset();
+      return;
+    }
     const item = e.target.closest("[data-grid-id]");
     if (!item) return;
-    selectGrid(item.dataset.gridId);
-  });
-  els.gridList.addEventListener("dblclick", (e) => {
-    const nameEl = e.target.closest(".grid-item-name");
-    if (!nameEl) return;
-    e.preventDefault();
-    e.stopPropagation();
-    openGridNameEditor(nameEl);
+    const gridId = item.dataset.gridId;
+    if (!gridId) return;
+    const onName = e.target.closest(".grid-item-name");
+    // Selection rebuilds the list — native dblclick is unreliable; track taps.
+    if (onName && gridNameClicks.tap(gridId, e)) {
+      e.preventDefault();
+      beginGridRename(gridId);
+      return;
+    }
+    if (!onName) gridNameClicks.reset();
+    selectGrid(gridId);
   });
 
   els.selectData.addEventListener("click", () => setActiveLineType("data"));
@@ -1868,20 +1925,35 @@ export function initLedCalculator() {
   els.placeStartLabel.addEventListener("click", () => handleLabelButton("start"));
   els.placeEndLabel.addEventListener("click", () => handleLabelButton("end"));
   els.resourceBars.addEventListener("click", (e) => {
-    if (e.target.closest(".processor-color") || e.target.closest(".grid-name-editor")) return;
+    if (e.target.closest(".processor-color") || e.target.closest(".grid-name-editor")) {
+      processorNameClicks.reset();
+      return;
+    }
     const addProcessorBtn = e.target.closest("[data-add-processor]");
     if (addProcessorBtn) {
+      processorNameClicks.reset();
       createProcessor();
       return;
     }
     const removeProcessorBtn = e.target.closest("[data-processor-remove]");
     if (removeProcessorBtn) {
+      processorNameClicks.reset();
       removeProcessor(removeProcessorBtn.dataset.processorRemove);
       return;
     }
     const processorSelectBtn = e.target.closest("[data-processor-select]");
     if (processorSelectBtn) {
-      selectProcessor(processorSelectBtn.dataset.processorSelect);
+      const processorId = processorSelectBtn.dataset.processorSelect;
+      if (!processorId) return;
+      const onName = e.target.closest(".processor-name");
+      // Selection rebuilds the list — native dblclick is unreliable; track taps.
+      if (onName && processorNameClicks.tap(processorId, e)) {
+        e.preventDefault();
+        beginProcessorRename(processorId);
+        return;
+      }
+      if (!onName) processorNameClicks.reset();
+      selectProcessor(processorId);
       return;
     }
     const collapseBtn = e.target.closest("[data-collapse-section]");
@@ -1944,14 +2016,6 @@ export function initLedCalculator() {
     if (!colorInput) return;
     setProcessorColor(colorInput.dataset.processorColor, colorInput.value);
   });
-  els.resourceBars.addEventListener("dblclick", (e) => {
-    const nameEl = e.target.closest(".processor-name");
-    if (!nameEl) return;
-    e.preventDefault();
-    e.stopPropagation();
-    processorNameEditor?.open(nameEl);
-  });
-
   const LINE_MOVE_MIME = "text/led-line-move";
   const PROC_MOVE_MIME = "text/led-processor-move";
   function hasDragType(e, mime) {
@@ -1965,6 +2029,7 @@ export function initLedCalculator() {
       });
   }
   els.resourceBars.addEventListener("dragstart", (e) => {
+    processorNameClicks.reset();
     if (!e.dataTransfer) return;
     const procRow = e.target.closest('.processor-row[draggable="true"]');
     if (procRow) {

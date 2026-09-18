@@ -5,6 +5,7 @@ import {
 import { listLedWalls } from "../led-spec-data.js";
 import { createElement } from "../state.js";
 import { registerSheetType } from "../sheet-registry.js";
+import { sheetHeadingText } from "../sheet-tree.js";
 import { titleBlockFrame } from "../title-block-layout.js";
 
 /**
@@ -21,7 +22,6 @@ function wiringSheetElements(opts) {
   const tb = titleBlockFrame(page);
   const diagramX = margin + leftW + 0.35;
   const diagramW = page.widthIn - diagramX - margin;
-  const diagramH = Math.max(4, tb.y - 1.7);
   const sourceKey = seed.sourceKey ?? "";
 
   return [
@@ -30,22 +30,25 @@ function wiringSheetElements(opts) {
       x: margin,
       y: margin,
       w: page.widthIn - margin * 2,
-      h: 0.65,
+      h: 1.25,
       z: 1,
-      content: { body: seed.title.toUpperCase(), heading: true },
+      content: {
+        body: sheetHeadingText({ typeId: seed.typeId, title: seed.title }),
+        heading: true,
+      },
     }),
     createLedSpecificationElement(sourceKey, {
       x: margin,
-      y: 1.35,
+      y: 1.85,
       w: leftW,
-      h: Math.max(3, tb.y - 1.75),
+      h: Math.max(3, tb.y - 2.25),
       z: 2,
     }),
     createLedWiringElement(sourceKey, mode, {
       x: diagramX,
-      y: 1.35,
+      y: 1.85,
       w: diagramW,
-      h: diagramH,
+      h: Math.max(4, tb.y - 2.2),
       z: 3,
     }),
   ];

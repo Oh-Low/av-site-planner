@@ -20,7 +20,8 @@
 <body>
   <div class="app-chrome">
     <nav class="tab-bar local-nav" role="tablist" aria-label="Planning tools">
-      <button class="app-tab tab active" role="tab" aria-selected="true" data-tab="led-calculator">LED Calculator</button>
+      <button class="app-tab tab active" role="tab" aria-selected="true" data-tab="shows">Shows</button>
+      <button class="app-tab tab" role="tab" aria-selected="false" data-tab="led-calculator">LED Calculator</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="projector-calculator">Projector Calculator</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="signal-flow">Signal Flow Chart</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="groundplan">Groundplan</button>
@@ -40,7 +41,10 @@
           <option value="chalk">Chalk</option>
         </select>
       </label>
-      <button type="button" class="btn btn-secondary" id="print-btn">Print</button>
+      <label class="theme-select-label room-select-label" for="active-room-select">
+        <span class="theme-select-caption">Room</span>
+        <select id="active-room-select" class="theme-select room-select" aria-label="Active room"></select>
+      </label>
       <button type="button" class="btn btn-secondary" id="export-btn">Export</button>
       <label for="import-file-input" class="btn btn-secondary import-file-label" id="import-btn">Import</label>
     </div>
@@ -48,8 +52,48 @@
   </div>
 
   <main class="app-main">
+    <section id="shows" class="tab-panel active" role="tabpanel">
+      <div class="shows-layout">
+        <div class="shows-column">
+          <h2>Shows</h2>
+          <p class="shows-column-hint">A show groups rooms for one event.</p>
+          <div class="resource-toolbar">
+            <div class="resource-toolbar-group">
+              <button type="button" class="btn btn-icon" id="shows-show-add" aria-label="Add show" title="Add show">+</button>
+              <button type="button" class="btn btn-icon" id="shows-show-duplicate" aria-label="Duplicate show" title="Duplicate show">⧉</button>
+            </div>
+          </div>
+          <div class="shows-list" id="shows-show-list"></div>
+        </div>
+        <div class="shows-column">
+          <h2>Rooms</h2>
+          <p class="shows-column-hint">Each room is a full calculator snapshot. Drag to reorder, or drag onto Templates to copy. Double-click to rename.</p>
+          <div class="resource-toolbar">
+            <div class="resource-toolbar-group">
+              <button type="button" class="btn btn-icon" id="shows-room-add" aria-label="Add room" title="Add room">+</button>
+              <button type="button" class="btn btn-icon" id="shows-room-duplicate" aria-label="Duplicate room" title="Duplicate room">⧉</button>
+              <button type="button" class="btn btn-secondary" id="shows-room-save-template" title="Save room as template">Save as template</button>
+            </div>
+          </div>
+          <div class="shows-list" id="shows-room-list"></div>
+        </div>
+        <div class="shows-column">
+          <h2>Room templates</h2>
+          <p class="shows-column-hint">Global templates — drag onto Rooms to add a copy, or drag within the list to reorder.</p>
+          <div class="resource-toolbar">
+            <div class="resource-toolbar-group">
+              <button type="button" class="btn btn-secondary" id="shows-template-add-to-show" title="Add template to selected show">Add to show</button>
+              <button type="button" class="btn btn-icon" id="shows-template-duplicate" aria-label="Duplicate template" title="Duplicate template">⧉</button>
+            </div>
+          </div>
+          <div class="shows-list" id="shows-template-list"></div>
+        </div>
+      </div>
+      <p id="shows-status" role="status" aria-live="polite"></p>
+    </section>
+
     <!-- LED Calculator -->
-    <section id="led-calculator" class="tab-panel active" role="tabpanel">
+    <section id="led-calculator" class="tab-panel" role="tabpanel" hidden>
       <div class="calc-layout led-layout" id="led-layout">
         <aside class="calc-sidebar" id="led-sidebar">
           <div class="sidebar-toolbar">
@@ -118,8 +162,8 @@
                 <summary>Wall Size</summary>
                 <div class="panel-section-body">
                   <div class="field-row">
-                    <label>Columns <input type="number" id="wall-cols" min="1" max="40" value="4" /></label>
-                    <label>Rows <input type="number" id="wall-rows" min="1" max="40" value="3" /></label>
+                    <label>Columns <input type="number" id="wall-cols" min="1" max="999" value="4" /></label>
+                    <label>Rows <input type="number" id="wall-rows" min="1" max="999" value="3" /></label>
                   </div>
                   <p class="hint" id="wall-summary"></p>
                   <button type="button" class="btn btn-primary btn-block" id="generate-grid">Update LED Wall</button>
@@ -1070,11 +1114,6 @@
                   </select>
                 </label>
               </div>
-              <div class="pw-sidebar-actions">
-                <button type="button" class="btn btn-secondary" id="pw-generate-packet" title="Generate packet">Generate</button>
-                <button type="button" class="btn btn-secondary" id="pw-update-linked" title="Update linked elements">Update</button>
-                <button type="button" class="btn btn-secondary" id="pw-reset-layout" title="Reset sheet layout">Reset</button>
-              </div>
               <details class="pw-subpanel">
                 <summary>Title block</summary>
                 <div class="pw-subpanel-body">
@@ -1095,8 +1134,8 @@
                     <input type="text" id="pw-tb-company" autocomplete="off" />
                   </label>
                   <div class="pw-field-row">
-                    <label class="pw-field">Approved
-                      <input type="text" id="pw-tb-approved" autocomplete="off" />
+                    <label class="pw-field">Job #
+                      <input type="text" id="pw-tb-job-no" autocomplete="off" />
                     </label>
                     <label class="pw-field">Checked
                       <input type="text" id="pw-tb-checked" autocomplete="off" />
@@ -1115,9 +1154,14 @@
             </div>
           </details>
 
-          <details class="panel-section">
+          <details class="panel-section" open>
             <summary>Sheets</summary>
             <div class="panel-section-body">
+              <div class="pw-sidebar-actions">
+                <button type="button" class="btn btn-secondary" id="pw-generate-packet" title="Generate packet from all rooms in this show">Generate</button>
+                <button type="button" class="btn btn-secondary" id="pw-update-linked" title="Update linked elements">Update</button>
+                <button type="button" class="btn btn-secondary" id="pw-reset-layout" title="Reset sheet layout">Reset</button>
+              </div>
               <div class="pw-sheet-actions">
                 <button type="button" class="btn btn-secondary" id="pw-new-sheet" title="New blank plate">New</button>
                 <button type="button" class="btn btn-secondary" id="pw-duplicate-sheet" title="Duplicate plate" disabled>Duplicate</button>
@@ -1238,11 +1282,48 @@
         <h3 id="pw-export-order-title">Order PDF pages</h3>
         <button type="button" class="pw-export-order-close" id="pw-export-order-close" aria-label="Close">×</button>
       </div>
-      <p class="pw-export-order-hint">Drag pages into the order you want in the PDF, then continue to Save as PDF.</p>
+      <p class="pw-export-order-hint">Use the eye to include or skip pages. Drag to set PDF order, then continue to Save as PDF.</p>
       <ol id="pw-export-order-list" class="pw-export-order-list"></ol>
       <div class="pw-export-order-footer">
         <button type="button" class="btn btn-secondary" id="pw-export-order-cancel">Cancel</button>
         <button type="button" class="btn btn-primary" id="pw-export-order-confirm">Continue to print</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="shows-delete-modal" class="export-scope-modal" hidden>
+    <div class="export-scope-dialog" role="dialog" aria-modal="true" aria-labelledby="shows-delete-title">
+      <div class="export-scope-header">
+        <h3 id="shows-delete-title">Delete</h3>
+        <button type="button" class="export-scope-close" id="shows-delete-close" aria-label="Close">×</button>
+      </div>
+      <p class="export-scope-hint" id="shows-delete-message">Are you sure you want to DELETE this item?</p>
+      <div class="export-scope-footer">
+        <button type="button" class="btn btn-secondary" id="shows-delete-cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" id="shows-delete-confirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="export-scope-modal" class="export-scope-modal" hidden>
+    <div class="export-scope-dialog" role="dialog" aria-modal="true" aria-labelledby="export-scope-title">
+      <div class="export-scope-header">
+        <h3 id="export-scope-title">Export</h3>
+        <button type="button" class="export-scope-close" id="export-scope-close" aria-label="Close">×</button>
+      </div>
+      <p class="export-scope-hint">Choose what to include in the .AVP file.</p>
+      <div class="export-scope-actions">
+        <button type="button" class="btn btn-primary" id="export-scope-profile">
+          Entire profile
+          <span class="export-scope-detail">All shows and room templates</span>
+        </button>
+        <button type="button" class="btn btn-secondary" id="export-scope-show">
+          Current show only
+          <span class="export-scope-detail" id="export-scope-show-name">Active show</span>
+        </button>
+      </div>
+      <div class="export-scope-footer">
+        <button type="button" class="btn btn-secondary" id="export-scope-cancel">Cancel</button>
       </div>
     </div>
   </div>

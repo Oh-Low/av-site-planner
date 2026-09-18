@@ -1,7 +1,5 @@
 /**
- * Sidebar folder grouping for the paperwork sheet list.
- * LED sheets nest under LED → wall; rasters under Rasters;
- * surfaces under Surfaces; cable-runs under Cable Runs.
+ * Sheet list helpers for the paperwork sidebar.
  */
 
 /**
@@ -33,50 +31,106 @@ export function isCableRunsSheet(sheet) {
 }
 
 /**
- * @param {import("./state.js").SheetInstance} sheet
+ * @param {string} typeId
+ * @returns {string | null}
  */
-export function sheetListTitle(sheet) {
-  const title = String(sheet.title ?? "").trim();
-  if (!title) return "Untitled";
-
-  // Nested role labels only while the title is still the generated default.
-  // Once the user renames the sheet, show their title in the hierarchy.
-  if (sheet.typeId === "led-wall-cable") {
-    return isGeneratedPrefixedTitle(title, "LED Cable") ? "Cable wiring" : title;
+export function sheetRoleLabel(typeId) {
+  switch (typeId) {
+    case "led-wall-cable":
+      return "Cable Diagram";
+    case "led-wall-power":
+      return "Power Diagram";
+    case "cable-runs":
+      return "Cable Runs";
+    case "signal-flow":
+      return "Signal Flow";
+    case "surface-map":
+      return "Surface";
+    case "raster-map":
+      return "Raster";
+    case "cover":
+      return "Cover";
+    default:
+      return null;
   }
-  if (sheet.typeId === "led-wall-power") {
-    return isGeneratedPrefixedTitle(title, "LED Power") ? "Power wiring" : title;
-  }
-  if (isRasterSheet(sheet) || isSurfaceSheet(sheet)) {
-    const prefix = isSurfaceSheet(sheet) ? "Surface" : "Raster";
-    if (isGeneratedPrefixedTitle(title, prefix)) {
-      return sourceNameFromTitle(title) || prefix;
-    }
-    return title;
-  }
-  if (isCableRunsSheet(sheet)) {
-    return title === "Cable Runs" ? "Overview" : title;
-  }
-  if (sheet.typeId === "signal-flow") {
-    return title;
-  }
-  return title;
 }
 
 /**
- * @param {string} title
- * @param {string} prefix
+ * @param {string} wallName
  */
-function isGeneratedPrefixedTitle(title, prefix) {
-  if (title === prefix) return true;
-  return title.startsWith(`${prefix} —`) || title.startsWith(`${prefix} -`);
+function formatLedWallName(wallName) {
+  const name = String(wallName ?? "").trim() || "Wall";
+  if (/^led\b/i.test(name)) return name;
+  return `LED ${name}`;
 }
 
-/** @param {string} title */
-function sourceNameFromTitle(title) {
-  const value = String(title ?? "");
-  const sep = value.indexOf("—");
-  return sep >= 0 ? value.slice(sep + 1).trim() : value;
+/**
+ * Two-line list presentation: room on top, subject | role below.
+ * @param {import("./state.js").SheetInstance} sheet
+ * @returns {{ room: string | null, detail: string }}
+ */
+export function sheetListPresentation(sheet) {
+  const title = String(sheet.title ?? "").trim() || "Untitled";
+  const role = sheetRoleLabel(sheet.typeId);
+  const parts = title.split(/\s*—\s*/).map((part) => part.trim()).filter(Boolean);
+
+  if (isLedWallSheet(sheet)) {
+    let room = null;
+    let wall = title;
+    if (parts.length >= 3) {
+      room = parts[0];
+      wall = parts[parts.length - 1];
+    } else if (parts.length === 2) {
+      wall = parts[1];
+    }
+    const detail = role
+      ? `${formatLedWallName(wall)} | ${role}`
+      : formatLedWallName(wall);
+    return { room, detail };
+  }
+
+  if (isSurfaceSheet(sheet) || isRasterSheet(sheet)) {
+    if (parts.length >= 3) {
+      return {
+        room: parts[0],
+        detail: role ? `${parts[parts.length - 1]} | ${role}` : parts[parts.length - 1],
+      };
+    }
+    if (parts.length === 2) {
+      // "Surface — Lobby" (no room prefix)
+      return {
+        room: null,
+        detail: role ? `${parts[1]} | ${role}` : parts[1],
+      };
+    }
+  }
+
+  if (parts.length >= 2) {
+    return {
+      room: parts[0],
+      detail: parts.slice(1).join(" — "),
+    };
+  }
+
+  return { room: null, detail: title };
+}
+
+/**
+ * Flat search / fallback title.
+ * @param {import("./state.js").SheetInstance} sheet
+ */
+export function sheetListTitle(sheet) {
+  const { room, detail } = sheetListPresentation(sheet);
+  return room ? `${room} — ${detail}` : detail;
+}
+
+/**
+ * Top-left sheet heading body (room on first line, detail on second).
+ * @param {{ typeId?: string, title?: string, roomId?: string | null }} sheet
+ */
+export function sheetHeadingText(sheet) {
+  const { room, detail } = sheetListPresentation(sheet);
+  return room ? `${room}\n${detail}` : detail;
 }
 
 /**
@@ -84,7 +138,9 @@ function sourceNameFromTitle(title) {
  */
 export function wallFolderLabel(sheet) {
   const title = String(sheet.title ?? "");
-  const sep = title.indexOf("—");
+  const match = /LED (?:Cable|Power)\s*[—-]\s*(.+)$/i.exec(title);
+  if (match?.[1]?.trim()) return match[1].trim();
+  const sep = title.lastIndexOf("—");
   if (sep >= 0) {
     const name = title.slice(sep + 1).trim();
     if (name) return name;
@@ -105,102 +161,18 @@ export function wallFolderLabel(sheet) {
  */
 
 /**
+ * Flat sheet list (no auto-grouping).
  * @param {import("./state.js").SheetInstance[]} sheets sorted by order
  * @returns {SheetTreeNode[]}
  */
 export function buildSheetTree(sheets) {
-  /** @type {SheetTreeNode[]} */
-  const root = [];
-  /** @type {Map<string, { key: string, label: string, sheets: import("./state.js").SheetInstance[] }>} */
-  const walls = new Map();
-  /** @type {import("./state.js").SheetInstance[]} */
-  const rasters = [];
-  /** @type {import("./state.js").SheetInstance[]} */
-  const surfaces = [];
-  /** @type {import("./state.js").SheetInstance[]} */
-  const cableRuns = [];
-
-  for (const sheet of sheets) {
-    if (isRasterSheet(sheet)) {
-      rasters.push(sheet);
-      continue;
-    }
-    if (isSurfaceSheet(sheet)) {
-      surfaces.push(sheet);
-      continue;
-    }
-    if (isCableRunsSheet(sheet)) {
-      cableRuns.push(sheet);
-      continue;
-    }
-    if (!isLedWallSheet(sheet)) {
-      root.push({ kind: "sheet", sheet });
-      continue;
-    }
-    const wallId = sheet.sourceKey || sheet.id;
-    let wall = walls.get(wallId);
-    if (!wall) {
-      wall = { key: `LED/${wallId}`, label: wallFolderLabel(sheet), sheets: [] };
-      walls.set(wallId, wall);
-    }
-    wall.sheets.push(sheet);
-  }
-
-  if (walls.size) {
-    root.push({
-      kind: "folder",
-      key: "LED",
-      label: "LED",
-      children: [...walls.values()].map((wall) => ({
-        kind: "folder",
-        key: wall.key,
-        label: wall.label,
-        children: wall.sheets.map((sheet) => ({ kind: "sheet", sheet })),
-      })),
-    });
-  }
-
-  if (cableRuns.length) {
-    root.push({
-      kind: "folder",
-      key: "Cable Runs",
-      label: "Cable Runs",
-      children: cableRuns.map((sheet) => ({ kind: "sheet", sheet })),
-    });
-  }
-
-  if (surfaces.length) {
-    root.push({
-      kind: "folder",
-      key: "Surfaces",
-      label: "Surfaces",
-      children: surfaces.map((sheet) => ({ kind: "sheet", sheet })),
-    });
-  }
-
-  if (rasters.length) {
-    root.push({
-      kind: "folder",
-      key: "Rasters",
-      label: "Rasters",
-      children: rasters.map((sheet) => ({ kind: "sheet", sheet })),
-    });
-  }
-
-  return root;
+  return sheets.map((sheet) => ({ kind: "sheet", sheet }));
 }
 
 /**
- * Folder keys that should stay open so the active sheet is visible.
- * @param {import("./state.js").SheetInstance | null} sheet
+ * @param {import("./state.js").SheetInstance | null} _sheet
  * @returns {string[]}
  */
-export function folderKeysForSheet(sheet) {
-  if (!sheet) return [];
-  if (isRasterSheet(sheet)) return ["Rasters"];
-  if (isSurfaceSheet(sheet)) return ["Surfaces"];
-  if (isCableRunsSheet(sheet)) return ["Cable Runs"];
-  if (!isLedWallSheet(sheet)) return [];
-  const wallId = sheet.sourceKey || sheet.id;
-  return ["LED", `LED/${wallId}`];
+export function folderKeysForSheet(_sheet) {
+  return [];
 }

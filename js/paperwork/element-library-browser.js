@@ -1,4 +1,5 @@
 import { escapeXml } from "../shared/dom.js";
+import { createDoubleClickTracker } from "../shared/double-click.js";
 import {
   createLibraryFolder,
   isBuiltinLibraryFolderId,
@@ -7,6 +8,8 @@ import {
   mergeLibraryFolders,
   nextUniqueLibraryFolderName,
 } from "./element-library.js";
+
+const folderRenameClicks = createDoubleClickTracker();
 
 /**
  * @param {import("./element-catalog.js").AddableElement} item
@@ -305,15 +308,20 @@ export function renderElementLibraryBrowser({
 
   container.querySelectorAll(".pw-lib-tree-folder-btn").forEach((btn) => {
     const button = /** @type {HTMLButtonElement} */ (btn);
-    button.addEventListener("click", () => {
-      onSelectFolder(button.dataset.folderId ?? null);
-    });
-    button.addEventListener("dblclick", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const id = button.dataset.folderId;
-      if (!id || isBuiltinLibraryFolderId(id)) return;
-      onBeginRenameFolder?.(id);
+    button.addEventListener("click", (e) => {
+      const id = button.dataset.folderId ?? null;
+      if (
+        id &&
+        !isBuiltinLibraryFolderId(id) &&
+        onBeginRenameFolder &&
+        folderRenameClicks.tap(id, e)
+      ) {
+        e.preventDefault();
+        onBeginRenameFolder(id);
+        return;
+      }
+      if (!id || isBuiltinLibraryFolderId(id)) folderRenameClicks.reset();
+      onSelectFolder(id);
     });
   });
 

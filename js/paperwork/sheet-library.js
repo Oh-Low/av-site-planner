@@ -8,114 +8,51 @@ import {
   renameLibraryFolder,
   normalizeLibraryFolders,
 } from "./element-library.js";
-import {
-  isCableRunsSheet,
-  isLedWallSheet,
-  isRasterSheet,
-  isSurfaceSheet,
-  sheetListTitle,
-  wallFolderLabel,
-} from "./sheet-tree.js";
+import { sheetListTitle } from "./sheet-tree.js";
 
 /**
  * @typedef {import("./element-library.js").LibraryFolder} SheetFolder
  */
 
-/** @param {string} calculator */
-function autoSheetCalculatorFolderId(name) {
-  return `fld-sheet:${name}`;
-}
-
-/**
- * @param {string} parentName
- * @param {string} childName
- */
-function autoSheetChildFolderId(parentName, childName) {
-  return `fld-sheet:${parentName}/${childName}`;
-}
-
 /** @param {string} folderId */
 export function isBuiltinSheetFolderId(folderId) {
+  // Legacy auto folders (no longer created); treat as non-user so they can't be renamed.
   return folderId.startsWith("fld-sheet:");
 }
 
 /**
- * Default auto folder for a sheet (LED / surfaces / rasters / cable runs).
- * @param {import("./state.js").SheetInstance} sheet
+ * Sheets default to root — no automatic calculator/room folders.
+ * @param {import("./state.js").SheetInstance} _sheet
  * @returns {{ folders: SheetFolder[], folderId: string | null }}
  */
-export function autoFolderForSheet(sheet) {
-  /** @type {SheetFolder[]} */
-  const folders = [];
-
-  /** @param {string} id @param {string} name @param {string | null} parentId */
-  const ensure = (id, name, parentId) => {
-    if (!folders.some((f) => f.id === id)) {
-      folders.push({ id, name, parentId });
-    }
-  };
-
-  if (isRasterSheet(sheet)) {
-    const id = autoSheetCalculatorFolderId("Rasters");
-    ensure(id, "Rasters", null);
-    return { folders, folderId: id };
-  }
-  if (isSurfaceSheet(sheet)) {
-    const id = autoSheetCalculatorFolderId("Surfaces");
-    ensure(id, "Surfaces", null);
-    return { folders, folderId: id };
-  }
-  if (isCableRunsSheet(sheet)) {
-    const id = autoSheetCalculatorFolderId("Cable Runs");
-    ensure(id, "Cable Runs", null);
-    return { folders, folderId: id };
-  }
-  if (isLedWallSheet(sheet)) {
-    const ledId = autoSheetCalculatorFolderId("LED");
-    const wallKey = sheet.sourceKey || sheet.id;
-    const wallId = autoSheetChildFolderId("LED", wallKey);
-    ensure(ledId, "LED", null);
-    ensure(wallId, wallFolderLabel(sheet), ledId);
-    return { folders, folderId: wallId };
-  }
-  return { folders, folderId: null };
+export function autoFolderForSheet(_sheet) {
+  return { folders: [], folderId: null };
 }
 
 /**
- * Build auto folders + default placements from the current sheet list.
+ * No auto folders; every sheet defaults to root until the user moves it.
  * @param {import("./state.js").SheetInstance[]} sheets
  * @returns {{ folders: SheetFolder[], placements: Record<string, string | null> }}
  */
 export function buildAutoSheetLibrary(sheets) {
-  /** @type {Map<string, SheetFolder>} */
-  const folderMap = new Map();
   /** @type {Record<string, string | null>} */
   const placements = {};
-
   for (const sheet of sheets) {
-    const { folders, folderId } = autoFolderForSheet(sheet);
-    for (const folder of folders) {
-      if (!folderMap.has(folder.id)) folderMap.set(folder.id, folder);
-    }
-    placements[sheet.id] = folderId;
+    placements[sheet.id] = null;
   }
-
-  return {
-    folders: [...folderMap.values()],
-    placements,
-  };
+  return { folders: [], placements };
 }
 
 /**
- * Effective folder for a sheet: explicit folderId wins; otherwise auto default.
+ * Effective folder for a sheet: explicit folderId only (null = root).
  * @param {import("./state.js").SheetInstance} sheet
- * @param {Record<string, string | null>} autoPlacements
+ * @param {Record<string, string | null>} [_autoPlacements]
  */
-export function effectiveSheetFolderId(sheet, autoPlacements) {
+export function effectiveSheetFolderId(sheet, _autoPlacements) {
   if ("folderId" in sheet && sheet.folderId !== undefined) {
     return sheet.folderId;
   }
-  return autoPlacements[sheet.id] ?? null;
+  return null;
 }
 
 /**
@@ -132,12 +69,11 @@ export function listSheetsInFolder(sheets, autoPlacements, folderId) {
 /**
  * @param {import("./state.js").SheetInstance} sheet
  * @param {string | null} folderId
- * @param {Record<string, string | null>} autoPlacements
+ * @param {Record<string, string | null>} [_autoPlacements]
  */
-export function moveSheetToFolder(sheet, folderId, autoPlacements) {
-  const auto = autoPlacements[sheet.id] ?? null;
-  if (folderId === auto) {
-    delete sheet.folderId;
+export function moveSheetToFolder(sheet, folderId, _autoPlacements) {
+  if (folderId == null) {
+    sheet.folderId = null;
   } else {
     sheet.folderId = folderId;
   }

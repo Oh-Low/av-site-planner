@@ -1,6 +1,7 @@
 import { createRasterElement } from "../element-catalog.js";
 import { createElement } from "../state.js";
 import { registerSheetType } from "../sheet-registry.js";
+import { sheetHeadingText } from "../sheet-tree.js";
 import { titleBlockFrame } from "../title-block-layout.js";
 
 /**
@@ -38,15 +39,18 @@ registerSheetType({
         x: margin,
         y: margin,
         w: page.widthIn - margin * 2,
-        h: 0.65,
+        h: 1.25,
         z: 1,
-        content: { body: seed.title.toUpperCase(), heading: true },
+        content: {
+          body: sheetHeadingText({ typeId: seed.typeId, title: seed.title }),
+          heading: true,
+        },
       }),
       createRasterElement(seed.sourceKey ?? "", {
         x: margin,
-        y: 1.35,
+        y: 1.85,
         w: page.widthIn - margin * 2,
-        h: Math.max(4, tb.y - 1.7),
+        h: Math.max(4, tb.y - 2.2),
         z: 2,
       }),
     ];

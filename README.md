@@ -32,7 +32,7 @@ Plan how to build and wire a grid of LED tiles into a wall:
 - **Line tools** — new, edit, remove, label start/end (shown in circles on the wall)
 - **Resource bars** — usage per line for data (tiles) and power (amps)
 
-Use **Print / Export** or your browser print dialog for site paperwork.
+Use **Export paperwork** on the Paperwork tab (or your browser print dialog) for site paperwork.
 
 ## Projector Calculator
 
@@ -114,7 +114,7 @@ Gear can alternatively declare a `ports` array of rows, which also supports divi
 
 ## Site plans (`.AVP` files)
 
-Export saves a JSON site plan with extension `.AVP` (format version **2**). Import accepts version **1** or **2** — older files are migrated automatically on load. Full field reference: [`docs/AVP-v2.md`](docs/AVP-v2.md).
+Export saves a multi-show JSON document with extension `.AVP` (format version **3**). Import accepts version **1**, **2**, or **3** — older single-room files become one Show + one Room. The working document also **autosaves to IndexedDB** so it returns when you reopen the app. Full field reference: [`docs/AVP-v2.md`](docs/AVP-v2.md).
 
 ```json
 {
@@ -169,13 +169,14 @@ Or run `./launch` (installs if needed, then `npm run dev`). Open `http://localho
 | `npm run typecheck` | TypeScript check (`allowJs`) |
 | `npm run ci` | typecheck + test + build |
 
-Export / Import live in the app header (and again on the LED / Projector toolbars). There is **no** browser localStorage — the site plan is the `.AVP` file.
+Export / Import live in the app header (whole multi-show `.AVP`). The Shows tab (first tab) manages Shows, Rooms, and Room Templates. Calculator work autosaves into the active room via IndexedDB.
 ## Project layout
 
 | Path | Role |
 |------|------|
 | `package.json` / `vite.config.js` | Vite + TypeScript tooling |
-| `fixtures/default.avp` | Default site plan loaded on startup |
+| `fixtures/default.avp` | Seed plan used once when IndexedDB is empty |
+| `js/shows.js` / `js/show-document-runtime.js` | Shows tab + multi-show document autosave |
 | `js/app.js` | App shell — tabs, export/import, calculator bootstrap |
 | `js/calculator-registry.js` | Registers calculator plugins and initializes them |
 | `js/site-state.js` | `.AVP` export/import bundle (format version 2) |

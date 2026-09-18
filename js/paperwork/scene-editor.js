@@ -133,6 +133,8 @@ export function createSceneEditor(options) {
 
   /** Manual double-click tracking — pointer capture + paint() break native dblclick. */
   const textDecorationClicks = createDoubleClickTracker();
+  const textElementClicks = createDoubleClickTracker();
+  const polylineClicks = createDoubleClickTracker();
 
   const panZoom = createTransformPanZoom({
     viewport,
@@ -293,6 +295,7 @@ export function createSceneEditor(options) {
 
   function cancelDraw() {
     removeDrawPreview();
+    polylineClicks.reset();
     draw.mode = "none";
     draw.tool = null;
     draw.startIn = null;
@@ -1012,7 +1015,13 @@ export function createSceneEditor(options) {
     const pt = clientToInches(e.clientX, e.clientY);
 
     if (tool === "polyline") {
+      if (draw.mode === "polyline" && polylineClicks.tap("polyline", e)) {
+        // Double-click finishes without adding this click as a vertex.
+        finishPolyline();
+        return true;
+      }
       if (draw.mode !== "polyline") {
+        polylineClicks.reset();
         draw.mode = "polyline";
         draw.tool = tool;
         draw.points = [pt];
@@ -1130,6 +1139,7 @@ export function createSceneEditor(options) {
       if (!dec) return;
       e.stopPropagation();
 
+      textElementClicks.reset();
       const isTextDec = dec.type === "drawText" || dec.type === "drawHeading";
       if (isTextDec) {
         if (textDecorationClicks.tap(id, e)) {
@@ -1187,6 +1197,32 @@ export function createSceneEditor(options) {
       const el = findElement(id);
       if (!el) return;
       e.stopPropagation();
+
+      if (!el.locked && el.type === "text") {
+        if (textElementClicks.tap(id, e)) {
+          e.preventDefault();
+          drag.mode = "none";
+          drag.targetId = null;
+          drag.fieldId = null;
+          setSelectedId(id);
+          setSelectedDecorationId?.(null);
+          paint();
+          const fresh = artboard.querySelector(`[data-element-id="${CSS.escape(id)}"]`);
+          const host = resolveEditHost(
+            fresh instanceof HTMLElement ? fresh : null,
+            "body",
+            target
+          );
+          if (host instanceof HTMLElement) {
+            beginInlineEdit(id, "body", host);
+            onChange();
+          }
+          return;
+        }
+      } else {
+        textElementClicks.reset();
+      }
+
       const alreadySelected = getSelectedId() === id;
       const selectionChanged = !alreadySelected;
       setSelectedId(id);
@@ -1413,52 +1449,6 @@ export function createSceneEditor(options) {
     onChange();
   }
 
-  function onDoubleClick(e) {
-    if (draw.mode === "polyline" && activeTool() === "polyline") {
-      e.preventDefault();
-      if (draw.points.length > 1) draw.points.pop();
-      finishPolyline();
-      return;
-    }
-
-    if (isDrawToolActive()) return;
-
-    const target = /** @type {HTMLElement} */ (e.target);
-    const decNode = target.closest?.(".pw-decoration");
-    if (decNode) {
-      const id = decNode.dataset.decorationId;
-      const dec = findDecoration(id);
-      if (!dec || (dec.type !== "drawText" && dec.type !== "drawHeading")) return;
-      e.preventDefault();
-      e.stopPropagation();
-      setSelectedDecorationId?.(id);
-      setSelectedId(null);
-      queueDecorationTextEdit(id);
-      onChange();
-      return;
-    }
-
-    const elNode = target.closest?.(".pw-element");
-    if (!elNode) return;
-    const elId = elNode.dataset.elementId;
-    const el = findElement(elId);
-    if (!el || el.locked || el.type !== "text") return;
-    e.preventDefault();
-    e.stopPropagation();
-    setSelectedId(elId);
-    setSelectedDecorationId?.(null);
-    paint();
-    const node = artboard.querySelector(`[data-element-id="${CSS.escape(elId)}"]`);
-    const host = resolveEditHost(
-      node instanceof HTMLElement ? node : null,
-      "body",
-      target
-    );
-    if (host instanceof HTMLElement) {
-      beginInlineEdit(elId, "body", host);
-      onChange();
-    }
-  }
 
   function onKeyDown(e) {
     if (draw.mode === "polyline") {
@@ -1533,7 +1523,6 @@ export function createSceneEditor(options) {
   function bind() {
     panZoom.bind();
     artboard.addEventListener("pointerdown", onPointerDown);
-    artboard.addEventListener("dblclick", onDoubleClick);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerUp);

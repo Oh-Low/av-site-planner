@@ -28,6 +28,7 @@ import {
 import { queryCalcShell, bindSidebarTabs } from "./shared/calc-shell.js";
 import { deepClone } from "./shared/clone.js";
 import { escapeXml } from "./shared/dom.js";
+import { createDoubleClickTracker } from "./shared/double-click.js";
 import { createListNameEditor } from "./shared/inline-editor.js";
 import { createSvgViewBoxPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
@@ -994,7 +995,7 @@ export function initProjectorCalculator() {
   const DIAGRAM_SCALE = 10;
 
   const projView = { panX: 0, panY: 0, zoom: 1, contentW: 0, contentH: 0 };
-  let screenListSelectDelay = null;
+  const screenNameClicks = createDoubleClickTracker();
   let syncingForm = false;
   let activeSidebarTab = "screen";
 
@@ -1847,6 +1848,18 @@ export function initProjectorCalculator() {
     screenNameEditor?.open(nameEl);
   }
 
+  /** @param {string} screenId */
+  function beginScreenRename(screenId) {
+    if (!state.screens.some((s) => s.id === screenId)) return;
+    if (state.activeScreenId !== screenId) {
+      selectScreen(screenId);
+    }
+    const fresh = els.screenList?.querySelector(
+      `[data-screen-id="${CSS.escape(screenId)}"] .grid-item-name`
+    );
+    if (fresh instanceof HTMLElement) openScreenNameEditor(fresh);
+  }
+
   function renderScreenList() {
     closeScreenNameEditor();
     if (!els.screenList) return;
@@ -2601,25 +2614,22 @@ export function initProjectorCalculator() {
   on(els.screenNew, "click", addScreen);
   on(els.screenRemove, "click", removeActiveScreen);
   on(els.screenList, "click", (e) => {
-    if (e.target.closest(".grid-name-editor")) return;
+    if (e.target.closest(".grid-name-editor")) {
+      screenNameClicks.reset();
+      return;
+    }
     const item = e.target.closest("[data-screen-id]");
     if (!item) return;
     const screenId = item.dataset.screenId;
     if (!screenId) return;
-    window.clearTimeout(screenListSelectDelay);
-    screenListSelectDelay = window.setTimeout(() => {
-      screenListSelectDelay = null;
-      selectScreen(screenId);
-    }, 220);
-  });
-  on(els.screenList, "dblclick", (e) => {
-    const nameEl = e.target.closest(".grid-item-name");
-    if (!nameEl) return;
-    window.clearTimeout(screenListSelectDelay);
-    screenListSelectDelay = null;
-    e.preventDefault();
-    e.stopPropagation();
-    openScreenNameEditor(nameEl);
+    const onName = e.target.closest(".grid-item-name");
+    if (onName && screenNameClicks.tap(screenId, e)) {
+      e.preventDefault();
+      beginScreenRename(screenId);
+      return;
+    }
+    if (!onName) screenNameClicks.reset();
+    selectScreen(screenId);
   });
   on(els.screenList, "keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;

@@ -153,6 +153,24 @@ export function listAddableElements(siteExports, page) {
         }),
     },
     {
+      id: "standard:company-logo",
+      label: "Company logo",
+      group: "Standard",
+      calculator: "Standard",
+      family: "Logo",
+      w: Math.min(4.5, page.widthIn - 1.5),
+      h: 3,
+      create: () =>
+        createElement({
+          type: "companyLogo",
+          x: 0.75,
+          y: 1.25,
+          w: Math.min(4.5, page.widthIn - 1.5),
+          h: 3,
+          content: {},
+        }),
+    },
+    {
       id: "standard:notes",
       label: "Notes",
       group: "Standard",

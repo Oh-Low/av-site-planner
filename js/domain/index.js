@@ -90,3 +90,33 @@ export {
 } from "./paperwork.js";
 
 export { createSiteDocument } from "./site-document.js";
+
+export {
+  SHOW_DOCUMENT_VERSION,
+  emptyShowDocument,
+  normalizeShowDocument,
+  wrapV2PlanAsShowDocument,
+  documentForSingleShowExport,
+  findActiveShow,
+  findActiveRoom,
+  reconcileActiveIds,
+  setActiveRoom,
+  writeActiveRoomPlan,
+  writeActiveShowPaperwork,
+  readActiveShowPaperwork,
+  addShowWithEmptyRoom,
+  removeShow,
+  duplicateShow,
+  renameShow,
+  addRoom,
+  removeRoom,
+  duplicateRoom,
+  renameRoom,
+  reorderRoom,
+  reorderTemplate,
+  saveRoomAsTemplate,
+  addTemplateToShow,
+  removeTemplate,
+  duplicateTemplate,
+  renameTemplate,
+} from "./show-document.js";

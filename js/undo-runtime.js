@@ -56,7 +56,9 @@ export function restoreSection(stateKey, snapshot) {
 export function recordBefore(stateKey, label, opts) {
   const before = captureSection(stateKey);
   if (before == null) return false;
-  return stack.recordBefore({ stateKey, before, label }, opts);
+  const ok = stack.recordBefore({ stateKey, before, label }, opts);
+  if (ok) markDirty?.(true);
+  return ok;
 }
 
 /**

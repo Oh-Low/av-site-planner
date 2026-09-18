@@ -15,4 +15,5 @@ export {
   normalizePaperworkState,
   normalizeSheet,
   normalizeTitleBlockLogo,
+  prepareTitleBlockLogo,
 } from "../domain/paperwork.js";

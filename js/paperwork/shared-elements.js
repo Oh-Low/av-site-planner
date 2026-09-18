@@ -32,9 +32,13 @@ export function sharedElementVisibleOnSheet(element, activeSheetId) {
 /**
  * @param {import("./state.js").PageElement[]} sharedElements
  * @param {string | null} activeSheetId
+ * @param {import("./state.js").SheetInstance | null} [sheet]
  */
-export function sharedElementsForSheet(sharedElements, activeSheetId) {
+export function sharedElementsForSheet(sharedElements, activeSheetId, sheet = null) {
   return sharedElements
-    .filter((el) => sharedElementVisibleOnSheet(el, activeSheetId))
+    .filter((el) => {
+      if (sheet?.typeId === "cover" && el.type === "titleBlock") return false;
+      return sharedElementVisibleOnSheet(el, activeSheetId);
+    })
     .sort((a, b) => a.z - b.z);
 }

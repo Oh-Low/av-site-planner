@@ -39,7 +39,7 @@ import {
 import { clampZoom, createTransformPanZoom } from "./shared/pan-zoom.js";
 import { uid } from "./shared/id.js";
 import { recordBefore } from "./undo-runtime.js";
-import { nextCopyName, offsetPoint, offsetPoints } from "./copy-paste.js";
+import { offsetPoint, offsetPoints } from "./copy-paste.js";
 import {
   SIGNAL_FLOW_GRID_DEFAULT_SIZE as GRID_DEFAULT_SIZE,
   SIGNAL_FLOW_GRID_MAX_SIZE as GRID_MAX_SIZE,
@@ -1550,6 +1550,12 @@ export function initSignalFlow() {
       mount: root,
       gear: nodeGear(node),
       onSave: (updated) => {
+        recordBefore("signalFlow", "edit-node-gear");
+        const nextName =
+          (typeof updated.defaultName === "string" && updated.defaultName.trim()) ||
+          (typeof updated.label === "string" && updated.label.trim()) ||
+          node.name;
+        node.name = nextName;
         node.gearOverride = updated;
         const removed = pruneInvalidConnections();
         render();
@@ -2179,7 +2185,6 @@ export function initSignalFlow() {
         const next = deepClone(node);
         const oldId = next.id;
         next.id = uid("sf");
-        next.name = nextCopyName(next.name);
         const moved = offsetPoint(next, SF_PASTE_OFFSET, SF_PASTE_OFFSET);
         next.x = moved.x;
         next.y = moved.y;

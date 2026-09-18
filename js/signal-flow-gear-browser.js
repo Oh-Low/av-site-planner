@@ -1,4 +1,5 @@
 import { escapeXml } from "./shared/dom.js";
+import { createDoubleClickTracker } from "./shared/double-click.js";
 import {
   BUILTIN_FOLDERS,
   BUILTIN_GEAR_PLACEMENTS,
@@ -10,6 +11,8 @@ import {
   mergeGearFolders,
   nextUniqueFolderName,
 } from "./signal-flow-gear-library.js";
+
+const folderRenameClicks = createDoubleClickTracker();
 
 /**
  * @param {import("./signal-flow-data.js").GearType} item
@@ -325,15 +328,20 @@ export function renderPremadeGearBrowser({
 
   container.querySelectorAll(".sf-gear-tree-folder-btn").forEach((btn) => {
     const button = /** @type {HTMLButtonElement} */ (btn);
-    button.addEventListener("click", () => {
-      onSelectFolder(button.dataset.folderId ?? null);
-    });
-    button.addEventListener("dblclick", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const id = button.dataset.folderId;
-      if (!id || isBuiltinFolderId(id)) return;
-      onBeginRenameFolder?.(id);
+    button.addEventListener("click", (e) => {
+      const id = button.dataset.folderId ?? null;
+      if (
+        id &&
+        !isBuiltinFolderId(id) &&
+        onBeginRenameFolder &&
+        folderRenameClicks.tap(id, e)
+      ) {
+        e.preventDefault();
+        onBeginRenameFolder(id);
+        return;
+      }
+      if (!id || isBuiltinFolderId(id)) folderRenameClicks.reset();
+      onSelectFolder(id);
     });
   });
 

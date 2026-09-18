@@ -1,5 +1,5 @@
 import { escapeXml } from "../shared/dom.js";
-import { fontSizePtToUserUnits, normalizeFontSizePt } from "./font-scale.js";
+import { DEFAULT_FONT_SIZE_PT, normalizeFontSizePt } from "./font-scale.js";
 import {
   formatSurfaceLength,
   formatSurfacePoint,
@@ -331,17 +331,10 @@ export function buildMediaMapSvg(map, zones, options = {}) {
   const stroke = Math.max(2, shortSide * 0.0025);
   const markerSize = Math.max(8, stroke * 3);
   const fontSizePt = normalizeFontSizePt(options.fontSizePt);
-  const frameWIn = Number(options.frameWIn) || 0;
-  const frameHIn = Number(options.frameHIn) || 0;
-  const labelSize =
-    frameWIn > 0 && frameHIn > 0
-      ? fontSizePtToUserUnits(fontSizePt, {
-          viewW: width + margin * 2,
-          viewH: height + margin * 2,
-          frameWIn,
-          frameHIn,
-        })
-      : Math.max(14, Math.min(54, shortSide * 0.027));
+  // Match Content Maps calculator labels (buildWorldSvg): relative to map/zone
+  // pixels. Font size (pt) scales that baseline (10pt = same as the viewport).
+  const labelScale = fontSizePt / DEFAULT_FONT_SIZE_PT;
+  const labelSize = Math.max(12, shortSide * 0.035) * labelScale;
   const dimensionSize = labelSize * 1.15;
 
   let bottomDimLanes = 0;
@@ -396,7 +389,10 @@ export function buildMediaMapSvg(map, zones, options = {}) {
     const name = String(zone?.name ?? "Zone");
     const centerX = x + zoneW / 2;
     const centerY = y + zoneH / 2;
-    const zoneLabelSize = Math.min(labelSize, Math.max(10, zoneH * 0.16));
+    const zoneLabelSize = Math.max(
+      12 * labelScale,
+      Math.min(zoneH * 0.22 * labelScale, labelSize)
+    );
     const outside = x < 0 || y < 0 || x + zoneW > width || y + zoneH > height;
     const sizeLabel = `${formatLength(zoneW)} × ${formatLength(zoneH)}`;
     const anchorSize = zoneLabelSize * 0.7;

@@ -708,7 +708,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 0.35rem;
-  margin-top: 0.4rem;
+  margin: 0 0 0.5rem;
 }
 
 .pw-sidebar-actions .btn {
@@ -814,7 +814,7 @@
 
 .pw-export-order-row {
   display: grid;
-  grid-template-columns: auto auto 1fr auto;
+  grid-template-columns: auto auto 1fr auto auto;
   align-items: center;
   gap: 0.45rem;
   padding: 0.45rem 0.55rem;
@@ -822,6 +822,10 @@
   border-radius: var(--radius);
   background: var(--surface-2);
   cursor: grab;
+}
+
+.pw-export-order-row.is-excluded {
+  opacity: 0.55;
 }
 
 .pw-export-order-row.is-dragging {
@@ -857,6 +861,41 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.82rem;
+}
+
+.pw-export-visibility-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.7rem;
+  padding: 0.2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pw-export-visibility-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.pw-export-visibility-btn[aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.pw-export-eye-icon {
+  display: block;
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.pw-export-visibility-btn[aria-pressed="true"] .pw-export-eye-icon--closed {
+  display: none;
+}
+
+.pw-export-visibility-btn[aria-pressed="false"] .pw-export-eye-icon--open {
+  display: none;
 }
 
 .pw-export-order-moves {
@@ -1098,17 +1137,29 @@ html.pw-exporting #pw-print-root {
 }
 
 .pw-sheet-title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  min-width: 0;
   font-size: 0.8rem;
   color: var(--text);
+  text-align: left;
 }
 
 .pw-sheet-title.is-editing {
   visibility: hidden;
 }
 
-.pw-sheet-meta {
-  font-size: 0.68rem;
-  color: var(--text-muted);
+.pw-sheet-line-room {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.pw-sheet-line-detail {
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--text);
 }
 
 .pw-inspector-type,
@@ -1803,7 +1854,71 @@ td.pw-editable.is-editing {
 .pw-el-text.is-heading .pw-el-text-body {
   font-size: 1em;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
+  line-height: 1.2;
+  white-space: pre-line;
+  padding: 0.15rem 0.2rem;
+}
+
+.pw-el-text.is-heading.has-room-line .pw-el-text-body::first-line {
+  font-size: 2em;
+}
+
+.pw-el-text.is-align-center .pw-el-text-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.pw-el-text.is-align-right .pw-el-text-body {
+  text-align: right;
+}
+
+.pw-el-company-logo {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.35rem;
+  background: transparent;
+  color: #111;
+}
+
+.pw-el-company-logo-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.pw-el-company-logo-mark {
+  width: min(42%, 4.5rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #4a5a28;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: clamp(1.1rem, 3.5vw, 2rem);
+  line-height: 1;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.pw-el-company-logo-empty {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #64748b;
+  text-align: center;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 .pw-el-text {

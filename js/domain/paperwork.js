@@ -23,7 +23,7 @@ import {
  *   client: string,
  *   date: string,
  *   company: string,
- *   approved: string,
+ *   jobNo: string,
  *   checked: string,
  *   drawnBy: string,
  *   code: string,
@@ -53,6 +53,7 @@ import {
  *   id: string,
  *   typeId: string,
  *   sourceKey: string | null,
+ *   roomId?: string | null,
  *   title: string,
  *   included: boolean,
  *   order: number,
@@ -111,7 +112,7 @@ export function emptyIdentity() {
     client: "",
     date: new Date().toISOString().slice(0, 10),
     company: "",
-    approved: "",
+    jobNo: "",
     checked: "",
     drawnBy: "",
     code: "",
@@ -132,6 +133,49 @@ export function normalizeTitleBlockLogo(raw) {
   if (!value.startsWith("data:image/")) return null;
   if (value.length > 2_500_000) return null;
   return value;
+}
+
+/**
+ * Downscale a data-URL logo so paperwork autosave stays within IDB limits.
+ * @param {unknown} raw
+ * @returns {Promise<string | null>}
+ */
+export async function prepareTitleBlockLogo(raw) {
+  const normalized = normalizeTitleBlockLogo(raw);
+  if (!normalized) return null;
+  if (normalized.length <= 400_000) return normalized;
+  if (typeof document === "undefined" || typeof Image === "undefined") {
+    return normalized.length <= 2_500_000 ? normalized : null;
+  }
+
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("logo decode failed"));
+      image.src = normalized;
+    });
+    const maxEdge = 512;
+    const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    const width = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
+    const height = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return normalized;
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0, width, height);
+    const jpeg = canvas.toDataURL("image/jpeg", 0.85);
+    const png = canvas.toDataURL("image/png");
+    const candidate = [jpeg, png, normalized]
+      .map((value) => normalizeTitleBlockLogo(value))
+      .filter(Boolean)
+      .sort((a, b) => (a?.length ?? 0) - (b?.length ?? 0))[0];
+    return candidate ?? null;
+  } catch {
+    return normalized.length <= 2_500_000 ? normalized : null;
+  }
 }
 
 /** @param {string} fieldId */
@@ -172,7 +216,12 @@ export function normalizeIdentity(raw) {
     client: typeof r.client === "string" ? r.client : base.client,
     date: typeof r.date === "string" ? r.date : base.date,
     company: typeof r.company === "string" ? r.company : base.company,
-    approved: typeof r.approved === "string" ? r.approved : base.approved,
+    jobNo:
+      typeof r.jobNo === "string"
+        ? r.jobNo
+        : typeof r.approved === "string"
+          ? r.approved
+          : base.jobNo,
     checked: typeof r.checked === "string" ? r.checked : base.checked,
     drawnBy: typeof r.drawnBy === "string" ? r.drawnBy : base.drawnBy,
     code: typeof r.code === "string" ? r.code : base.code,
@@ -198,6 +247,13 @@ export function normalizeElement(raw, index = 0) {
           )
         )
       : {};
+  if (
+    typeof overrides.approved === "string" &&
+    typeof overrides.jobNo !== "string"
+  ) {
+    overrides.jobNo = overrides.approved;
+    delete overrides.approved;
+  }
   const content =
     r.content && typeof r.content === "object" && !Array.isArray(r.content)
       ? /** @type {Record<string, unknown>} */ ({ ...r.content })
@@ -236,6 +292,7 @@ export function normalizeSheet(raw, index = 0) {
     id: typeof r.id === "string" && r.id ? r.id : uid("sheet"),
     typeId: typeof r.typeId === "string" && r.typeId ? r.typeId : "cover",
     sourceKey: typeof r.sourceKey === "string" ? r.sourceKey : null,
+    roomId: typeof r.roomId === "string" && r.roomId ? r.roomId : null,
     title: typeof r.title === "string" && r.title.trim() ? r.title.trim() : `Sheet ${index + 1}`,
     included: r.included !== false,
     order: Number.isFinite(Number(r.order)) ? Number(r.order) : index,

@@ -5,15 +5,55 @@ import {
   normalizePlaces,
   stripPlacesFromSignalFlow,
 } from "./domain/places.js";
+import { emptyLedState } from "./domain/led.js";
+import { emptyProjectorState } from "./domain/projector.js";
+import {
+  SHOW_DOCUMENT_VERSION,
+  emptyShowDocument,
+  normalizeShowDocument,
+  wrapV2PlanAsShowDocument,
+} from "./domain/show-document.js";
 import { createSiteDocument } from "./domain/site-document.js";
 import { deepClone } from "./shared/clone.js";
 
 export { createSiteDocument } from "./domain/site-document.js";
+export {
+  SHOW_DOCUMENT_VERSION,
+  emptyShowDocument,
+  normalizeShowDocument,
+  wrapV2PlanAsShowDocument,
+  findActiveShow,
+  findActiveRoom,
+  reconcileActiveIds,
+  setActiveRoom,
+  writeActiveRoomPlan,
+  writeActiveShowPaperwork,
+  readActiveShowPaperwork,
+  addShowWithEmptyRoom,
+  removeShow,
+  duplicateShow,
+  renameShow,
+  addRoom,
+  removeRoom,
+  duplicateRoom,
+  renameRoom,
+  reorderRoom,
+  reorderTemplate,
+  saveRoomAsTemplate,
+  addTemplateToShow,
+  removeTemplate,
+  duplicateTemplate,
+  renameTemplate,
+} from "./domain/show-document.js";
 
-export const SITE_STATE_VERSION = 2;
+/** Current on-disk / export format for multi-show documents. */
+export const SITE_STATE_VERSION = SHOW_DOCUMENT_VERSION;
+
+/** Room-plan section format (legacy single-plan / nested plan payload). */
+export const ROOM_PLAN_VERSION = 2;
 
 /** @type {readonly number[]} */
-export const SUPPORTED_IMPORT_VERSIONS = [1, 2];
+export const SUPPORTED_IMPORT_VERSIONS = [1, 2, 3];
 
 /**
  * Ensure root `places` exists and is removed from nested signalFlow.
@@ -38,7 +78,7 @@ export function migrateSiteStateToV2(parsed) {
 
   /** @type {Record<string, unknown>} */
   const state = {
-    formatVersion: SITE_STATE_VERSION,
+    formatVersion: ROOM_PLAN_VERSION,
     app: typeof parsed.app === "string" ? parsed.app : "av-site-planner",
     exportedAt: typeof parsed.exportedAt === "string" ? parsed.exportedAt : new Date().toISOString(),
     activeTab: typeof parsed.activeTab === "string" ? parsed.activeTab : "led-calculator",
@@ -67,7 +107,6 @@ export function validateSiteState(state) {
     throw new Error("The file is not an AV Site Planner site plan.");
   }
 
-  // Prefer lifting before plugin validate so signalFlow no longer carries places.
   applyPlacesOwnership(state, state);
   state.places = normalizePlaces(state.places ?? emptyPlaces());
 
@@ -90,7 +129,6 @@ export function validateSiteState(state) {
     }
   }
 
-  // Re-strip in case a plugin validate reintroduced nested places.
   if (state.signalFlow !== undefined) {
     state.signalFlow = stripPlacesFromSignalFlow(state.signalFlow);
   }
@@ -98,17 +136,72 @@ export function validateSiteState(state) {
   return state;
 }
 
-/**
- * @param {Record<string, { exportState?: () => object } | null>} instances
- * @param {string} [activeTab]
+/** Section keys stored inside a room plan (resolved lazily to avoid import cycles).
+ * Paperwork is show-scoped (see writeActiveShowPaperwork), not per-room.
  */
-export function buildSiteState(instances, activeTab) {
+function roomPlanKeys() {
+  return [
+    "places",
+    ...CALCULATOR_PLUGINS.map((plugin) => plugin.meta.stateKey).filter(
+      (key) => key !== "paperwork"
+    ),
+  ];
+}
+
+/**
+ * @returns {Record<string, unknown>}
+ */
+export function emptyRoomPlan() {
+  const state = validateSiteState(
+    migrateSiteStateToV2({
+      formatVersion: 2,
+      app: "av-site-planner",
+      led: emptyLedState(),
+      projector: emptyProjectorState(),
+    })
+  );
+  /** @type {Record<string, unknown>} */
+  const plan = {};
+  for (const key of roomPlanKeys()) {
+    if (state[key] !== undefined) plan[key] = deepClone(state[key]);
+  }
+  return plan;
+}
+
+/**
+ * Normalize a room calculator snapshot (v2 section payload).
+ * @param {unknown} raw
+ * @returns {Record<string, unknown>}
+ */
+export function normalizeRoomPlan(raw) {
+  const source = raw && typeof raw === "object" ? /** @type {Record<string, unknown>} */ (raw) : {};
+  const defaults = emptyRoomPlan();
+  const wrapped = migrateSiteStateToV2({
+    formatVersion: 2,
+    app: "av-site-planner",
+    ...defaults,
+    ...source,
+  });
+  const state = validateSiteState(wrapped);
+  /** @type {Record<string, unknown>} */
+  const plan = {};
+  for (const key of roomPlanKeys()) {
+    if (state[key] !== undefined) plan[key] = deepClone(state[key]);
+  }
+  return plan;
+}
+
+/**
+ * @param {Record<string, { exportState?: () => object, flushFormToState?: () => void } | null>} instances
+ * @returns {Record<string, unknown>}
+ */
+export function buildRoomPlanFromCalculators(instances) {
   /** @type {Record<string, unknown>} */
   const state = {
-    formatVersion: SITE_STATE_VERSION,
+    formatVersion: ROOM_PLAN_VERSION,
     app: "av-site-planner",
     exportedAt: new Date().toISOString(),
-    activeTab: activeTab ?? "led-calculator",
+    activeTab: "led-calculator",
   };
 
   for (const plugin of CALCULATOR_PLUGINS) {
@@ -124,14 +217,28 @@ export function buildSiteState(instances, activeTab) {
     }
   }
 
-  // Places live in Signal Flow UI memory; persist at document root.
   const sfExport = /** @type {{ places?: unknown } | null} */ (state.signalFlow ?? null);
   state.places = normalizePlaces(sfExport?.places ?? emptyPlaces());
   if (state.signalFlow !== undefined) {
     state.signalFlow = stripPlacesFromSignalFlow(state.signalFlow);
   }
 
-  return state;
+  return normalizeRoomPlan(state);
+}
+
+/**
+ * @param {Record<string, { exportState?: () => object } | null>} instances
+ * @param {string} [activeTab]
+ */
+export function buildSiteState(instances, activeTab) {
+  const plan = buildRoomPlanFromCalculators(instances);
+  return {
+    formatVersion: ROOM_PLAN_VERSION,
+    app: "av-site-planner",
+    exportedAt: new Date().toISOString(),
+    activeTab: activeTab ?? "led-calculator",
+    ...plan,
+  };
 }
 
 /**
@@ -141,7 +248,6 @@ export function buildSiteState(instances, activeTab) {
 export function ensureAvpFilename(name) {
   const trimmed = String(name ?? "").trim() || "site-plan";
   if (/\.(avp|json)$/i.test(trimmed)) return trimmed;
-  // Browsers sometimes append .txt when renaming a custom MIME download.
   if (/\.txt$/i.test(trimmed)) return `${trimmed.slice(0, -4)}.avp`;
   return `${trimmed}.avp`;
 }
@@ -151,8 +257,6 @@ export function ensureAvpFilename(name) {
  * @param {string} contents
  */
 function downloadSiteStateLegacy(filename, contents) {
-  // Use application/json so Save As / rename keeps a usable extension instead of
-  // turning custom AVP MIME types into .txt (which the import picker then hides).
   const blob = new Blob([contents], { type: "application/json;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -168,10 +272,16 @@ function downloadSiteStateLegacy(filename, contents) {
   return filename;
 }
 
-/** @param {object} state @returns {Promise<string>} */
-export async function downloadSiteState(state) {
+/**
+ * @param {object} state
+ * @param {{ suggestedName?: string }} [options]
+ * @returns {Promise<string>}
+ */
+export async function downloadSiteState(state, options = {}) {
   const stamp = new Date().toISOString().slice(0, 10);
-  const suggestedName = `av-site-planner-${stamp}.avp`;
+  const suggestedName = ensureAvpFilename(
+    options.suggestedName?.trim() || `av-site-planner-${stamp}`
+  );
   const contents = JSON.stringify(state, null, 2);
 
   if (typeof window !== "undefined" && typeof window.showSaveFilePicker === "function") {
@@ -195,16 +305,18 @@ export async function downloadSiteState(state) {
       if (error && /** @type {{ name?: string }} */ (error).name === "AbortError") {
         throw new Error("Export cancelled.");
       }
-      // Fall through when the picker is unavailable or blocked.
     }
   }
 
   return downloadSiteStateLegacy(suggestedName, contents);
 }
 
-/** @param {string} text */
-export function parseSiteState(text) {
-  // Strip a UTF-8 BOM some editors add when a renamed download is re-saved as text.
+/**
+ * Parse / migrate / validate a multi-show (v3) or legacy single-room (v1/v2) file.
+ * @param {string} text
+ * @returns {import("./domain/show-document.js").ShowDocument}
+ */
+export function parseShowDocument(text) {
   const cleaned = String(text ?? "").replace(/^\uFEFF/, "");
   let parsed;
   try {
@@ -217,27 +329,58 @@ export function parseSiteState(text) {
     throw new Error("The file does not contain a valid site plan.");
   }
 
-  const version = parsed.formatVersion;
-  if (!SUPPORTED_IMPORT_VERSIONS.includes(version)) {
+  const version = /** @type {{ formatVersion?: unknown }} */ (parsed).formatVersion;
+  if (!SUPPORTED_IMPORT_VERSIONS.includes(/** @type {number} */ (version))) {
     throw new Error(
       `Unsupported file version (expected ${SUPPORTED_IMPORT_VERSIONS.join(" or ")}).`
     );
   }
 
-  const normalized = migrateSiteStateToV2(parsed);
-  normalized.formatVersion = SITE_STATE_VERSION;
+  if (version === 3 || Array.isArray(/** @type {{ shows?: unknown }} */ (parsed).shows)) {
+    return deepClone(normalizeShowDocument(parsed, normalizeRoomPlan, emptyRoomPlan));
+  }
 
-  validateSiteState(normalized);
-  return deepClone(normalized);
+  const v2 = validateSiteState(migrateSiteStateToV2(parsed));
+  v2.formatVersion = ROOM_PLAN_VERSION;
+  return deepClone(wrapV2PlanAsShowDocument(v2, emptyRoomPlan));
 }
 
 /**
- * Parse an .AVP string into a SiteDocument store (peek/subscribe without UI flush).
+ * @param {string} text
+ * @returns {Record<string, unknown>}
+ */
+export function parseSiteState(text) {
+  const doc = parseShowDocument(text);
+  const show = doc.shows.find((s) => s.id === doc.activeShowId) ?? doc.shows[0];
+  const room = show?.rooms.find((r) => r.id === doc.activeRoomId) ?? show?.rooms[0];
+  if (!room) {
+    throw new Error("The file does not contain a valid site plan.");
+  }
+  return deepClone({
+    formatVersion: ROOM_PLAN_VERSION,
+    app: "av-site-planner",
+    exportedAt: doc.exportedAt,
+    activeTab: doc.activeTab === "shows" ? "led-calculator" : doc.activeTab,
+    ...room.plan,
+  });
+}
+
+/**
  * @param {string} text
  * @returns {ReturnType<typeof createSiteDocument>}
  */
 export function parseSiteDocument(text) {
-  const doc = createSiteDocument();
-  doc.load(parseSiteState(text));
+  const store = createSiteDocument();
+  store.load(parseSiteState(text));
+  return store;
+}
+
+/**
+ * @param {import("./domain/show-document.js").ShowDocument} doc
+ */
+export function stampShowDocument(doc) {
+  doc.exportedAt = new Date().toISOString();
+  doc.formatVersion = SHOW_DOCUMENT_VERSION;
+  doc.app = "av-site-planner";
   return doc;
 }

@@ -78,7 +78,7 @@ registerElementRenderer({
     const company = v("company", identity.company);
     const project = v("show", identity.show);
     const title = String(sheet?.title ?? "").trim() || "—";
-    const approved = v("approved", identity.approved);
+    const jobNo = v("jobNo", identity.jobNo);
     const checked = v("checked", identity.checked);
     const drawn = v("drawnBy", identity.drawnBy);
     const sizeAuto =
@@ -117,9 +117,9 @@ registerElementRenderer({
           <span class="pw-tb-value pw-tb-value-xl">${escapeXml(title)}</span>
         </div>
         <div class="pw-tb-personnel">
-          <div class="pw-tb-row pw-editable" data-field-id="approved">
-            <span class="pw-tb-row-label">APPROVED</span>
-            <span class="pw-tb-row-value">${escapeXml(approved)}</span>
+          <div class="pw-tb-row pw-editable" data-field-id="jobNo">
+            <span class="pw-tb-row-label">JOB #</span>
+            <span class="pw-tb-row-value">${escapeXml(jobNo)}</span>
           </div>
           <div class="pw-tb-row pw-editable" data-field-id="checked">
             <span class="pw-tb-row-label">CHECKED</span>
@@ -198,17 +198,59 @@ registerElementRenderer({
   type: "text",
   label: "Text",
   render(host, ctx) {
-    const { element } = ctx;
-    const text = resolveFieldValue(
-      element,
-      "body",
-      typeof element.content?.body === "string" ? element.content.body : ""
-    );
+    const { element, identity } = ctx;
+    const bindKey =
+      typeof element.content?.bindIdentity === "string"
+        ? element.content.bindIdentity
+        : null;
+    const fieldId = bindKey || "body";
+    const auto = bindKey
+      ? String(identity?.[/** @type {keyof typeof identity} */ (bindKey)] ?? "")
+      : typeof element.content?.body === "string"
+        ? element.content.body
+        : "";
+    const text = resolveFieldValue(element, fieldId, auto);
+    const placeholder =
+      typeof element.content?.placeholder === "string"
+        ? element.content.placeholder
+        : "";
+    const display = text || placeholder;
     const heading = element.content?.heading === true;
+    const align =
+      element.content?.align === "center" || element.content?.align === "right"
+        ? element.content.align
+        : "left";
     host.classList.add("pw-el-text");
     if (heading) host.classList.add("is-heading");
+    if (heading && display.includes("\n")) host.classList.add("has-room-line");
+    if (align === "center") host.classList.add("is-align-center");
+    if (align === "right") host.classList.add("is-align-right");
     applyFontSize(host, element);
-    host.innerHTML = `<div class="pw-el-text-body pw-editable" data-field-id="body">${escapeXml(text || "")}</div>`;
+    const color =
+      typeof element.content?.color === "string" && element.content.color.trim()
+        ? element.content.color.trim()
+        : "";
+    if (color) host.style.color = color;
+    host.innerHTML = `<div class="pw-el-text-body pw-editable" data-field-id="${escapeXml(fieldId)}">${escapeXml(display)}</div>`;
+  },
+});
+
+registerElementRenderer({
+  type: "companyLogo",
+  label: "Company logo",
+  render(host, ctx) {
+    const { identity, titleBlockLogo } = ctx;
+    const logo =
+      typeof titleBlockLogo === "string" && titleBlockLogo.startsWith("data:image/")
+        ? titleBlockLogo
+        : "";
+    const company = String(identity?.company ?? "").trim();
+    const mark = (company || "C").charAt(0).toUpperCase() || "C";
+    host.classList.add("pw-el-company-logo");
+    host.innerHTML = logo
+      ? `<img class="pw-el-company-logo-img" src="${escapeXml(logo)}" alt="${escapeXml(company || "Company logo")}" />`
+      : `<div class="pw-el-company-logo-mark" aria-hidden="true">${escapeXml(mark)}</div>
+         <div class="pw-el-company-logo-empty">${escapeXml(company || "Add company logo in Title block")}</div>`;
   },
 });
 

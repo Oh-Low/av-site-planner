@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  ROOM_PLAN_VERSION,
   SITE_STATE_VERSION,
   ensureAvpFilename,
   migrateSiteStateToV2,
@@ -50,7 +51,7 @@ describe("ensureAvpFilename", () => {
 describe("migrateSiteStateToV2", () => {
   it("bumps format version and fills optional sections", () => {
     const migrated = migrateSiteStateToV2(sampleV1);
-    assert.equal(migrated.formatVersion, SITE_STATE_VERSION);
+    assert.equal(migrated.formatVersion, ROOM_PLAN_VERSION);
     assert.deepEqual(migrated.led, sampleV1.led);
     assert.deepEqual(migrated.projector, sampleV1.projector);
     assert.deepEqual(migrated.signalFlow, {
@@ -100,7 +101,7 @@ describe("validateSiteState", () => {
 describe("parseSiteState", () => {
   it("imports version 1 files by migrating them", () => {
     const parsed = parseSiteState(JSON.stringify(sampleV1));
-    assert.equal(parsed.formatVersion, SITE_STATE_VERSION);
+    assert.equal(parsed.formatVersion, ROOM_PLAN_VERSION);
     assert.ok(Array.isArray(parsed.signalFlow.nodes));
   });
 
@@ -126,6 +127,6 @@ describe("parseSiteState", () => {
 
   it("accepts a UTF-8 BOM prefix", () => {
     const parsed = parseSiteState(`\uFEFF${JSON.stringify(sampleV1)}`);
-    assert.equal(parsed.formatVersion, SITE_STATE_VERSION);
+    assert.equal(parsed.formatVersion, ROOM_PLAN_VERSION);
   });
 });

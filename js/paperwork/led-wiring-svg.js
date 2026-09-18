@@ -89,7 +89,7 @@ function powerLegendHeight(groups) {
 }
 
 /**
- * One processor per column. A processor gets an adjacent B column only when
+ * One processor per column. A processor gets an adjacent Backup column only when
  * one or more of its lines has an enabled end label.
  * @param {object} grid
  * @param {object[]} lines
@@ -138,7 +138,7 @@ function buildProcessorColumns(grid, lines) {
       ? [
           primary,
           {
-            label: `${group.label} B`,
+            label: `${group.label} Backup`,
             isBackup: true,
             entries: backupEntries,
           },
