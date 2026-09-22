@@ -5,6 +5,7 @@ import {
   GEAR_CATEGORIES,
   connectorColor,
   gearPortsToSideLists,
+  isPowerConnectorType,
   sideListsToGearPorts,
 } from "./signal-flow-gear-schema.js";
 import { createGearType } from "./signal-flow-data.js";
@@ -26,28 +27,41 @@ function renderPortCell(label, type) {
  * canvas nodes, the palette preview, and the gear editor preview so cells,
  * colors, and dividers always look the same.
  * @param {import("./signal-flow-gear-schema.js").GearPortRow[]} ports
- * @param {{ colorize?: boolean, interactive?: boolean }} [options]
+ * @param {{ colorize?: boolean, interactive?: boolean, activeDomain?: "signal" | "power" }} [options]
  */
-export function renderGearPortRowsHtml(ports, { colorize = false, interactive = false } = {}) {
+export function renderGearPortRowsHtml(
+  ports,
+  { colorize = false, interactive = false, activeDomain = "signal" } = {}
+) {
   /**
    * @param {import("./signal-flow-gear-schema.js").GearPortRow} port
    * @param {number} row
    * @param {"input" | "output"} col
    */
   const cell = (port, row, col) => {
-    const label = col === "input" ? port.input : port.output;
+    const rawLabel = col === "input" ? port.input : port.output;
+    // Always keep a visible placeholder so Power mode does not collapse row height.
+    const label = rawLabel && String(rawLabel).trim() ? String(rawLabel).trim() : "—";
     const type = col === "input" ? port.inputType : port.outputType;
     const divider = col === "input" ? port.inputDivider : port.outputDivider;
-    const color = colorize ? connectorColor(type) : null;
+    const isPower = isPowerConnectorType(type);
+    const muted =
+      interactive &&
+      ((activeDomain === "power" && !isPower) || (activeDomain === "signal" && isPower));
+    const color = colorize && !muted ? connectorColor(type) : null;
 
     const classes = ["sf-port", col === "input" ? "sf-port-in" : "sf-port-out"];
     if (divider) classes.push("sf-port-divider");
     if (color) classes.push("sf-port-colored");
+    if (muted) classes.push("sf-port-muted");
 
     const style = color ? ` style="--sf-port-color:${color}"` : "";
-    const attrs = interactive
+    const live = interactive && !muted && label !== "—";
+    const attrs = live
       ? ` data-port-row="${row}" data-port-col="${col}" data-port-type="${escapeXml(type || "")}" title="${col === "input" ? "Input" : "Output"} — drag to connect"`
-      : "";
+      : muted
+        ? ` data-port-muted="1" title="${isPower ? "Power port — switch to Power mode" : "Signal port — switch to Signal mode"}"`
+        : "";
     return `<td class="${classes.join(" ")}"${style}${attrs}>${renderPortCell(label, type)}</td>`;
   };
 

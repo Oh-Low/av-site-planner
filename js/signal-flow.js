@@ -1,8 +1,34 @@
-import { connectorColor, resolveGearType } from "./signal-flow-data.js";
+import {
+  connectorColor,
+  inferConnectorTypeFromLabel,
+  isPowerConnection,
+  isPowerConnectorType,
+  POWER_GEAR_TYPES,
+  resolveGearType,
+} from "./signal-flow-data.js";
 import {
   normalizeGearEntry,
   serializeGearForCatalog,
 } from "./signal-flow-gear-schema.js";
+import {
+  buildLedWallGear,
+  LED_WALLS_FOLDER,
+  LED_WALLS_FOLDER_ID,
+  ledWallIdFromTypeId,
+  listLedWallLibraryGear,
+} from "./domain/led-signal-flow.js";
+import { nodeIdsForGearListSourceKey } from "./domain/gear-list.js";
+import {
+  allPowerInputsConnected,
+  gearForPowerMode,
+  gearForSignalMode,
+  isPowerDomainNode,
+  migrateLegacyPowerInletConnections,
+  nodeWorldPosition,
+  seedPowerPositionFromSignal,
+  setNodeWorldPosition,
+} from "./domain/signal-flow-power.js";
+import { getCalculatorExport } from "./calculator-instances.js";
 import { renderPremadeGearBrowser } from "./signal-flow-gear-browser.js";
 import {
   mergeGearFolders,
@@ -72,19 +98,22 @@ export {
  *   name: string,
  *   x: number,
  *   y: number,
+ *   powerX?: number,
+ *   powerY?: number,
  *   placeId?: string | null,
  *   gearOverride?: object,
+ *   ledWallId?: string | null,
  *   layout?: FlowNodeLayout,
  * }} FlowNode
  */
 
 /** @typedef {{ id: string, name: string }} FlowPlace */
 
-/** @typedef {{ id: string, label: string, defaultName: string, category: string, kind?: "premade" | "blank", folderId?: string | null, ports: { input: string, output: string }[] }} CustomGearType */
+/** @typedef {{ id: string, label: string, defaultName: string, category: string, kind?: "premade" | "blank", domain?: "signal" | "power", folderId?: string | null, ports: { input: string, output: string }[] }} CustomGearType */
 
 /** @typedef {{ id: string, name: string, parentId: string | null }} GearLibraryFolder */
 
-/** @typedef {{ id: string, fromNodeId: string, fromRow: number, fromCol: "input" | "output", toNodeId: string, toRow: number, toCol: "input" | "output", route?: { x: number, y: number }[], routeX?: number, routeWorld?: boolean }} FlowConnection */
+/** @typedef {{ id: string, fromNodeId: string, fromRow: number, fromCol: "input" | "output" | "power", toNodeId: string, toRow: number, toCol: "input" | "output" | "power", power?: boolean, route?: { x: number, y: number }[], routeX?: number, routeWorld?: boolean }} FlowConnection */
 
 /** Minimum zoom before 25%/75% split handles appear. */
 const SPLIT_HANDLE_MIN_ZOOM = 1.25;
@@ -162,10 +191,25 @@ export function initSignalFlow() {
     grid: { snap: true, size: GRID_DEFAULT_SIZE },
   };
 
-  /** @type {"premade" | "places"} */
-  let gearPaletteMode = "premade";
+  /** Canvas layout: Signal vs Power (independent of the sidebar menu). */
+  /** @type {"signal" | "power"} */
+  let canvasView = "signal";
+  /** Left menu: Places vs Gear library/palette. */
+  /** @type {"gear" | "places"} */
+  let sidebarMenu = "gear";
+
+  /** Canvas layout domain for the active Signal/Power view. */
+  function canvasMode() {
+    return canvasView;
+  }
+
+  /** @param {FlowNode} node */
+  function nodeVisibleOnCanvas(node) {
+    if (canvasMode() === "power") return true;
+    return !isPowerDomainNode(node, nodeGear(node));
+  }
   /** @type {Set<string>} */
-  let expandedGearFolderIds = new Set(["fld-library", "fld-brands"]);
+  let expandedGearFolderIds = new Set(["fld-library", "fld-brands", LED_WALLS_FOLDER_ID]);
   /** @type {string | null} */
   let activeGearFolderId = null;
   /** @type {string | null} */
@@ -296,12 +340,15 @@ export function initSignalFlow() {
   function captureNodeDragStarts() {
     nodeDrag.startPositions = new Map();
     nodeDrag.startRoutes = new Map();
+    const mode = canvasMode();
     for (const id of selectedNodeIds) {
       const node = state.nodes.find((n) => n.id === id);
-      if (node) nodeDrag.startPositions.set(id, { x: node.x, y: node.y });
+      if (node) nodeDrag.startPositions.set(id, nodeWorldPosition(node, mode));
     }
     // When both ends of a wire move together, keep its drawn path rigid.
+    // Only translate wires belonging to the active canvas mode.
     for (const conn of state.connections) {
+      if ((mode === "power") !== isPowerConnection(conn)) continue;
       if (
         !nodeDrag.startPositions.has(conn.fromNodeId) ||
         !nodeDrag.startPositions.has(conn.toNodeId)
@@ -370,12 +417,15 @@ export function initSignalFlow() {
     let minY = 0;
     let maxX = WORLD_DEFAULT_W;
     let maxY = WORLD_DEFAULT_H;
+    const mode = canvasMode();
 
     for (const node of state.nodes) {
-      minX = Math.min(minX, node.x);
-      minY = Math.min(minY, node.y);
-      maxX = Math.max(maxX, node.x + WORLD_NODE_W);
-      maxY = Math.max(maxY, node.y + WORLD_NODE_H);
+      if (!nodeVisibleOnCanvas(node)) continue;
+      const pos = nodeWorldPosition(node, mode);
+      minX = Math.min(minX, pos.x);
+      minY = Math.min(minY, pos.y);
+      maxX = Math.max(maxX, pos.x + WORLD_NODE_W);
+      maxY = Math.max(maxY, pos.y + WORLD_NODE_H);
     }
 
     minX -= WORLD_PAD;
@@ -438,9 +488,10 @@ export function initSignalFlow() {
 
   /** @param {FlowNode} node */
   function nodeDisplayPosition(node) {
+    const pos = nodeWorldPosition(node, canvasMode());
     return {
-      x: node.x - worldBounds.minX,
-      y: node.y - worldBounds.minY,
+      x: pos.x - worldBounds.minX,
+      y: pos.y - worldBounds.minY,
     };
   }
 
@@ -454,8 +505,15 @@ export function initSignalFlow() {
     }
   }
 
-  /** @param {FlowNode} node @param {number} row @param {"input" | "output"} col */
+  /** @param {string} nodeId @param {number} row @param {"input" | "output" | "power"} col */
   function getPortElement(nodeId, row, col) {
+    // Legacy toCol:"power" is migrated on import; this fallback is for any
+    // edge that still points at the old inlet column before prune runs.
+    if (col === "power") {
+      return els.nodes.querySelector(
+        `.sf-node[data-node-id="${nodeId}"] [data-port-col="input"][data-port-row="0"]`
+      );
+    }
     return els.nodes.querySelector(
       `.sf-node[data-node-id="${nodeId}"] [data-port-row="${row}"][data-port-col="${col}"]`
     );
@@ -557,15 +615,28 @@ export function initSignalFlow() {
    * @param {FlowConnection} conn
    */
   function connectionCableType(conn) {
+    // Wire row indexes belong to the mode table they were drawn in.
+    const mode = isPowerConnection(conn) ? "power" : "signal";
     /** @param {string} nodeId @param {number} row @param {"input" | "output"} col */
     const portType = (nodeId, row, col) => {
       const node = state.nodes.find((n) => n.id === nodeId);
       if (!node) return null;
-      const port = nodeGear(node).ports?.[row];
+      const port = nodeGearForMode(node, mode).ports?.[row];
       if (!port) return null;
-      const type = col === "input" ? port.inputType : port.outputType;
-      return type && type !== "—" ? type : null;
+      const explicit = col === "input" ? port.inputType : port.outputType;
+      if (explicit && explicit !== "—") return explicit;
+      const label = col === "input" ? port.input : port.output;
+      return inferConnectorTypeFromLabel(label);
     };
+    if (mode === "power") {
+      return (
+        (conn.fromCol === "output"
+          ? portType(conn.fromNodeId, conn.fromRow, "output")
+          : null) ||
+        (conn.toCol === "output" ? portType(conn.toNodeId, conn.toRow, "output") : null) ||
+        "Edison"
+      );
+    }
     return (
       (conn.toCol === "input" ? portType(conn.toNodeId, conn.toRow, "input") : null) ||
       (conn.fromCol === "input" ? portType(conn.fromNodeId, conn.fromRow, "input") : null) ||
@@ -577,6 +648,7 @@ export function initSignalFlow() {
   function renderWires() {
     const { w, h } = worldBounds;
     const colorize = state.colorByCableType;
+    const showPower = canvasView === "power";
 
     /** Distinct wire colors in use, mapped to generated marker ids. @type {Map<string, string>} */
     const markerIds = new Map();
@@ -592,6 +664,7 @@ export function initSignalFlow() {
     };
 
     const wireParts = state.connections
+      .filter((conn) => (showPower ? isPowerConnection(conn) : !isPowerConnection(conn)))
       .map((conn) => {
         const d = connectionPath(conn);
         if (!d) return "";
@@ -791,17 +864,49 @@ export function initSignalFlow() {
 
   /** @param {import("./signal-flow-data.js").GearType} gearType @param {number} x @param {number} y */
   function createNode(gearType, x, y) {
+    const ledWallId = ledWallIdFromTypeId(gearType.id);
+    const worldX = snapWorld(x);
+    const worldY = snapWorld(y);
+    const mode = canvasMode();
+
+    if (ledWallId) {
+      const existing = state.nodes.find((n) => n.ledWallId === ledWallId);
+      if (existing) {
+        recordBefore("signalFlow", "move-led-wall");
+        setNodeWorldPosition(existing, worldX, worldY, mode);
+        // First placement into Power also seeds from this drop if missing.
+        if (mode === "signal") seedPowerPositionFromSignal(existing);
+        existing.typeId = gearType.id;
+        existing.name = gearType.defaultName;
+        existing.gearOverride = gearType;
+        setNodeSelection([existing.id]);
+        selectedConnectionId = null;
+        render();
+        setStatus(`Moved “${existing.name}” to the drop location.`);
+        return existing;
+      }
+    }
+
     recordBefore("signalFlow", "create-node");
+    /** @type {FlowNode} */
     const node = {
       id: uid("sf"),
       typeId: gearType.id,
       name: gearType.defaultName,
-      x: snapWorld(x),
-      y: snapWorld(y),
+      x: worldX,
+      y: worldY,
+      powerX: worldX,
+      powerY: worldY,
     };
+    if (ledWallId) {
+      node.ledWallId = ledWallId;
+      node.gearOverride = { ...gearType };
+    }
     state.nodes.push(node);
     // Full render: renderNodes() alone would leave the rebuilt node elements
     // without their pointer handlers until something else re-bound them.
+    setNodeSelection([node.id]);
+    selectedConnectionId = null;
     render();
     setStatus(`Added ${node.name}. Drag from a port cell to connect gear.`);
     return node;
@@ -937,14 +1042,18 @@ export function initSignalFlow() {
   }
 
   function renderNodes() {
+    const activeDomain = canvasMode();
+
     els.nodes.innerHTML = state.nodes
+      .filter((node) => activeDomain === "power" || !isPowerDomainNode(node, nodeGear(node)))
       .map((node) => {
-        const gear = nodeGear(node);
+        const gear = nodeGearForMode(node, activeDomain);
         const selected = selectedNodeIds.has(node.id);
         const editingName = node.id === editingNodeNameId;
         const portRows = renderGearPortRowsHtml(gear.ports, {
           colorize: state.colorByCableType,
           interactive: true,
+          activeDomain,
         });
 
         const placeName = node.placeId ? getPlaceName(node.placeId) : null;
@@ -957,9 +1066,14 @@ export function initSignalFlow() {
           : `<span class="sf-node-name" title="Double-click to rename">${escapeXml(node.name)}</span>`;
 
         const display = nodeDisplayPosition(node);
+        const powerPorts =
+          activeDomain === "power" ? gear.ports : nodeGearForMode(node, "power").ports;
+        const powered = allPowerInputsConnected(powerPorts, state.connections, node.id);
+        const powerStatus = `<span class="sf-power-inlet${powered ? " is-powered" : ""}${activeDomain !== "power" ? " is-muted" : ""}" title="${powered ? "All power inputs connected" : "Power status — connect all power inputs"}" aria-label="${powered ? "All power inputs connected" : "Power not fully connected"}"></span>`;
 
         return `
       <div class="sf-node${selected ? " is-selected" : ""}" data-node-id="${node.id}" style="left:${display.x}px;top:${display.y}px">
+        ${powerStatus}
         <table class="sf-node-table">
           <thead>
             <tr>
@@ -1022,7 +1136,7 @@ export function initSignalFlow() {
         if (e.button !== 0) return;
         const target = /** @type {HTMLElement} */ (e.target);
         if (target.closest(".sf-port") || target.closest(".sf-node-name.is-editing")) return;
-        if (target.closest(".sf-node-edit")) return;
+        if (target.closest(".sf-node-edit") || target.closest(".sf-power-inlet")) return;
 
         const nodeId = nodeEl.dataset.nodeId;
         if (
@@ -1040,6 +1154,7 @@ export function initSignalFlow() {
     els.nodes.querySelectorAll(".sf-port").forEach((portEl) => {
       portEl.addEventListener("pointerdown", (e) => {
         if (e.button !== 0) return;
+        if (portEl.classList.contains("sf-port-muted")) return;
         e.stopPropagation();
         const nodeEl = portEl.closest(".sf-node");
         if (!nodeEl) return;
@@ -1047,6 +1162,13 @@ export function initSignalFlow() {
         const row = Number(portEl.dataset.portRow) || 0;
         const col = portEl.dataset.portCol === "output" ? "output" : "input";
         if (!nodeId) return;
+
+        const portType = portEl.dataset.portType || "";
+        const isPowerPort = isPowerConnectorType(portType);
+        if (canvasView === "power" && !isPowerPort) return;
+        if (canvasView !== "power" && isPowerPort) return;
+        // Power mode: only drag from power outputs onto inlets (inlet is drop-only).
+        if (canvasView === "power" && col !== "output") return;
 
         wireDrag.active = true;
         wireDrag.fromNodeId = nodeId;
@@ -1094,6 +1216,17 @@ export function initSignalFlow() {
   }
 
   function getGearType(typeId) {
+    const ledWallId = ledWallIdFromTypeId(typeId);
+    if (ledWallId) {
+      const led = /** @type {{ grids?: object[] } | null} */ (getCalculatorExport("led"));
+      const grid = Array.isArray(led?.grids)
+        ? led.grids.find((g) => g && g.id === ledWallId)
+        : null;
+      const gear = buildLedWallGear(/** @type {import("./domain/led.js").LedWallGrid} */ (grid));
+      if (gear) return gear;
+      // Do not fall through to an unrelated builtin — callers treat null as missing.
+      return /** @type {import("./signal-flow-data.js").GearType | null} */ (null);
+    }
     return resolveGearType(typeId, state.customGearTypes);
   }
 
@@ -1103,7 +1236,41 @@ export function initSignalFlow() {
    * @param {FlowNode} node
    */
   function nodeGear(node) {
-    return node.gearOverride ?? getGearType(node.typeId);
+    if (node.gearOverride) {
+      const resolved = getGearType(node.typeId);
+      const override = node.gearOverride;
+      return {
+        ...(resolved ?? {}),
+        ...override,
+        id: override.id ?? resolved?.id ?? node.typeId,
+        // Keep catalog domain when an instance edit omitted it (power gear must stay hidden).
+        domain: override.domain ?? resolved?.domain ?? "signal",
+        ports: Array.isArray(override.ports)
+          ? override.ports
+          : (resolved?.ports ?? [{ input: "—", output: "—", inputType: null, outputType: null }]),
+      };
+    }
+    const resolved = getGearType(node.typeId);
+    if (resolved) return resolved;
+    return {
+      id: node.typeId || "unknown",
+      label: node.name || "Device",
+      defaultName: node.name || "Device",
+      category: "Other",
+      domain: typeof node.typeId === "string" && node.typeId.startsWith("power-") ? "power" : "signal",
+      kind: "premade",
+      ports: [{ input: "—", output: "—", inputType: null, outputType: null }],
+    };
+  }
+
+  /**
+   * Gear as shown for a sidebar mode (dual packed tables — see signal-flow-power.js).
+   * @param {FlowNode} node
+   * @param {"signal" | "power"} mode
+   */
+  function nodeGearForMode(node, mode) {
+    const gear = nodeGear(node);
+    return mode === "power" ? gearForPowerMode(gear) : gearForSignalMode(gear);
   }
 
   function bindPaletteDragItems() {
@@ -1128,7 +1295,7 @@ export function initSignalFlow() {
   }
 
   function refreshPlacesPanelIfActive() {
-    if (gearPaletteMode === "places") populatePalette();
+    if (sidebarMenu === "places") populatePalette();
   }
 
   function addPlace(name) {
@@ -1219,7 +1386,10 @@ export function initSignalFlow() {
 
   function addCustomGearType(gear) {
     recordBefore("signalFlow", "add-gear");
-    gear.folderId = activeGearFolderId;
+    gear.folderId =
+      activeGearFolderId && activeGearFolderId !== LED_WALLS_FOLDER_ID
+        ? activeGearFolderId
+        : null;
     gear.kind = "premade";
     state.customGearTypes.push(gear);
     populatePalette();
@@ -1258,11 +1428,20 @@ export function initSignalFlow() {
     );
   }
 
-  /** @param {string} nodeId @param {number} row @param {"input" | "output"} col */
-  function portExistsAt(nodeId, row, col) {
+  /**
+   * @param {string} nodeId
+   * @param {number} row
+   * @param {"input" | "output" | "power"} col
+   * @param {boolean} [forPower]
+   */
+  function portExistsAt(nodeId, row, col, forPower = false) {
     const node = state.nodes.find((n) => n.id === nodeId);
     if (!node) return false;
-    const port = nodeGear(node).ports?.[row];
+    if (col === "power") return false;
+    // Signal wires use the signal-mode table; power wires use the power-mode table.
+    // Mixing them would treat remapped "—" cells as missing and prune valid wires.
+    const gear = forPower ? nodeGearForMode(node, "power") : nodeGearForMode(node, "signal");
+    const port = gear.ports?.[row];
     if (!port) return false;
     const label = col === "input" ? port.input : port.output;
     return Boolean(label && label !== "—");
@@ -1274,11 +1453,13 @@ export function initSignalFlow() {
    */
   function pruneInvalidConnections() {
     const before = state.connections.length;
-    state.connections = state.connections.filter(
-      (c) =>
-        portExistsAt(c.fromNodeId, c.fromRow, c.fromCol) &&
-        portExistsAt(c.toNodeId, c.toRow, c.toCol)
-    );
+    state.connections = state.connections.filter((c) => {
+      const forPower = isPowerConnection(c);
+      return (
+        portExistsAt(c.fromNodeId, c.fromRow, c.fromCol, forPower) &&
+        portExistsAt(c.toNodeId, c.toRow, c.toCol, forPower)
+      );
+    });
     if (selectedConnectionId && !state.connections.some((c) => c.id === selectedConnectionId)) {
       selectedConnectionId = null;
     }
@@ -1417,6 +1598,7 @@ export function initSignalFlow() {
 
   /** @param {string} folderId @param {string} name */
   function commitRenameGearFolder(folderId, name) {
+    if (folderId === LED_WALLS_FOLDER_ID) return false;
     const allFolders = mergeGearFolders(BUILTIN_FOLDERS, state.gearLibraryFolders);
     recordBefore("signalFlow", "rename-folder");
     const ok = renameGearFolder(state.gearLibraryFolders, folderId, name, allFolders);
@@ -1430,6 +1612,10 @@ export function initSignalFlow() {
 
   /** @param {string} folderId */
   function removeGearLibraryFolder(folderId) {
+    if (folderId === LED_WALLS_FOLDER_ID) {
+      setStatus("The LED Walls folder is managed by the LED Calculator.");
+      return;
+    }
     recordBefore("signalFlow", "delete-folder");
     const result = deleteGearFolder(state.gearLibraryFolders, folderId);
     if (!result) {
@@ -1504,13 +1690,52 @@ export function initSignalFlow() {
     populatePalette();
   }
 
-  function syncGearModeButtons() {
+  function syncViewNavButtons() {
     const root = document.getElementById("signal-flow");
-    root?.querySelectorAll(".sf-gear-mode").forEach((el) => {
-      const active = el.dataset.mode === gearPaletteMode;
+    root?.querySelectorAll(".sf-canvas-view").forEach((el) => {
+      const active = el.dataset.canvasView === canvasView;
       el.classList.toggle("active", active);
       el.setAttribute("aria-selected", String(active));
     });
+    root?.querySelectorAll(".sf-sidebar-menu").forEach((el) => {
+      const active = el.dataset.sidebarMenu === sidebarMenu;
+      el.classList.toggle("active", active);
+      el.setAttribute("aria-selected", String(active));
+    });
+    root?.classList.toggle("sf-mode-power", canvasView === "power");
+    root?.classList.toggle("sf-mode-places", sidebarMenu === "places");
+  }
+
+  /** @param {"signal" | "power"} mode */
+  function setCanvasView(mode) {
+    if (mode !== "signal" && mode !== "power") return;
+    canvasView = mode;
+    if (selectedConnectionId) {
+      const conn = state.connections.find((c) => c.id === selectedConnectionId);
+      if (conn) {
+        const power = isPowerConnection(conn);
+        if ((mode === "power") !== power) selectedConnectionId = null;
+      }
+    }
+    // Drop selection of power-only devices when leaving Power view.
+    if (mode !== "power" && selectedNodeIds.size > 0) {
+      const keep = [...selectedNodeIds].filter((id) => {
+        const node = state.nodes.find((n) => n.id === id);
+        return node && !isPowerDomainNode(node, nodeGear(node));
+      });
+      if (keep.length !== selectedNodeIds.size) setNodeSelection(keep);
+    }
+    syncViewNavButtons();
+    populatePalette();
+    render();
+  }
+
+  /** @param {"gear" | "places"} menu */
+  function setSidebarMenu(menu) {
+    if (menu !== "gear" && menu !== "places") return;
+    sidebarMenu = menu;
+    syncViewNavButtons();
+    populatePalette();
   }
 
   function openGearModal() {
@@ -1528,6 +1753,7 @@ export function initSignalFlow() {
   function openGearEditModal(gearId) {
     const root = document.getElementById("signal-flow");
     if (!root) return;
+    if (ledWallIdFromTypeId(gearId)) return;
     const gear = getGearType(gearId);
     if (!gear || gear.id !== gearId) return;
     openGearBuilderModal({
@@ -1569,13 +1795,40 @@ export function initSignalFlow() {
   }
 
   function populatePalette() {
-    if (gearPaletteMode === "premade") {
-      const customPremade = state.customGearTypes.filter((g) => g.kind !== "blank");
+    if (sidebarMenu === "places") {
+      renderPlacesPanel({
+        container: els.palette,
+        places: state.places,
+        nodes: state.nodes.filter((n) => !isPowerDomainNode(n, nodeGear(n))),
+        selectedNodeIds: [...selectedNodeIds],
+        onAddPlace: (name) => {
+          if (!addPlace(name)) {
+            window.alert("Enter a unique place name.");
+          }
+        },
+        onRenamePlace: renamePlace,
+        onDeletePlace: deletePlace,
+        onAssignPlace: assignSelectedNodePlace,
+      });
+    } else if (canvasView === "power") {
+      renderPowerPalette();
+    } else {
+      const customPremade = state.customGearTypes.filter(
+        (g) => g.kind !== "blank" && g.domain !== "power"
+      );
+      const ledWallGear = listLedWallLibraryGear(
+        /** @type {{ grids?: import("./domain/led.js").LedWallGrid[] } | null} */ (
+          getCalculatorExport("led")
+        )
+      );
 
       renderPremadeGearBrowser({
         container: els.palette,
-        userFolders: state.gearLibraryFolders,
-        customPremade,
+        userFolders: [
+          LED_WALLS_FOLDER,
+          ...state.gearLibraryFolders.filter((f) => f.id !== LED_WALLS_FOLDER_ID),
+        ],
+        customPremade: [...customPremade, ...ledWallGear],
         expandedFolderIds: expandedGearFolderIds,
         activeFolderId: activeGearFolderId,
         renamingFolderId: renamingGearFolderId,
@@ -1594,24 +1847,29 @@ export function initSignalFlow() {
         searchQuery: gearSearchQuery,
         onSearchChange: setGearSearchQuery,
       });
-    } else {
-      renderPlacesPanel({
-        container: els.palette,
-        places: state.places,
-        nodes: state.nodes,
-        selectedNodeIds: [...selectedNodeIds],
-        onAddPlace: (name) => {
-          if (!addPlace(name)) {
-            window.alert("Enter a unique place name.");
-          }
-        },
-        onRenamePlace: renamePlace,
-        onDeletePlace: deletePlace,
-        onAssignPlace: assignSelectedNodePlace,
-      });
     }
 
     bindPaletteDragItems();
+  }
+
+  function renderPowerPalette() {
+    const items = POWER_GEAR_TYPES.map(
+      (gear) => `
+      <div
+        class="sf-palette-item"
+        draggable="true"
+        data-gear-type="${gear.id}"
+        title="Drag onto the canvas"
+      >
+        <span class="sf-palette-label">${escapeXml(gear.label)}</span>
+      </div>`
+    ).join("");
+
+    els.palette.innerHTML = `
+      <div class="sf-power-palette">
+        <p class="sf-power-palette-hint">Power sources — drag onto the canvas. Connect power outs to each device’s Power In ports. The corner circle turns green when all power inputs are fed.</p>
+        <div class="sf-power-palette-list">${items || `<p class="sf-port-list-empty">No power gear</p>`}</div>
+      </div>`;
   }
 
   /** @param {string} query */
@@ -1629,22 +1887,20 @@ export function initSignalFlow() {
     }
   }
 
-  function bindGearModeToggle() {
+  function bindViewNavToggles() {
     const root = document.getElementById("signal-flow");
     if (!root) return;
 
-    root.querySelectorAll(".sf-gear-mode").forEach((btn) => {
+    root.querySelectorAll(".sf-canvas-view").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const mode = btn.dataset.mode === "places" ? "places" : "premade";
-        gearPaletteMode = mode;
-
-        root.querySelectorAll(".sf-gear-mode").forEach((el) => {
-          const active = el === btn;
-          el.classList.toggle("active", active);
-          el.setAttribute("aria-selected", String(active));
-        });
-
-        populatePalette();
+        const raw = btn.dataset.canvasView;
+        setCanvasView(raw === "power" ? "power" : "signal");
+      });
+    });
+    root.querySelectorAll(".sf-sidebar-menu").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const raw = btn.dataset.sidebarMenu;
+        setSidebarMenu(raw === "places" ? "places" : "gear");
       });
     });
   }
@@ -1659,6 +1915,14 @@ export function initSignalFlow() {
     const typeId = e.dataTransfer?.getData("text/av-gear-type");
     if (!typeId) return;
     const gear = getGearType(typeId);
+    if (!gear) {
+      setStatus(
+        ledWallIdFromTypeId(typeId)
+          ? "That LED wall is no longer in the LED Calculator."
+          : "Unknown gear type."
+      );
+      return;
+    }
     const pt = panZoom.clientToWorld(e.clientX, e.clientY);
     createNode(gear, pt.x + worldBounds.minX - 80, pt.y + worldBounds.minY - 40);
   });
@@ -1724,6 +1988,7 @@ export function initSignalFlow() {
         marqueeSelect.active = true;
         marqueeSelect.moved = true;
         selectedConnectionId = null;
+        window.getSelection()?.removeAllRanges();
       }
       if (marqueeSelect.active) {
         showMarquee(
@@ -1740,12 +2005,12 @@ export function initSignalFlow() {
       const dx = (e.clientX - nodeDrag.startX) / panZoom.view.zoom;
       const dy = (e.clientY - nodeDrag.startY) / panZoom.view.zoom;
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) nodeDrag.moved = true;
+      const mode = canvasMode();
 
       for (const [id, start] of nodeDrag.startPositions) {
         const node = state.nodes.find((n) => n.id === id);
         if (!node) continue;
-        node.x = snapWorld(start.x + dx);
-        node.y = snapWorld(start.y + dy);
+        setNodeWorldPosition(node, snapWorld(start.x + dx), snapWorld(start.y + dy), mode);
         const nodeEl = els.nodes.querySelector(`[data-node-id="${node.id}"]`);
         if (nodeEl) {
           const display = nodeDisplayPosition(node);
@@ -1758,10 +2023,11 @@ export function initSignalFlow() {
       const leadId = nodeDrag.nodeId;
       const leadStart = leadId ? nodeDrag.startPositions.get(leadId) : null;
       const leadNode = leadId ? state.nodes.find((n) => n.id === leadId) : null;
+      const leadPos = leadNode ? nodeWorldPosition(leadNode, mode) : null;
       const routeDx =
-        leadNode && leadStart ? leadNode.x - leadStart.x : snapWorld(dx) - snapWorld(0);
+        leadPos && leadStart ? leadPos.x - leadStart.x : snapWorld(dx) - snapWorld(0);
       const routeDy =
-        leadNode && leadStart ? leadNode.y - leadStart.y : snapWorld(dy) - snapWorld(0);
+        leadPos && leadStart ? leadPos.y - leadStart.y : snapWorld(dy) - snapWorld(0);
       applyDraggedConnectionRoutes(routeDx, routeDy);
 
       syncWorldBounds();
@@ -1794,20 +2060,55 @@ export function initSignalFlow() {
     if (wireDrag.active) {
       const target = document.elementFromPoint(e.clientX, e.clientY);
       const targetPort = target?.closest(".sf-port");
-      const targetNode = targetPort?.closest(".sf-node");
+      const targetNode = targetPort?.closest(".sf-node") || null;
 
       if (targetPort && targetNode && targetNode.dataset.nodeId !== wireDrag.fromNodeId) {
-        recordBefore("signalFlow", "connect");
-        state.connections.push({
-          id: uid("wire"),
-          fromNodeId: wireDrag.fromNodeId,
-          fromRow: wireDrag.fromRow,
-          fromCol: wireDrag.fromCol,
-          toNodeId: targetNode.dataset.nodeId,
-          toRow: Number(targetPort.dataset.portRow) || 0,
-          toCol: targetPort.dataset.portCol === "output" ? "output" : "input",
-        });
-        setStatus("Connection added.");
+        const muted = targetPort.classList.contains("sf-port-muted");
+        // Drag start already restricts ports by mode; trust canvasView here.
+        if (
+          !muted &&
+          canvasView === "power" &&
+          targetPort.dataset.portCol === "input" &&
+          isPowerConnectorType(targetPort.dataset.portType || "")
+        ) {
+          recordBefore("signalFlow", "connect-power");
+          const toNodeId = targetNode.dataset.nodeId;
+          const toRow = Number(targetPort.dataset.portRow) || 0;
+          // One feed per power input row.
+          state.connections = state.connections.filter(
+            (c) =>
+              !(
+                isPowerConnection(c) &&
+                c.toNodeId === toNodeId &&
+                c.toCol === "input" &&
+                Number(c.toRow) === toRow
+              )
+          );
+          state.connections.push({
+            id: uid("wire"),
+            fromNodeId: wireDrag.fromNodeId,
+            fromRow: wireDrag.fromRow,
+            fromCol: wireDrag.fromCol,
+            toNodeId,
+            toRow,
+            toCol: "input",
+            power: true,
+          });
+          setStatus("Power connection added.");
+          render();
+        } else if (!muted && canvasView !== "power") {
+          recordBefore("signalFlow", "connect");
+          state.connections.push({
+            id: uid("wire"),
+            fromNodeId: wireDrag.fromNodeId,
+            fromRow: wireDrag.fromRow,
+            fromCol: wireDrag.fromCol,
+            toNodeId: targetNode.dataset.nodeId,
+            toRow: Number(targetPort.dataset.portRow) || 0,
+            toCol: targetPort.dataset.portCol === "output" ? "output" : "input",
+          });
+          setStatus("Connection added.");
+        }
       }
 
       wireDrag.active = false;
@@ -1839,6 +2140,7 @@ export function initSignalFlow() {
       marqueeSelect.active = false;
       marqueeSelect.moved = false;
       hideMarquee();
+      document.getElementById("signal-flow")?.classList.remove("sf-is-marqueeing");
       try {
         els.viewport.releasePointerCapture(e.pointerId);
       } catch {
@@ -1878,6 +2180,7 @@ export function initSignalFlow() {
     marqueeSelect.active = false;
     marqueeSelect.moved = false;
     hideMarquee();
+    document.getElementById("signal-flow")?.classList.remove("sf-is-marqueeing");
     nodeDrag.pending = false;
     nodeDrag.active = false;
     nodeDrag.nodeId = null;
@@ -1889,6 +2192,9 @@ export function initSignalFlow() {
 
   window.addEventListener("pointercancel", cancelPointerGestures);
   window.addEventListener("blur", cancelPointerGestures);
+  document.addEventListener("selectstart", (e) => {
+    if (marqueeSelect.pending || marqueeSelect.active) e.preventDefault();
+  });
 
   // Stale suppression flags (set on a pointerup whose click never arrived)
   // would otherwise eat the next click. Any new press starts with a clean
@@ -1925,6 +2231,10 @@ export function initSignalFlow() {
     if (target.closest?.(".sf-grid-ui")) return;
     if (target.classList?.contains("sf-wire-hit")) return;
 
+    // Block native text selection in the sidebar while drag-selecting devices.
+    e.preventDefault();
+    window.getSelection()?.removeAllRanges();
+
     finishNameEdit(true);
     const pt = panZoom.clientToWorld(e.clientX, e.clientY);
     marqueeSelect.pending = true;
@@ -1935,6 +2245,7 @@ export function initSignalFlow() {
     marqueeSelect.startY = pt.y;
     marqueeSelect.currentX = pt.x;
     marqueeSelect.currentY = pt.y;
+    document.getElementById("signal-flow")?.classList.add("sf-is-marqueeing");
 
     try {
       els.viewport.setPointerCapture(e.pointerId);
@@ -1964,9 +2275,105 @@ export function initSignalFlow() {
     refreshPlacesPanelIfActive();
   });
 
+  /** Pan/zoom so the given devices fit in the viewport (no wire extents). */
+  function fitViewToNodeIds(ids) {
+    const idSet = new Set(ids);
+    const visible = state.nodes.filter((n) => idSet.has(n.id) && nodeVisibleOnCanvas(n));
+    if (visible.length === 0) return;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const node of visible) {
+      const nodeEl = /** @type {HTMLElement | null} */ (
+        els.nodes.querySelector(`[data-node-id="${node.id}"]`)
+      );
+      const display = nodeDisplayPosition(node);
+      const w = nodeEl?.offsetWidth || WORLD_NODE_W;
+      const h = nodeEl?.offsetHeight || WORLD_NODE_H;
+      minX = Math.min(minX, display.x);
+      minY = Math.min(minY, display.y);
+      maxX = Math.max(maxX, display.x + w);
+      maxY = Math.max(maxY, display.y + h);
+    }
+
+    const pad = 80;
+    minX -= pad;
+    minY -= pad;
+    maxX += pad;
+    maxY += pad;
+
+    const vw = els.viewport.clientWidth;
+    const vh = els.viewport.clientHeight;
+    if (!vw || !vh) return;
+
+    const zoom = clampZoom(Math.min(vw / (maxX - minX), vh / (maxY - minY)), 0.35, 1);
+    panZoom.view.zoom = zoom;
+    panZoom.view.panX = (vw - (maxX - minX) * zoom) / 2 - minX * zoom;
+    panZoom.view.panY = (vh - (maxY - minY) * zoom) / 2 - minY * zoom;
+    panZoom.applyView();
+  }
+
+  /**
+   * Canvas view needed to see the given nodes. Power-domain gear is hidden on
+   * Signal; prefer Signal for ordinary gear so layouts match how they were placed.
+   * @param {string[]} ids
+   * @returns {"signal" | "power"}
+   */
+  function preferredCanvasViewForNodeIds(ids) {
+    /** @type {FlowNode[]} */
+    const nodes = [];
+    for (const id of ids) {
+      const node = state.nodes.find((n) => n.id === id);
+      if (node) nodes.push(node);
+    }
+    if (!nodes.length) return canvasView;
+    const anyPower = nodes.some((n) => isPowerDomainNode(n, nodeGear(n)));
+    if (anyPower) return "power";
+    return "signal";
+  }
+
+  /**
+   * Select every Signal Flow node that matches a gear-list auto sourceKey,
+   * switch to Signal/Power if needed so the gear is visible, then frame them.
+   * @param {string | null | undefined} sourceKey
+   * @returns {number} selected count
+   */
+  function selectByGearListSourceKey(sourceKey) {
+    const ids = nodeIdsForGearListSourceKey(
+      /** @type {import("./domain/gear-list.js").GearListSfNode[]} */ (state.nodes),
+      sourceKey
+    );
+    if (!ids.length) {
+      setStatus("No matching devices on Signal Flow.");
+      return 0;
+    }
+
+    const preferred = preferredCanvasViewForNodeIds(ids);
+    if (preferred !== canvasView) {
+      // Switch first — setCanvasView may trim an old selection of power gear.
+      setCanvasView(preferred);
+    }
+
+    setNodeSelection(ids);
+    selectedConnectionId = null;
+    render();
+    // Layout after the panel is visible so viewport size is correct.
+    requestAnimationFrame(() => {
+      fitViewToNodeIds(ids);
+    });
+    const viewLabel = preferred === "power" ? "Power" : "Signal";
+    setStatus(
+      `Selected ${ids.length} device${ids.length === 1 ? "" : "s"} on ${viewLabel} from Gear List.`
+    );
+    return ids.length;
+  }
+
   /** Pan/zoom so every placed device fits in the viewport. */
   function fitViewToGear() {
-    if (state.nodes.length === 0) {
+    const visible = state.nodes.filter((n) => nodeVisibleOnCanvas(n));
+    if (visible.length === 0) {
       panZoom.resetView({ x: 40, y: 40 }, 1);
       setStatus("Reset canvas view.");
       return;
@@ -1976,7 +2383,7 @@ export function initSignalFlow() {
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
-    for (const node of state.nodes) {
+    for (const node of visible) {
       const nodeEl = /** @type {HTMLElement | null} */ (
         els.nodes.querySelector(`[data-node-id="${node.id}"]`)
       );
@@ -1991,7 +2398,9 @@ export function initSignalFlow() {
 
     // Wires can be routed well outside the node boxes; include every route
     // point so no connection gets cut off.
+    const showPower = canvasMode() === "power";
     for (const conn of state.connections) {
+      if (showPower !== isPowerConnection(conn)) continue;
       const points = connectionRoutePoints(conn);
       if (!points) continue;
       for (const p of points) {
@@ -2052,6 +2461,58 @@ export function initSignalFlow() {
     }
   });
 
+  /**
+   * Refresh linked LED wall nodes from the live LED export.
+   * Does not auto-place walls — drag from the LED Walls library folder to add.
+   * Removes nodes whose wall no longer exists.
+   */
+  function reconcileLedWallNodes() {
+    const led = /** @type {{ grids?: object[] } | null} */ (getCalculatorExport("led"));
+    const grids = Array.isArray(led?.grids) ? led.grids : [];
+    /** @type {Map<string, object>} */
+    const gridById = new Map();
+    for (const grid of grids) {
+      if (grid && typeof grid.id === "string" && grid.id) gridById.set(grid.id, grid);
+    }
+
+    const existingByWall = new Map(
+      state.nodes
+        .filter((n) => typeof n.ledWallId === "string" && n.ledWallId)
+        .map((n) => [/** @type {string} */ (n.ledWallId), n])
+    );
+
+    for (const [wallId, grid] of gridById) {
+      const gear = buildLedWallGear(/** @type {import("./domain/led.js").LedWallGrid} */ (grid));
+      if (!gear) continue;
+      const existing = existingByWall.get(wallId);
+      if (existing) {
+        existing.typeId = gear.id;
+        existing.name = gear.defaultName;
+        existing.gearOverride = gear;
+        existingByWall.delete(wallId);
+      }
+    }
+
+    if (existingByWall.size > 0) {
+      const removeIds = new Set([...existingByWall.values()].map((n) => n.id));
+      state.nodes = state.nodes.filter((n) => !removeIds.has(n.id));
+      state.connections = state.connections.filter(
+        (c) => !removeIds.has(c.fromNodeId) && !removeIds.has(c.toNodeId)
+      );
+      for (const id of removeIds) selectedNodeIds.delete(id);
+    }
+
+    pruneInvalidConnections();
+  }
+
+  function migratePowerConnections() {
+    state.connections = migrateLegacyPowerInletConnections(
+      state.nodes,
+      state.connections,
+      (node) => nodeGearForMode(/** @type {FlowNode} */ (node), "power")
+    );
+  }
+
   function exportState() {
     measureNodeLayouts();
     return deepClone(state);
@@ -2075,13 +2536,16 @@ export function initSignalFlow() {
     syncColorToggle();
     state.grid = normalizeSignalFlowGrid(data.grid);
     syncGridControls();
-    expandedGearFolderIds = new Set(["fld-library", "fld-brands"]);
+    expandedGearFolderIds = new Set(["fld-library", "fld-brands", LED_WALLS_FOLDER_ID]);
     activeGearFolderId = null;
     renamingGearFolderId = null;
     clearNodeSelection();
     selectedConnectionId = null;
     editingNodeNameId = null;
     editingNodeNameOriginal = "";
+    migratePowerConnections();
+    for (const node of state.nodes) seedPowerPositionFromSignal(node);
+    reconcileLedWallNodes();
     populatePalette();
     const bounds = computeWorldBounds();
     migrateConnectionRoutesToWorld(state.connections, bounds.minX, bounds.minY);
@@ -2140,16 +2604,18 @@ export function initSignalFlow() {
   // Wire endpoints are measured from port cell positions, which are wrong
   // while the panel is hidden. Re-render once each time the tab is shown.
   document.getElementById("signal-flow")?.addEventListener("tab-shown", () => {
+    reconcileLedWallNodes();
     render();
   });
 
   panZoom.bind();
-  bindGearModeToggle();
+  bindViewNavToggles();
   bindGridControls();
   populatePalette();
   panZoom.applyView();
   syncColorToggle();
   syncGridControls();
+  reconcileLedWallNodes();
   render();
 
 
@@ -2188,6 +2654,12 @@ export function initSignalFlow() {
         const moved = offsetPoint(next, SF_PASTE_OFFSET, SF_PASTE_OFFSET);
         next.x = moved.x;
         next.y = moved.y;
+        if (Number.isFinite(Number(next.powerX)) && Number.isFinite(Number(next.powerY))) {
+          next.powerX = Number(next.powerX) + SF_PASTE_OFFSET;
+          next.powerY = Number(next.powerY) + SF_PASTE_OFFSET;
+        } else {
+          seedPowerPositionFromSignal(next);
+        }
         idMap.set(oldId, next.id);
         state.nodes.push(next);
         pasted.push(next.id);
@@ -2240,7 +2712,16 @@ export function initSignalFlow() {
     return false;
   }
 
-  return { exportState, importState, addPlace, renamePlace, deletePlace, copySelection, pasteSelection };
+  return {
+    exportState,
+    importState,
+    addPlace,
+    renamePlace,
+    deletePlace,
+    copySelection,
+    pasteSelection,
+    selectByGearListSourceKey,
+  };
 }
 
 export const calculatorPlugin = {

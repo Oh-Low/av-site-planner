@@ -3,14 +3,25 @@
  * UI rendering stays in js/cable-calculator.js.
  */
 
-import { inferConnectorTypeFromLabel, resolveGearType } from "../signal-flow-data.js";
+import {
+  inferConnectorTypeFromLabel,
+  normalizeConnectorType,
+  normalizePortRow,
+  resolveGearType,
+} from "../signal-flow-data.js";
 import { DEFAULT_PALETTE_COLOR, normalizeHexColor } from "../shared/color-palette.js";
 import { formatDistance, getMetersPerPixel, routeLengthMeters } from "../groundplan-units.js";
 import { uid } from "../shared/id.js";
 
 /**
  * @typedef {{ id: string, name: string }} CablePlace
- * @typedef {{ id: string, typeId: string, name: string, placeId?: string | null }} CableNode
+ * @typedef {{
+ *   id: string,
+ *   typeId: string,
+ *   name: string,
+ *   placeId?: string | null,
+ *   gearOverride?: { ports?: unknown[] } | null,
+ * }} CableNode
  * @typedef {{
  *   id: string,
  *   fromNodeId: string,
@@ -21,15 +32,36 @@ import { uid } from "../shared/id.js";
  *   toCol: "input" | "output",
  * }} CableConnection
  * @typedef {{ id: string, fromPlaceId: string, toPlaceId: string, points: { x: number, y: number, heightMeters?: number | null }[], color?: string }} CableRoute
- * @typedef {{ connectionId: string, cableLabel: string, fromDevice: string, toDevice: string, amount?: number, fromNodeId?: string, toNodeId?: string }} CableRow
- * @typedef {{ id: string, cableLabel: string, fromDevice: string, toDevice: string, amount: number }} ManualCable
+ * @typedef {{ connectionId: string, cableLabel: string, fromDevice: string, toDevice: string, amount?: number, length?: number | null, fromNodeId?: string, toNodeId?: string }} CableRow
+ * @typedef {{ id: string, cableLabel: string, fromDevice: string, toDevice: string, amount: number, length: number | null }} ManualCable
  * @typedef {{ type: string, count: number, rows: CableRow[] }} CableTypeGroup
  * @typedef {{ id: string, title: string, lengthLabel: string, rows: CableRow[], emptyMessage: string, color?: string }} CableCard
- * @typedef {{ routes: Record<string, ManualCable[]>, places: Record<string, ManualCable[]> }} CableState
+ * @typedef {{
+ *   routes: Record<string, ManualCable[]>,
+ *   places: Record<string, ManualCable[]>,
+ *   placeLengths: Record<string, number>,
+ * }} CableState
  */
 
 /** Preferred display order for known connector types; unknown types follow alphabetically. */
-const CABLE_TYPE_ORDER = ["HDMI", "DP", "SDI", "USB-C", "XLR", "ETH", "Fiber", "Cable"];
+const CABLE_TYPE_ORDER = [
+  "HDMI",
+  "DP",
+  "SDI",
+  "USB-C",
+  "XLR",
+  "ETH",
+  "Fiber",
+  "Edison",
+  "Soca",
+  "Powercon",
+  "True1",
+  "CamLock",
+  "Cable",
+];
+
+/** Standard stock lengths offered in place / gear-list dropdowns. */
+export const STANDARD_CABLE_LENGTHS = Object.freeze([5, 10, 15, 25, 50, 100, 150, 200]);
 
 /**
  * @param {unknown} value
@@ -42,9 +74,21 @@ export function normalizeCableAmount(value, fallback = 1) {
   return Math.max(1, Math.min(999, Math.floor(n)));
 }
 
+/**
+ * @param {unknown} value
+ * @param {number | null} [fallback]
+ * @returns {number | null}
+ */
+export function normalizeCableLength(value, fallback = null) {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  const rounded = Math.floor(n);
+  return STANDARD_CABLE_LENGTHS.includes(rounded) ? rounded : fallback;
+}
+
 /** @returns {CableState} */
 export function emptyCableState() {
-  return { routes: {}, places: {} };
+  return { routes: {}, places: {}, placeLengths: {} };
 }
 
 /**
@@ -65,6 +109,7 @@ function normalizeManualCable(raw) {
     fromDevice,
     toDevice,
     amount: normalizeCableAmount(c.amount, 1),
+    length: normalizeCableLength(c.length, null),
   };
 }
 
@@ -85,6 +130,24 @@ function normalizeManualMap(raw) {
 }
 
 /**
+ * @param {unknown} raw
+ * @param {string[]} [allowedIds]
+ * @returns {Record<string, number>}
+ */
+function normalizePlaceLengths(raw, allowedIds) {
+  if (!raw || typeof raw !== "object") return {};
+  const allow = allowedIds ? new Set(allowedIds) : null;
+  /** @type {Record<string, number>} */
+  const out = {};
+  for (const [placeId, value] of Object.entries(/** @type {Record<string, unknown>} */ (raw))) {
+    if (!placeId || (allow && !allow.has(placeId))) continue;
+    const length = normalizeCableLength(value, null);
+    if (length != null) out[placeId] = length;
+  }
+  return out;
+}
+
+/**
  * @param {unknown} data
  * @returns {CableState}
  */
@@ -97,6 +160,7 @@ export function normalizeCableState(data) {
   return {
     routes: normalizeManualMap(raw.routes),
     places: normalizeManualMap(raw.places),
+    placeLengths: normalizePlaceLengths(raw.placeLengths),
   };
 }
 
@@ -120,7 +184,11 @@ export function pruneManualCables(state, routeIds, placeIds) {
   for (const [id, list] of Object.entries(state.places ?? {})) {
     if (placeSet.has(id) && list.length) places[id] = list;
   }
-  return { routes, places };
+  return {
+    routes,
+    places,
+    placeLengths: normalizePlaceLengths(state.placeLengths, placeIds),
+  };
 }
 
 /**
@@ -129,11 +197,12 @@ export function pruneManualCables(state, routeIds, placeIds) {
  * @param {CableRow} row
  */
 function rowPathKey(row) {
+  const len = row.length != null ? String(row.length) : "";
   if (row.fromNodeId && row.toNodeId) {
-    return `n:${row.fromNodeId}\0${row.toNodeId}`;
+    return `n:${row.fromNodeId}\0${row.toNodeId}\0${len}`;
   }
-  if (row.connectionId) return `id:${row.connectionId}`;
-  return `d:${row.fromDevice ?? ""}\0${row.toDevice ?? ""}`;
+  if (row.connectionId) return `id:${row.connectionId}\0${len}`;
+  return `d:${row.fromDevice ?? ""}\0${row.toDevice ?? ""}\0${len}`;
 }
 
 /**
@@ -192,6 +261,21 @@ export function groupRowsByCableType(rows) {
 }
 
 /**
+ * Sort cable type labels: known connector order first, then alphabetical.
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+export function compareCableTypes(a, b) {
+  const ia = CABLE_TYPE_ORDER.indexOf(a);
+  const ib = CABLE_TYPE_ORDER.indexOf(b);
+  if (ia >= 0 && ib >= 0) return ia - ib;
+  if (ia >= 0) return -1;
+  if (ib >= 0) return 1;
+  return a.localeCompare(b);
+}
+
+/**
  * Path label for a cable row. Blank from+to uses the route/place title.
  * @param {{ fromDevice?: string, toDevice?: string }} row
  * @param {string} cardTitle
@@ -215,47 +299,72 @@ export function manualCablesToRows(manuals) {
     fromDevice: c.fromDevice,
     toDevice: c.toDevice,
     amount: normalizeCableAmount(c.amount, 1),
+    length: normalizeCableLength(c.length, null),
   }));
 }
 
 /**
- * Resolve the destination input endpoint for a connection when possible.
- * @param {CableConnection} conn
- * @returns {{ nodeId: string, row: number, col: "input" | "output" }}
+ * Effective gear for a placed node — instance override when present.
+ * @param {CableNode} node
+ * @param {import("../signal-flow-data.js").GearType[]} customGearTypes
  */
-function destinationEndpoint(conn) {
-  if (conn.toCol === "input") {
-    return { nodeId: conn.toNodeId, row: conn.toRow, col: "input" };
+function resolveNodeGear(node, customGearTypes) {
+  const override = node.gearOverride;
+  if (override && typeof override === "object" && Array.isArray(override.ports)) {
+    return {
+      ...override,
+      ports: override.ports.map((p) => normalizePortRow(/** @type {object} */ (p))),
+    };
   }
-  if (conn.fromCol === "input") {
-    return { nodeId: conn.fromNodeId, row: conn.fromRow, col: "input" };
-  }
-  return { nodeId: conn.toNodeId, row: conn.toRow, col: conn.toCol };
+  return resolveGearType(node.typeId, customGearTypes);
 }
 
 /**
- * Cable type from the destination input port's connector type.
+ * @param {import("../signal-flow-gear-schema.js").GearPortRow | null | undefined} port
+ * @param {"input" | "output"} col
+ * @returns {string | null}
+ */
+function portConnectorType(port, col) {
+  if (!port) return null;
+  const explicit = col === "output" ? port.outputType : port.inputType;
+  const fromExplicit = normalizeConnectorType(explicit);
+  if (fromExplicit) return fromExplicit;
+  const label = col === "output" ? port.output : port.input;
+  return inferConnectorTypeFromLabel(label);
+}
+
+/**
+ * Cable type for a connection — same priority as Signal Flow wire coloring:
+ * destination input → source input → source output → destination output.
  * @param {CableConnection} conn
  * @param {CableNode[]} nodes
  * @param {import("../signal-flow-data.js").GearType[]} customGearTypes
  * @returns {string}
  */
 export function inferCableType(conn, nodes, customGearTypes) {
-  const endpoint = destinationEndpoint(conn);
-  const node = nodes.find((n) => n.id === endpoint.nodeId);
-  if (!node) return "Cable";
-  const gear = resolveGearType(node.typeId, customGearTypes);
-  const port = gear.ports?.[endpoint.row];
-  if (!port) return "Cable";
+  /** @type {{ nodeId: string, row: number, col: "input" | "output" }[]} */
+  const candidates = [];
+  if (conn.toCol === "input") {
+    candidates.push({ nodeId: conn.toNodeId, row: conn.toRow, col: "input" });
+  }
+  if (conn.fromCol === "input") {
+    candidates.push({ nodeId: conn.fromNodeId, row: conn.fromRow, col: "input" });
+  }
+  if (conn.fromCol === "output") {
+    candidates.push({ nodeId: conn.fromNodeId, row: conn.fromRow, col: "output" });
+  }
+  if (conn.toCol === "output") {
+    candidates.push({ nodeId: conn.toNodeId, row: conn.toRow, col: "output" });
+  }
 
-  const typed =
-    endpoint.col === "output"
-      ? port.outputType || inferConnectorTypeFromLabel(port.output)
-      : port.inputType || inferConnectorTypeFromLabel(port.input);
-  if (typed) return typed;
-
-  const label = endpoint.col === "output" ? port.output : port.input;
-  if (!label || label === "—") return "Cable";
+  for (const endpoint of candidates) {
+    const node = nodes.find((n) => n.id === endpoint.nodeId);
+    if (!node) continue;
+    const gear = resolveNodeGear(node, customGearTypes);
+    const port = gear.ports?.[endpoint.row];
+    const typed = portConnectorType(port, endpoint.col);
+    if (typed) return typed;
+  }
   return "Cable";
 }
 

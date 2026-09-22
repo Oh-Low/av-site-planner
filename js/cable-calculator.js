@@ -12,8 +12,10 @@ import {
   groupRowsByCableType,
   manualCablesToRows,
   normalizeCableAmount,
+  normalizeCableLength,
   normalizeCableState,
   pruneManualCables,
+  STANDARD_CABLE_LENGTHS,
 } from "./domain/cable.js";
 import { escapeXml } from "./shared/dom.js";
 import { uid } from "./shared/id.js";
@@ -31,9 +33,30 @@ export {
   manualCablesToRows,
   matchRouteConnections,
   normalizeCableAmount,
+  normalizeCableLength,
   normalizeCableState,
   pruneManualCables,
+  STANDARD_CABLE_LENGTHS,
 } from "./domain/cable.js";
+
+/**
+ * @param {number | null | undefined} selected
+ * @param {{ name?: string, required?: boolean, className?: string }} [opts]
+ */
+function lengthSelectHtml(selected, opts = {}) {
+  const name = opts.name ?? "length";
+  const required = opts.required === true;
+  const className = opts.className ?? "field-input cable-length-select";
+  const current = normalizeCableLength(selected, null);
+  const options = [
+    `<option value=""${!current ? " selected" : ""}>—</option>`,
+    ...STANDARD_CABLE_LENGTHS.map(
+      (n) =>
+        `<option value="${n}"${current === n ? " selected" : ""}>${n}</option>`
+    ),
+  ].join("");
+  return `<select name="${escapeXml(name)}" class="${escapeXml(className)}" aria-label="Cable length"${required ? " required" : ""}>${options}</select>`;
+}
 
 /**
  * @param {CableRow[]} rows
@@ -59,14 +82,19 @@ function renderTypeGroups(rows, options = {}) {
             .map((row) => {
               const path = formatCablePath(row, cardTitle);
               const amount = normalizeCableAmount(row.amount, 1);
+              const length = normalizeCableLength(row.length, null);
               const amountHtml =
                 amount > 1 ? `<span class="cable-card-amount">×${amount}</span>` : "";
+              const lengthHtml =
+                length != null
+                  ? `<span class="cable-card-length">${length}</span>`
+                  : "";
               const removeBtn = removable
                 ? `<button type="button" class="cable-manual-remove" data-manual-id="${escapeXml(row.connectionId)}" title="Remove cable" aria-label="Remove cable">×</button>`
                 : "";
               return `
             <li class="cable-card-path${removable ? " is-manual" : ""}">
-              <span class="cable-card-path-text">${escapeXml(path)}${amountHtml}</span>
+              <span class="cable-card-path-text">${escapeXml(path)}${amountHtml}${lengthHtml}</span>
               ${removeBtn}
             </li>`;
             })
@@ -78,10 +106,14 @@ function renderTypeGroups(rows, options = {}) {
   </ul>`;
 }
 
-function renderTypeAndAmountFields() {
+/**
+ * @param {number | null} [defaultLength]
+ */
+function renderTypeAndAmountFields(defaultLength = null) {
   return `
     <div class="cable-manual-type-row">
       <input type="text" name="cableType" class="field-input cable-manual-type" maxlength="32" placeholder="Cable type (e.g. HDMI)" aria-label="Cable type" required />
+      ${lengthSelectHtml(defaultLength, { name: "length", className: "field-input cable-manual-length" })}
       <input type="number" name="amount" class="field-input cable-manual-amount" min="1" max="999" value="1" aria-label="Amount" required />
     </div>`;
 }
@@ -90,8 +122,9 @@ function renderTypeAndAmountFields() {
  * @param {CableCard} card
  * @param {"route" | "place"} kind
  * @param {ManualCable[]} manualCables
+ * @param {number | null} [placeLength]
  */
-function renderCard(card, kind, manualCables) {
+function renderCard(card, kind, manualCables, placeLength = null) {
   const autoHtml =
     card.rows.length === 0
       ? `<p class="cable-card-empty">${escapeXml(card.emptyMessage)}</p>`
@@ -107,11 +140,27 @@ function renderCard(card, kind, manualCables) {
       ? `<p class="cable-card-empty cable-card-empty--manual">No manual cables yet</p>`
       : "";
 
+  const placeLengthControl =
+    kind === "place"
+      ? `<label class="cable-place-length-field">
+          Length
+          ${lengthSelectHtml(placeLength, {
+            name: "placeLength",
+            className: "field-input cable-place-length",
+          })}
+        </label>`
+      : "";
+
+  const formDefaultLength = kind === "place" ? placeLength : null;
+
   return `
     <article class="cable-card" data-card-id="${escapeXml(card.id)}" data-card-kind="${kind}">
       <header class="cable-card-header">
-        <h4 class="cable-card-title">${escapeXml(card.title)}</h4>
-        <p class="cable-card-meta">${escapeXml(card.lengthLabel)}</p>
+        <div class="cable-card-heading">
+          <h4 class="cable-card-title">${escapeXml(card.title)}</h4>
+          <p class="cable-card-meta">${escapeXml(card.lengthLabel)}</p>
+        </div>
+        ${placeLengthControl}
       </header>
       <div class="cable-card-auto">${autoHtml}</div>
       <div class="cable-card-divider" role="separator" aria-hidden="true"></div>
@@ -120,7 +169,7 @@ function renderCard(card, kind, manualCables) {
         ${manualEmpty}
         <button type="button" class="btn btn-secondary btn-sm cable-add-btn">Add cable</button>
         <form class="cable-manual-form" hidden>
-          ${renderTypeAndAmountFields()}
+          ${renderTypeAndAmountFields(formDefaultLength)}
           <input type="text" name="fromDevice" class="field-input cable-manual-from" maxlength="48" placeholder="From device (optional)" aria-label="From device" />
           <input type="text" name="toDevice" class="field-input cable-manual-to" maxlength="48" placeholder="To device (optional)" aria-label="To device" />
           <div class="cable-manual-actions">
@@ -137,12 +186,22 @@ function renderCard(card, kind, manualCables) {
  * @param {"route" | "place"} kind
  * @param {Record<string, ManualCable[]>} manualByCard
  * @param {string} emptyText
+ * @param {Record<string, number>} [placeLengths]
  */
-function renderCardGrid(cards, kind, manualByCard, emptyText) {
+function renderCardGrid(cards, kind, manualByCard, emptyText, placeLengths = {}) {
   if (!cards.length) {
     return `<p class="cable-section-empty">${escapeXml(emptyText)}</p>`;
   }
-  return cards.map((card) => renderCard(card, kind, manualByCard[card.id] ?? [])).join("");
+  return cards
+    .map((card) =>
+      renderCard(
+        card,
+        kind,
+        manualByCard[card.id] ?? [],
+        kind === "place" ? normalizeCableLength(placeLengths[card.id], null) : null
+      )
+    )
+    .join("");
 }
 
 export function initCableCalculator() {
@@ -228,7 +287,8 @@ export function initCableCalculator() {
       placeCards,
       "place",
       localState.places,
-      "No places in signal flow yet."
+      "No places in signal flow yet.",
+      localState.placeLengths ?? {}
     );
 
     const autoCount =
@@ -316,6 +376,7 @@ export function initCableCalculator() {
 
       const typeEl = form.elements.namedItem("cableType");
       const amountEl = form.elements.namedItem("amount");
+      const lengthEl = form.elements.namedItem("length");
       const fromEl = form.elements.namedItem("fromDevice");
       const toEl = form.elements.namedItem("toDevice");
       const cableLabel =
@@ -326,6 +387,12 @@ export function initCableCalculator() {
         amountEl instanceof HTMLInputElement
           ? normalizeCableAmount(amountEl.value, 1)
           : 1;
+      const length =
+        lengthEl instanceof HTMLSelectElement
+          ? normalizeCableLength(lengthEl.value, null)
+          : ctx.kind === "place"
+            ? normalizeCableLength(localState.placeLengths?.[ctx.cardId], null)
+            : null;
       if (!cableLabel) return;
 
       recordBefore("cable", "add-manual");
@@ -335,8 +402,27 @@ export function initCableCalculator() {
         fromDevice,
         toDevice,
         amount,
+        length,
       });
       setManualList(ctx.kind, ctx.cardId, [...getManualList(ctx.kind, ctx.cardId), cable]);
+      refresh();
+    });
+
+    root.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLSelectElement) || !target.classList.contains("cable-place-length")) {
+        return;
+      }
+      const cardEl = target.closest(".cable-card");
+      if (!(cardEl instanceof HTMLElement)) return;
+      const ctx = cardContext(cardEl);
+      if (!ctx || ctx.kind !== "place") return;
+      const length = normalizeCableLength(target.value, null);
+      recordBefore("cable", "place-length");
+      const placeLengths = { ...(localState.placeLengths ?? {}) };
+      if (length == null) delete placeLengths[ctx.cardId];
+      else placeLengths[ctx.cardId] = length;
+      localState = { ...localState, placeLengths };
       refresh();
     });
   }
@@ -354,6 +440,7 @@ export function initCableCalculator() {
     return {
       routes: { ...localState.routes },
       places: { ...localState.places },
+      placeLengths: { ...(localState.placeLengths ?? {}) },
     };
   }
 

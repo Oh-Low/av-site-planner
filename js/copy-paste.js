@@ -21,6 +21,7 @@ const TAB_TO_STATE_KEY = {
   "signal-flow": "signalFlow",
   groundplan: "groundplan",
   "content-maps": "contentMaps",
+  "rigging-calculator": "rigging",
   "paperwork-composer": "paperwork",
 };
 

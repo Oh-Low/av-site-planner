@@ -22,6 +22,18 @@
   height: auto;
 }
 
+#signal-flow .sf-sidebar-navs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+#signal-flow .sf-sidebar-navs .local-nav {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
 #signal-flow:not([hidden]) .calc-canvas-wrap {
   display: flex;
   flex-direction: column;
@@ -33,6 +45,16 @@
   flex: 1;
   height: auto;
   min-height: 360px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+/* Marquee drag must not highlight Places / Gear menu text. */
+#signal-flow.sf-is-marqueeing,
+#signal-flow.sf-is-marqueeing * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }
 
 #signal-flow .calc-world {
@@ -1261,10 +1283,66 @@
   color: var(--text);
 }
 
+/* Power status circle — top-left; not a connection target. */
+.sf-power-inlet {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.28rem;
+  width: 0.72rem;
+  height: 0.72rem;
+  padding: 0;
+  border: 1.5px solid #64748b;
+  border-radius: 50%;
+  background: #64748b;
+  cursor: default;
+  pointer-events: none;
+  z-index: 2;
+  box-sizing: border-box;
+}
+
+.sf-power-inlet.is-powered {
+  border-color: #22c55e;
+  background: #22c55e;
+}
+
+.sf-power-inlet.is-muted {
+  opacity: 0.55;
+}
+
+.sf-port-muted {
+  opacity: 0.38;
+  cursor: default;
+  color: var(--text-muted);
+}
+
+.sf-port-muted .sf-port-type {
+  opacity: 0.7;
+}
+
+.sf-power-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.35rem 0.15rem;
+}
+
+.sf-power-palette-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.sf-power-palette-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
 .sf-node-name {
   display: block;
   width: 100%;
-  padding: 0.45rem 0.55rem;
+  padding: 0.45rem 1.6rem 0.45rem 1.35rem;
   border: none;
   background: transparent;
   color: var(--text);

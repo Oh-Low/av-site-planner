@@ -76,9 +76,37 @@
 
 .cable-card-header {
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.45rem 0.75rem;
+  min-width: 0;
+}
+
+.cable-card-heading {
+  display: flex;
   flex-direction: column;
   gap: 0.2rem;
   min-width: 0;
+  flex: 1;
+}
+
+.cable-place-length-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cable-place-length {
+  min-width: 4.5rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
 }
 
 .cable-card-title {
@@ -93,6 +121,17 @@
   margin: 0;
   font-size: 0.75rem;
   color: var(--text-muted);
+}
+
+.cable-card-length {
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.cable-card-length::before {
+  content: "· ";
 }
 
 .cable-card-groups {
@@ -210,6 +249,7 @@
 
 .cable-manual-type,
 .cable-manual-amount,
+.cable-manual-length,
 .cable-manual-from,
 .cable-manual-to {
   box-sizing: border-box;
@@ -231,6 +271,11 @@
   flex: none;
   width: 3.25rem;
   text-align: center;
+}
+
+.cable-manual-length {
+  flex: none;
+  width: 4.5rem;
 }
 
 .cable-manual-actions {

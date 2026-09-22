@@ -51,9 +51,74 @@ describe("cable calculator cards", () => {
     assert.equal(label, "HDMI");
   });
 
-  it("falls back to Cable when the input has no type", () => {
+  it("falls back to the source output type when the input has no type", () => {
+    // Source HDMI Out → Matrix In 1 (untyped) should still resolve HDMI.
     const label = inferCableType(connections[1], nodes, []);
-    assert.equal(label, "Cable");
+    assert.equal(label, "HDMI");
+  });
+
+  it("resolves Fiber from a Fiber-labeled destination input", () => {
+    const fiberNodes = [
+      { id: "tx", typeId: "custom-tx", name: "TX", placeId: "p-a" },
+      { id: "rx", typeId: "custom-rx", name: "RX", placeId: "p-b" },
+    ];
+    const custom = [
+      {
+        id: "custom-tx",
+        label: "TX",
+        defaultName: "TX",
+        category: "Video",
+        ports: [{ input: "—", output: "Fiber Out", outputType: "Fiber" }],
+      },
+      {
+        id: "custom-rx",
+        label: "RX",
+        defaultName: "RX",
+        category: "Video",
+        ports: [{ input: "Fiber In", output: "—", inputType: "Fiber" }],
+      },
+    ];
+    const conn = {
+      id: "cf",
+      fromNodeId: "tx",
+      fromRow: 0,
+      fromCol: "output",
+      toNodeId: "rx",
+      toRow: 0,
+      toCol: "input",
+    };
+    assert.equal(inferCableType(conn, fiberNodes, custom), "Fiber");
+  });
+
+  it("resolves Fiber from source output when destination input is untyped", () => {
+    const fiberNodes = [
+      {
+        id: "tx",
+        typeId: "blank",
+        name: "TX",
+        gearOverride: {
+          ports: [{ input: "—", output: "OPT Out", outputType: "Fiber" }],
+        },
+      },
+      {
+        id: "rx",
+        typeId: "blank",
+        name: "RX",
+        gearOverride: {
+          ports: [{ input: "In 1", output: "—" }],
+        },
+      },
+    ];
+    const conn = {
+      id: "cf2",
+      fromNodeId: "tx",
+      fromRow: 0,
+      fromCol: "output",
+      toNodeId: "rx",
+      toRow: 0,
+      toCol: "input",
+    };
+    assert.equal(inferCableType(conn, fiberNodes, []), "Fiber");
   });
 
   it("groups rows by cable type with device paths", () => {
@@ -145,7 +210,14 @@ describe("cable calculator cards", () => {
     const pruned = pruneManualCables(state, ["r1"], ["p-a"]);
     assert.ok(pruned.routes.r1);
     assert.equal(pruned.routes.gone, undefined);
-    assert.deepEqual(emptyCableState(), { routes: {}, places: {} });
+    assert.deepEqual(emptyCableState(), { routes: {}, places: {}, placeLengths: {} });
+  });
+
+  it("normalizes place lengths to the standard set", () => {
+    const state = normalizeCableState({
+      placeLengths: { "p-a": 25, "p-b": 7, "p-c": "50" },
+    });
+    assert.deepEqual(state.placeLengths, { "p-a": 25, "p-c": 50 });
   });
 
   it("uses card title when from and to are blank", () => {

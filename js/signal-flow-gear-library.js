@@ -203,7 +203,9 @@ export function folderExists(folders, folderId) {
 
 /** @param {string} gearId */
 export function isBuiltinGearId(gearId) {
-  return GEAR_TYPES.some((g) => g.id === gearId);
+  // Power-palette gear resolves as builtin for wiring, but is not Gear-library gear.
+  if (typeof gearId === "string" && gearId.startsWith("power-")) return false;
+  return GEAR_TYPES.some((g) => g.id === gearId && g.domain !== "power");
 }
 
 /**

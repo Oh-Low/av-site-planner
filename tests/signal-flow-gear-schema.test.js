@@ -22,12 +22,12 @@ describe("gear port rows with dividers", () => {
 
   it("omits divider keys when flags are absent", () => {
     const row = normalizePortRow({ input: "XLR 1", output: "—" });
-    assert.deepEqual(row, {
-      input: "XLR 1",
-      output: "—",
-      inputType: "XLR",
-      outputType: null,
-    });
+    assert.equal(row.input, "XLR 1");
+    assert.equal(row.output, "—");
+    assert.equal(row.inputType, "XLR");
+    assert.equal(row.outputType, undefined);
+    assert.equal(row.inputDivider, undefined);
+    assert.equal(row.outputDivider, undefined);
   });
 });
 

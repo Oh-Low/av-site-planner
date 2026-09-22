@@ -6,6 +6,7 @@ import {
 import {
   BRAND_GEAR_TYPES,
   GENERIC_GEAR_TYPES,
+  POWER_GEAR_TYPES,
 } from "./signal-flow-gear-presets.js";
 
 /** @typedef {import("./signal-flow-gear-schema.js").GearPortRow} GearPortRow */
@@ -16,15 +17,19 @@ export {
   CONNECTOR_COLORS,
   CONNECTOR_TYPES,
   GEAR_CATEGORIES,
+  POWER_CONNECTOR_TYPES,
   connectorColor,
   inferConnectorTypeFromLabel,
+  isPowerConnection,
+  isPowerConnectorType,
+  normalizeConnectorType,
   normalizePortRow,
 } from "./signal-flow-gear-schema.js";
 
-/** Generic templates plus brand product presets. */
-export const GEAR_TYPES = [...GENERIC_GEAR_TYPES, ...BRAND_GEAR_TYPES];
+/** Generic templates plus brand product presets (signal domain). Power gear resolves via POWER_GEAR_TYPES. */
+export const GEAR_TYPES = [...GENERIC_GEAR_TYPES, ...BRAND_GEAR_TYPES, ...POWER_GEAR_TYPES];
 
-export { GENERIC_GEAR_TYPES };
+export { GENERIC_GEAR_TYPES, POWER_GEAR_TYPES };
 
 /** @typedef {Record<string, number>} ConnectorCounts */
 

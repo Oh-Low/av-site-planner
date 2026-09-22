@@ -1,0 +1,142 @@
+{
+  "folders": [],
+  "gear": [
+    {
+      "id": "power-20a-wall-outlet",
+      "label": "20A Wall outlet",
+      "category": "Power",
+      "domain": "power",
+      "inputs": ["\u2014"],
+      "outputs": ["Edison Out"],
+      "inputTypes": [null],
+      "outputTypes": ["Edison"]
+    },
+    {
+      "id": "power-company-switch",
+      "label": "Company Switch",
+      "category": "Power",
+      "domain": "power",
+      "inputs": ["\u2014"],
+      "outputs": ["CamLock Out"],
+      "inputTypes": [null],
+      "outputTypes": ["CamLock"]
+    },
+    {
+      "id": "power-soca-breakout-edison",
+      "label": "Edison Soca Breakout",
+      "category": "Power",
+      "domain": "power",
+      "inputs": ["Soca In", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014"],
+      "outputs": [
+        "Edison 1",
+        "Edison 2",
+        "Edison 3",
+        "Edison 4",
+        "Edison 5",
+        "Edison 6"
+      ],
+      "inputTypes": ["Soca", null, null, null, null, null],
+      "outputTypes": ["Edison", "Edison", "Edison", "Edison", "Edison", "Edison"]
+    },
+    {
+      "id": "power-soca-breakout-powercon",
+      "label": "Powercon Soca Breakout",
+      "category": "Power",
+      "domain": "power",
+      "inputs": ["Soca In", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014"],
+      "outputs": [
+        "Powercon 1",
+        "Powercon 2",
+        "Powercon 3",
+        "Powercon 4",
+        "Powercon 5",
+        "Powercon 6"
+      ],
+      "inputTypes": ["Soca", null, null, null, null, null],
+      "outputTypes": [
+        "Powercon",
+        "Powercon",
+        "Powercon",
+        "Powercon",
+        "Powercon",
+        "Powercon"
+      ]
+    },
+    {
+      "id": "power-soca-breakout-true1",
+      "label": "True1 Soca Breakout",
+      "category": "Power",
+      "domain": "power",
+      "inputs": ["Soca In", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014"],
+      "outputs": [
+        "True1 1",
+        "True1 2",
+        "True1 3",
+        "True1 4",
+        "True1 5",
+        "True1 6"
+      ],
+      "inputTypes": ["Soca", null, null, null, null, null],
+      "outputTypes": ["True1", "True1", "True1", "True1", "True1", "True1"]
+    },
+    {
+      "id": "power-indu-35",
+      "label": "INDU 35 Distro",
+      "category": "Power",
+      "domain": "power",
+      "note": "INDU-ELECTRIC Cube 035 — 400A CamLock in with pass-through; 4× 208V Soca, 4× 120V Soca, 2× Edison duplex.",
+      "inputs": [
+        "CamLock In",
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014",
+        "\u2014"
+      ],
+      "outputs": [
+        "CamLock Thru",
+        "Soca 208 1",
+        "Soca 208 2",
+        "Soca 208 3",
+        "Soca 208 4",
+        "Soca 120 1",
+        "Soca 120 2",
+        "Soca 120 3",
+        "Soca 120 4",
+        "Edison 1",
+        "Edison 2"
+      ],
+      "inputTypes": [
+        "CamLock",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "outputTypes": [
+        "CamLock",
+        "Soca",
+        "Soca",
+        "Soca",
+        "Soca",
+        "Soca",
+        "Soca",
+        "Soca",
+        "Soca",
+        "Edison",
+        "Edison"
+      ]
+    }
+  ]
+}

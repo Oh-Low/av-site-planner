@@ -1,4 +1,4 @@
-/** @typedef {"graphite" | "ember" | "sea" | "chalk"} ThemeId */
+/** @typedef {"graphite" | "ember" | "sea" | "chalk" | "grey"} ThemeId */
 
 export const THEME_STORAGE_KEY = "av-site-planner.theme";
 
@@ -8,6 +8,7 @@ export const THEMES = Object.freeze([
   { id: "ember", label: "Ember" },
   { id: "sea", label: "Sea" },
   { id: "chalk", label: "Chalk" },
+  { id: "grey", label: "Grey" },
 ]);
 
 const THEME_IDS = new Set(THEMES.map((t) => t.id));

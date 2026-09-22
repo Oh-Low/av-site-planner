@@ -7,7 +7,7 @@ const NAV_SELECTOR = ".local-nav, .tab-bar, .sidebar-tabs";
 
 /** Direct children that participate in the track. */
 const ITEM_SELECTOR =
-  ":scope > .local-nav__item, :scope > .sidebar-tab, :scope > .app-tab, :scope > .tab, :scope > .sf-gear-mode";
+  ":scope > .local-nav__item, :scope > .sidebar-tab, :scope > .app-tab, :scope > .tab";
 
 /** @type {WeakMap<HTMLElement, { sync: (animate?: boolean) => void }>} */
 const controllers = new WeakMap();

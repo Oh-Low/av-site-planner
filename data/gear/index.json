@@ -2,6 +2,7 @@
   "catalogs": [
     "presets.json",
     "example-company.json",
-    "inventory.json"
+    "inventory.json",
+    "power.json"
   ]
 }

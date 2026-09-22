@@ -31,7 +31,9 @@ All live tools (including Groundplan) register with `init` and boot via `initCal
 | `groundplan` | `exportState`, `importState` | Resolves places lazily via `getCalculatorInstance("signalFlow")` (optional inject still supported). |
 | `contentMaps` | `exportState`, `importState` | Peeks LED/projector via `getCalculatorExport`. No `validateState` on meta. |
 | `cable` | `exportState`, `importState`, `refresh` | `refresh` rebuilds derived cards from SF + groundplan. App/tab show should call it. |
+| `gearList` | `exportState`, `importState`, `refresh` | Syncs auto rows from SF nodes + Cable Calculator cards; manual rows and headers are local. |
 | `labor` | `exportState`, `importState` | Pure-ish; state is small. |
+| `rigging` | `exportState`, `importState` | Scaled symbol assembly; mates in data only (no drawn links). Loads via equal-share solver. |
 | `paperwork` | `exportState`, `importState` | Peeks all calculators via `getCalculatorExport` / site export collection for Generate/Update. |
 
 ---
@@ -68,6 +70,6 @@ Special cases in `app.js`:
 
 - Calculators still own live mutable state; `SiteDocument` is synced on import/export via `site-document-runtime.js` (`getSiteDocument().peek`) — not yet used for mid-edit peeks.
 - No shared event bus — cross-reads via `getCalculatorExport` / document peek after sync.
-- Rigging tab has **no** plugin / `stateKey`.
+- Rigging LED auto-import and bridle-angle tension math are not built yet.
 - Cable `refresh` is easy to forget when upstream data changes while Cable tab is hidden.
 - Paperwork `exportState` includes selection ids (`selectedElementId`, `selectedDecorationId`).

@@ -7,7 +7,9 @@
  */
 
 import { connectorColor, resolveGearType } from "../signal-flow-data.js";
+import { isPowerConnection } from "../signal-flow-gear-schema.js";
 import { normalizeNodeLayout } from "../domain/signal-flow.js";
+import { gearForSignalMode, isPowerDomainNode } from "../domain/signal-flow-power.js";
 import { escapeXml } from "../shared/dom.js";
 import {
   buildPath,
@@ -160,14 +162,18 @@ function resolveNodeGear(node, customTypes) {
     node?.gearOverride && typeof node.gearOverride === "object"
       ? /** @type {Record<string, unknown>} */ (node.gearOverride)
       : null;
-  if (!override) return base;
-  const ports = Array.isArray(override.ports) ? override.ports : base.ports;
-  return {
-    ...base,
-    ...override,
-    ports,
-    note: typeof override.note === "string" ? override.note : base.note,
-  };
+  const merged = override
+    ? {
+        ...base,
+        ...override,
+        ports: Array.isArray(override.ports) ? override.ports : base.ports,
+        note: typeof override.note === "string" ? override.note : base.note,
+      }
+    : base;
+  // Paperwork is signal-only — same packed table as Gear mode on the canvas.
+  return gearForSignalMode(
+    /** @type {import("../signal-flow-gear-schema.js").GearType} */ (merged)
+  );
 }
 
 /**
@@ -320,6 +326,7 @@ function layoutSignalFlow(signalFlow) {
   };
 
   for (const node of nodes) {
+    if (isPowerDomainNode(/** @type {{ typeId?: string }} */ (node))) continue;
     const gear = resolveNodeGear(node, customTypes);
     const x = Number(node.x) || 0;
     const y = Number(node.y) || 0;
@@ -375,6 +382,7 @@ function layoutSignalFlow(signalFlow) {
   /** @type {{ conn: object, points: { x: number, y: number }[] }[]} */
   const wirePaths = [];
   for (const conn of connections) {
+    if (isPowerConnection(conn)) continue;
     const points = connectionPathPoints(conn, layouts, interactiveBounds, m);
     if (!points?.length) continue;
     wirePaths.push({ conn, points });

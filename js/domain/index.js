@@ -37,6 +37,7 @@ export {
   buildPlaceCards,
   buildRouteCards,
   collapseRowsByDevicePair,
+  compareCableTypes,
   emptyCableState,
   formatCablePath,
   groupRowsByCableType,
@@ -45,9 +46,41 @@ export {
   manualCablesToRows,
   matchRouteConnections,
   normalizeCableAmount,
+  normalizeCableLength,
   normalizeCableState,
   pruneManualCables,
+  STANDARD_CABLE_LENGTHS,
 } from "./cable.js";
+
+export {
+  addGearListHeader,
+  addManualGearListItem,
+  autoCablePlanFromCableCards,
+  autoCablesFromCableCards,
+  autoGearFromSignalFlow,
+  autoLedWallSectionsFromLed,
+  classifyLedLineJumpers,
+  condenseGearListItems,
+  emptyGearListState,
+  filterGearListRowsByLocation,
+  flattenManualCables,
+  GEAR_LIST_FILTER_UNASSIGNED,
+  gearListFilterOptions,
+  gearListRowsForDisplay,
+  gearListSourceKeyLinksToSignalFlow,
+  ledTileTypeLabel,
+  ledWallNeighborJumperCount,
+  ledWallTileGridSize,
+  nodeIdsForGearListSourceKey,
+  summarizeLedMapJumpers,
+  updateGearListSettings,
+  moveGearListRow,
+  normalizeGearListState,
+  removeGearListRow,
+  reorderGearListRow,
+  syncGearListRows,
+  updateGearListRow,
+} from "./gear-list.js";
 
 export {
   emptyGroundplanScale,
@@ -78,6 +111,30 @@ export {
 } from "./led.js";
 
 export {
+  buildLedWallGear,
+  LED_WALLS_FOLDER,
+  LED_WALLS_FOLDER_ID,
+  ledWallIdFromTypeId,
+  listLedWallLibraryGear,
+  resolveLedPowerConnectorType,
+} from "./led-signal-flow.js";
+
+export {
+  allPowerInputsConnected,
+  gearForPowerMode,
+  gearForSignalMode,
+  gearHasSignalPorts,
+  isPowerDomainGear,
+  isPowerDomainNode,
+  listPowerInputRows,
+  migrateLegacyPowerInletConnections,
+  needsSyntheticPowerIn,
+  nodeWorldPosition,
+  seedPowerPositionFromSignal,
+  setNodeWorldPosition,
+} from "./signal-flow-power.js";
+
+export {
   createBlankProjectionScreen,
   emptyProjectorState,
   normalizeProjectionScreen,
@@ -88,6 +145,28 @@ export {
   emptyPaperworkState,
   normalizePaperworkState,
 } from "./paperwork.js";
+
+export {
+  RIGGING_CATALOG,
+  attachRolesCompatible,
+  attachWorldPosition,
+  catalogCategories,
+  computeLoads,
+  connectedPartIds,
+  emptyRiggingState,
+  freeAttachPoints,
+  getCatalogEntry,
+  mergePartProps,
+  normalizeRiggingState,
+  parseShackleTypeId,
+  poseForMate,
+  resolveAttachPoints,
+  resolvePartProps,
+  resolvePartSize,
+  riggingPluginMeta,
+  SHACKLE_STYLES,
+} from "./rigging.js";
+
 
 export { createSiteDocument } from "./site-document.js";
 

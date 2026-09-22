@@ -71,7 +71,9 @@ Each room’s `plan` matches the former single-file site plan body (without the 
   "groundplan": { },
   "contentMaps": { },
   "cable": { },
+  "gearList": { },
   "labor": { },
+  "rigging": { },
   "paperwork": { }
 }
 ```
@@ -83,7 +85,7 @@ Each room’s `plan` matches the former single-file site plan body (without the 
 | `projector` | **Yes** | `requiredForSave`; must have ≥1 screen |
 | `signalFlow` … `paperwork` | No | Filled from `emptyState()` when omitted on migrate |
 
-Registry order: led → projector → signalFlow → groundplan → contentMaps → cable → labor → paperwork.
+Registry order: led → projector → signalFlow → groundplan → contentMaps → cable → gearList → labor → rigging → paperwork.
 
 Legacy single-file v2 documents also carried `formatVersion`, `app`, `exportedAt`, `activeTab` at the root; those move to the v3 envelope on migrate.
 
@@ -97,12 +99,14 @@ Legacy single-file v2 documents also carried `formatVersion`, `app`, `exportedAt
 | `places.js` | Root venue identity — normalize / lift / strip |
 | `labor.js` | Labor state + pay-tier math |
 | `cable.js` | Manual cable state + derived route/place cards |
+| `gear-list.js` | Ordered gear/cable list synced from SF + cable cards |
 | `led.js` | LED wall section deep normalize |
 | `projector.js` | Projector section deep normalize |
 | `groundplan.js` | Floor-plan section empty/validate |
 | `signal-flow.js` | Graph section empty/normalize (no nested places) |
 | `content-maps.js` | Surfaces/rasters/test-pattern normalize |
 | `paperwork.js` | Packet state normalize |
+| `rigging.js` | Sized part catalog, mates, equal-share load solver |
 | `site-document.js` | Thin document store — `peek` / `subscribe` / `load` |
 | `index.js` | Barrel re-exports |
 
@@ -148,6 +152,10 @@ See the remainder of this document for per-section field contracts (`led`, `proj
 
 Nodes may include optional measured `layout: { w, h, inColW, outColW, portTop, portRowH }` for paperwork wire fidelity.
 
+**Power mode:** Top sidebar slider (Signal / Power) switches canvas layout and wires; a second slider (Places / Gear) only changes the left menu. Shared devices, separate layouts: Signal and Power each store their own node positions (`x`/`y` vs `powerX`/`powerY`). New gear placed in Signal seeds Power at the same spot; dragging in one mode does not move the other. Power-domain gear (outlets, distros, company switch) is hidden on the Signal canvas and only appears under Power. Each device has two display tables of the same row count (`max(power ports, signal ports)`): **Signal** packs signal ports from the top and clears power cells to "—"; **Power** packs power ports from the top (synthetic Edison **Power In** when none) and clears signal cells to "—". Corner circle is **status only** (green when every power-typed input has a feed). Power wires use `power: true` on connections.
+
+**LED walls:** Listed under a locked **LED Walls** folder in the Gear library — drag onto the canvas to place (one node per wall; dropping again moves it). Linked nodes (`ledWallId`) refresh ports/name from drawn `powerLines` / `dataLines` on Signal Flow import and tab show; deleted LED walls remove their nodes. Power input count = power lines; ETH input count = data lines; power type from `powerConnector` when known else Edison.
+
 ### `groundplan` — optional
 
 **emptyState / validate:** rebuilds known top-level keys (`js/domain/groundplan.js`).
@@ -158,11 +166,47 @@ Nodes may include optional measured `layout: { w, h, inColW, outColW, portTop, p
 
 ### `cable` — optional
 
-**emptyState / validate:** domain cable helpers; auto-derived cables are never stored.
+**emptyState / validate:** domain cable helpers; auto-derived cables are never stored. Optional `placeLengths` maps place id → standard stock length (`5|10|15|25|50|100|150|200`). Manual cables may include `length`.
+
+### `gearList` — optional
+
+**emptyState / validate:** `js/domain/gear-list.js`. Ordered `rows` of `header` | `item`. Headers have `level: "section" | "subsection"` and optional auto `source` / `sourceKey`. Each cable route syncs as an auto subsection labeled `[route] + [length]`; place-local cables sync under a trailing **Other** subsection. Auto items are re-derived from Signal Flow nodes and Cable Calculator cards on refresh; only order, notes, manual headers, and manual items are authoritative in the file.
 
 ### `labor` — optional
 
 **emptyState / validate:** `js/domain/labor.js`.
+
+### `rigging` — optional
+
+**emptyState / validate:** `js/domain/rigging.js`.
+
+```json
+{
+  "parts": [
+    {
+      "id": "rg-1",
+      "typeId": "aircraft-cable",
+      "name": "Aircraft cable",
+      "x": 0,
+      "y": 0,
+      "rotationDeg": 0,
+      "props": { "lengthIn": 48, "weightLb": 1, "wllLb": 2000 }
+    }
+  ],
+  "mates": [
+    {
+      "id": "mate-1",
+      "aPartId": "rg-1",
+      "aAttachId": "top",
+      "bPartId": "rg-2",
+      "bAttachId": "bottom"
+    }
+  ],
+  "grid": { "snap": true, "sizeIn": 1 }
+}
+```
+
+World units are inches. Connections are mates only (no drawn wires). LED import is not stored yet.
 
 ### `paperwork` — optional
 

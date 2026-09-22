@@ -102,6 +102,27 @@
   --diagram-ink: #1a2332;
 }
 
+[data-theme="grey"] {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface-2: #242424;
+  --border: #3d3d3d;
+  --text: #e6e6e6;
+  --text-muted: #9a9a9a;
+  --accent: #b0b0b0;
+  --accent-hover: #d0d0d0;
+  --accent-ink: #0a0a0a;
+  --nav-track: #141414;
+  --nav-active: #2e2e2e;
+  --viewport-bg: #0a0a0a;
+  --shadow: rgba(0, 0, 0, 0.55);
+  --diagram-ink: #0a0a0a;
+  --data-color: #c8c8c8;
+  --power-color: #8a8a8a;
+  --danger: #b0b0b0;
+  --success: #d0d0d0;
+}
+
 /* Derived accent washes — always follow --accent */
 :root,
 [data-theme] {

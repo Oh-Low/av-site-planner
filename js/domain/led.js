@@ -15,6 +15,7 @@
  *   weight?: number,
  *   wattage?: number,
  *   id?: string,
+ *   name?: string,
  * }} LedTile
  *
  * @typedef {{

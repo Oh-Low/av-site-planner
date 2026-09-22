@@ -10,6 +10,7 @@ import index from "../data/gear/index.json" with { type: "json" };
 import presetsCatalog from "../data/gear/presets.json" with { type: "json" };
 import exampleCompanyCatalog from "../data/gear/example-company.json" with { type: "json" };
 import inventoryCatalog from "../data/gear/inventory.json" with { type: "json" };
+import powerCatalog from "../data/gear/power.json" with { type: "json" };
 
 /** @typedef {{ id: string, name: string, parentId: string | null }} GearFolder */
 /** @typedef {{ gearId: string, folderId: string }} GearPlacement */
@@ -25,6 +26,7 @@ const CATALOG_MODULES = {
   "presets.json": presetsCatalog,
   "example-company.json": exampleCompanyCatalog,
   "inventory.json": inventoryCatalog,
+  "power.json": powerCatalog,
 };
 
 /**
@@ -94,7 +96,8 @@ export function prepareCatalogFromFile(filename, catalog) {
   const folders = Array.isArray(catalog?.folders) ? [...catalog.folders] : [];
   const gear = Array.isArray(catalog?.gear) ? [...catalog.gear] : [];
   const base = catalogFileBasename(filename);
-  if (!base || base.toLowerCase() === "presets") {
+  // presets.json owns its folder tree; power.json is Power-tab only (no Library folder).
+  if (!base || base.toLowerCase() === "presets" || base.toLowerCase() === "power") {
     return { folders, gear };
   }
 
@@ -136,16 +139,27 @@ const folderIds = new Set(BRAND_FOLDERS.map((f) => f.id));
 /** @type {GearType[]} */
 const ALL_GEAR = merged.gear;
 
-/** Gear templates without a library folder (legacy/generic). */
+/** Power-only gear (Power sidebar); excluded from the Gear browser. */
 /** @type {GearType[]} */
-export const GENERIC_GEAR_TYPES = ALL_GEAR.filter((g) => !g.folderId).map((g) => {
+export const POWER_GEAR_TYPES = ALL_GEAR.filter((g) => g.domain === "power").map((g) => {
   const { folderId: _folderId, ...rest } = g;
   return rest;
 });
 
-/** Library gear (has a folder placement). */
+/** Gear templates without a library folder (legacy/generic). Signal domain only. */
 /** @type {GearType[]} */
-export const BRAND_GEAR_TYPES = ALL_GEAR.filter((g) => Boolean(g.folderId)).map((g) => {
+export const GENERIC_GEAR_TYPES = ALL_GEAR.filter(
+  (g) => !g.folderId && g.domain !== "power"
+).map((g) => {
+  const { folderId: _folderId, ...rest } = g;
+  return rest;
+});
+
+/** Library gear (has a folder placement). Signal domain only. */
+/** @type {GearType[]} */
+export const BRAND_GEAR_TYPES = ALL_GEAR.filter(
+  (g) => Boolean(g.folderId) && g.domain !== "power"
+).map((g) => {
   const copy = { ...g };
   if (copy.folderId && !folderIds.has(copy.folderId)) {
     console.warn(`signal-flow gear "${copy.id}" references unknown folder "${copy.folderId}".`);

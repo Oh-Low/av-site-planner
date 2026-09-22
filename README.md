@@ -15,8 +15,8 @@ Planning tools for AV professionals. Build LED walls, projectors, signal paths, 
 | **Content Maps** | Full — surfaces/zones, rasters/output groups, test patterns, import from LED/projector |
 | **Cable Calculator** | Full — auto cables from signal flow + groundplan lengths; manual cables per route/place |
 | **Labor Calculator** | Full — call hours, hourly rate, after-10h / after-14h / night premiums |
+| **Rigging Calculator** | v1 — scaled hardware symbols, mate-snap assemblies, equal-share load through parts |
 | **Paperwork Composer** | Full (v1) — printable packet, generate/update from calculators, draw tools, title block |
-| Rigging Calculator | Placeholder — UI stub only; not in `.AVP` yet |
 
 Format and plugin contracts: [`docs/AVP-v2.md`](docs/AVP-v2.md), [`docs/PLUGIN-APIS.md`](docs/PLUGIN-APIS.md).
 
@@ -130,6 +130,7 @@ Export saves a multi-show JSON document with extension `.AVP` (format version **
   "contentMaps": { },
   "cable": { "routes": {}, "places": {} },
   "labor": { },
+  "rigging": { "parts": [], "mates": [], "grid": { "snap": true, "sizeIn": 1 } },
   "paperwork": { }
 }
 ```
@@ -144,6 +145,7 @@ Export saves a multi-show JSON document with extension `.AVP` (format version **
 | `contentMaps` | No | Surfaces, rasters, test patterns |
 | `cable` | No | Manual cables only; auto rows are derived |
 | `labor` | No | Start/end clock + rate + pay events |
+| `rigging` | No | Scaled hardware symbols + mates; equal-share loads |
 | `paperwork` | No | Packet sheets, elements, decorations |
 | `activeTab` | No | Restores the tab open at export time |
 

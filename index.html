@@ -27,6 +27,7 @@
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="groundplan">Groundplan</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="content-maps">Content Maps</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="cable-calculator">Cable Calculator</button>
+      <button class="app-tab tab" role="tab" aria-selected="false" data-tab="gear-list">Gear List</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="labor-calculator">Labor Calculator</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="rigging-calculator">Rigging Calculator</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="paperwork-composer">Paperwork Composer</button>
@@ -39,6 +40,7 @@
           <option value="ember">Ember</option>
           <option value="sea">Sea</option>
           <option value="chalk">Chalk</option>
+          <option value="grey">Grey</option>
         </select>
       </label>
       <label class="theme-select-label room-select-label" for="active-room-select">
@@ -569,10 +571,16 @@
     <section id="signal-flow" class="tab-panel" role="tabpanel" hidden>
       <div class="calc-layout calc-layout--narrow">
         <aside class="calc-sidebar">
-          <nav class="local-nav" role="tablist" aria-label="Gear source">
-            <button type="button" class="local-nav__item sf-gear-mode active" data-mode="premade" data-sidebar-tab="premade" role="tab" aria-selected="true">Gear</button>
-            <button type="button" class="local-nav__item sf-gear-mode" data-mode="places" data-sidebar-tab="places" role="tab" aria-selected="false">Places</button>
-          </nav>
+          <div class="sf-sidebar-navs">
+            <nav class="local-nav" role="tablist" aria-label="Signal Flow view">
+              <button type="button" class="local-nav__item sf-canvas-view active" data-canvas-view="signal" role="tab" aria-selected="true">Signal</button>
+              <button type="button" class="local-nav__item sf-canvas-view" data-canvas-view="power" role="tab" aria-selected="false">Power</button>
+            </nav>
+            <nav class="local-nav" role="tablist" aria-label="Sidebar menu">
+              <button type="button" class="local-nav__item sf-sidebar-menu" data-sidebar-menu="places" role="tab" aria-selected="false">Places</button>
+              <button type="button" class="local-nav__item sf-sidebar-menu active" data-sidebar-menu="gear" role="tab" aria-selected="true">Gear</button>
+            </nav>
+          </div>
           <div id="sf-gear-palette" class="sf-gear-palette"></div>
         </aside>
         <div class="calc-canvas-wrap">
@@ -1017,6 +1025,57 @@
       </div>
     </section>
 
+    <section id="gear-list" class="tab-panel" role="tabpanel" hidden>
+      <div class="gear-list-calculator">
+        <header class="gear-list-calculator-header">
+          <div class="gear-list-calculator-heading">
+            <div>
+              <h2 class="gear-list-calculator-title">Gear List</h2>
+              <p class="gear-list-calculator-subtitle">
+                Gear from Signal Flow, LED walls from the LED Calculator, and cables from the Cable Calculator. Drag a row to reorder (ghost follows the cursor); add sections and subsections to organize.
+              </p>
+            </div>
+          </div>
+          <div class="gear-list-calculator-meta">
+            <p id="gear-list-status" class="gear-list-calculator-status" role="status" aria-live="polite"></p>
+            <button
+              type="button"
+              class="btn btn-icon gear-list-settings-btn"
+              id="gear-list-settings"
+              title="Gear list settings"
+              aria-label="Gear list settings"
+              aria-haspopup="dialog"
+              aria-controls="gear-list-settings-modal"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
+          </div>
+        </header>
+        <div class="gear-list-toolbar">
+          <button type="button" class="btn btn-primary" id="gear-list-add-gear">Add gear</button>
+          <button type="button" class="btn btn-secondary" id="gear-list-add-header">Add section</button>
+          <button type="button" class="btn btn-secondary" id="gear-list-add-subsection">Add subsection</button>
+          <button type="button" class="btn btn-secondary" id="gear-list-sync">Sync from tools</button>
+        </div>
+        <div class="gear-list-body">
+          <div class="gear-list-table-head" aria-hidden="true">
+            <span>Qty</span>
+            <span>Name</span>
+            <span class="gear-list-col-room">Room</span>
+            <span class="gear-list-col-place">Place</span>
+            <span>Len</span>
+            <span>Detail</span>
+            <span>Notes</span>
+            <span></span>
+          </div>
+          <ul id="gear-list-rows" class="gear-list-rows" aria-label="Gear list"></ul>
+        </div>
+      </div>
+    </section>
+
     <section id="labor-calculator" class="tab-panel" role="tabpanel" hidden>
       <div class="labor-calculator">
         <header class="labor-calculator-header">
@@ -1091,9 +1150,34 @@
     </section>
 
     <section id="rigging-calculator" class="tab-panel" role="tabpanel" hidden>
-      <div class="placeholder-panel">
-        <h2>Rigging Calculator</h2>
-        <p>Point loads, bridles, and safety factors — coming soon.</p>
+      <div class="calc-layout calc-layout--narrow rg-layout">
+        <aside class="calc-sidebar" id="rg-sidebar">
+          <div class="rg-sidebar-head">
+            <h2 class="rg-sidebar-title">Parts</h2>
+            <p id="rg-status" class="rg-status" role="status" aria-live="polite"></p>
+          </div>
+          <div id="rg-palette" class="rg-palette"></div>
+          <div id="rg-inspector" class="rg-inspector"></div>
+        </aside>
+        <div class="calc-canvas-wrap">
+          <div class="calc-viewport" id="rg-viewport">
+            <div class="calc-world" id="rg-world">
+              <svg id="rg-svg" class="rg-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+            </div>
+            <div class="rg-grid-ui" id="rg-grid-ui">
+              <button type="button" class="btn btn-secondary btn-sm" id="rg-reset-view" title="Fit all parts in view">Fit view</button>
+              <label class="rg-grid-row">
+                <input type="checkbox" id="rg-grid-snap" checked />
+                <span>Snap</span>
+              </label>
+              <label class="rg-grid-row">
+                <span>Grid</span>
+                <input type="number" id="rg-grid-size" min="0.25" max="24" step="0.25" value="1" />
+                <span class="rg-grid-unit">in</span>
+              </label>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1287,6 +1371,39 @@
       <div class="pw-export-order-footer">
         <button type="button" class="btn btn-secondary" id="pw-export-order-cancel">Cancel</button>
         <button type="button" class="btn btn-primary" id="pw-export-order-confirm">Continue to print</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="gear-list-settings-modal" class="export-scope-modal" hidden>
+    <div class="export-scope-dialog gear-list-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="gear-list-settings-title">
+      <div class="export-scope-header">
+        <h3 id="gear-list-settings-title">Gear list settings</h3>
+        <button type="button" class="export-scope-close" id="gear-list-settings-close" aria-label="Close">×</button>
+      </div>
+      <div class="gear-list-settings-body">
+        <label class="gear-list-settings-row">
+          <input type="checkbox" id="gear-list-setting-total-only" />
+          <span>
+            <strong>Total only</strong>
+            <span class="gear-list-settings-hint">Combine matching items across room, place, and notes. Hide subsections.</span>
+          </span>
+        </label>
+        <label class="gear-list-settings-field">
+          <span class="gear-list-settings-field-label">Filter by room</span>
+          <select id="gear-list-setting-room-filter" class="field-input" aria-label="Filter by room">
+            <option value="">All rooms</option>
+          </select>
+        </label>
+        <label class="gear-list-settings-field">
+          <span class="gear-list-settings-field-label">Filter by place</span>
+          <select id="gear-list-setting-place-filter" class="field-input" aria-label="Filter by place">
+            <option value="">All places</option>
+          </select>
+        </label>
+      </div>
+      <div class="export-scope-footer">
+        <button type="button" class="btn btn-secondary" id="gear-list-settings-done">Done</button>
       </div>
     </div>
   </div>

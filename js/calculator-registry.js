@@ -3,7 +3,9 @@ import { calculatorPlugin as projectorPlugin } from "./projector-calculator.js";
 import { calculatorPlugin as signalFlowPlugin } from "./signal-flow.js";
 import { calculatorPlugin as groundplanPlugin } from "./groundplan.js";
 import { calculatorPlugin as cablePlugin } from "./cable-calculator.js";
+import { calculatorPlugin as gearListPlugin } from "./gear-list-calculator.js";
 import { calculatorPlugin as laborPlugin } from "./labor-calculator.js";
+import { calculatorPlugin as riggingPlugin } from "./rigging-calculator.js";
 import { calculatorPlugin as contentMapsPlugin } from "./content-maps.js";
 import { calculatorPlugin as paperworkPlugin } from "./paperwork/composer.js";
 
@@ -16,7 +18,9 @@ export const CALCULATOR_PLUGINS = [
   groundplanPlugin,
   contentMapsPlugin,
   cablePlugin,
+  gearListPlugin,
   laborPlugin,
+  riggingPlugin,
   paperworkPlugin,
 ];
 

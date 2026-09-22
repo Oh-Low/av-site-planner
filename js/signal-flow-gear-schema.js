@@ -27,6 +27,8 @@
 
 /** @typedef {"premade" | "blank"} GearKind */
 
+/** @typedef {"signal" | "power"} GearDomain */
+
 /**
  * @typedef {{
  *   id: string,
@@ -34,6 +36,7 @@
  *   defaultName: string,
  *   category: string,
  *   kind?: GearKind,
+ *   domain?: GearDomain,
  *   folderId?: string | null,
  *   note?: string,
  *   ports: GearPortRow[],
@@ -45,10 +48,26 @@
  * @typedef {{ kind: "port", label: string, type: string | null } | { kind: "divider" }} GearSideItem
  */
 
-export const GEAR_CATEGORIES = ["Video", "Audio", "Control", "Network", "Other"];
+export const GEAR_CATEGORIES = ["Video", "Audio", "Control", "Network", "Power", "Other"];
 
 /** Supported connector / cable types for gear ports. */
-export const CONNECTOR_TYPES = ["HDMI", "DP", "SDI", "USB-C", "XLR", "ETH", "Fiber"];
+export const CONNECTOR_TYPES = [
+  "HDMI",
+  "DP",
+  "SDI",
+  "USB-C",
+  "XLR",
+  "ETH",
+  "Fiber",
+  "Edison",
+  "Soca",
+  "Powercon",
+  "True1",
+  "CamLock",
+];
+
+/** Connector types used for power wiring (Power mode), not signal. */
+export const POWER_CONNECTOR_TYPES = ["Edison", "Soca", "Powercon", "True1", "CamLock"];
 
 /** @type {Record<string, string>} */
 const CONNECTOR_ALIASES = {
@@ -70,6 +89,23 @@ const CONNECTOR_ALIASES = {
   mmf: "Fiber",
   "lc fiber": "Fiber",
   "lc fibre": "Fiber",
+  "nema 5-20": "Edison",
+  "5-20": "Edison",
+  edison: "Edison",
+  socapex: "Soca",
+  "soca 19": "Soca",
+  "19-pin": "Soca",
+  powercon: "Powercon",
+  "power con": "Powercon",
+  "powerCON": "Powercon",
+  true1: "True1",
+  "true 1": "True1",
+  "powercon true1": "True1",
+  "powerCON TRUE1": "True1",
+  camlock: "CamLock",
+  "cam lock": "CamLock",
+  "cam-lock": "CamLock",
+  "locking cam": "CamLock",
 };
 
 /** Colors for known connector types, used by the "color by cable type" view. */
@@ -82,7 +118,35 @@ export const CONNECTOR_COLORS = {
   XLR: "#ec4899",
   ETH: "#06b6d4",
   Fiber: "#eab308",
+  Edison: "#facc15",
+  Soca: "#ef4444",
+  Powercon: "#14b8a6",
+  True1: "#84cc16",
+  CamLock: "#64748b",
 };
+
+/**
+ * @param {string | null | undefined} type
+ * @returns {boolean}
+ */
+export function isPowerConnectorType(type) {
+  if (!type || type === "—") return false;
+  const normalized = normalizeConnectorType(type);
+  if (!normalized) return false;
+  return POWER_CONNECTOR_TYPES.some((t) => t.toLowerCase() === normalized.toLowerCase());
+}
+
+/**
+ * Power graph edges use an explicit `power: true` flag. Legacy
+ * `toCol`/`fromCol: "power"` values are still recognized and migrated on import.
+ * @param {{ fromCol?: string, toCol?: string, power?: boolean } | null | undefined} conn
+ * @returns {boolean}
+ */
+export function isPowerConnection(conn) {
+  if (!conn) return false;
+  if (conn.power === true) return true;
+  return conn.toCol === "power" || conn.fromCol === "power";
+}
 
 /**
  * Resolve a display color for a connector/cable type. Known types use the
@@ -103,6 +167,26 @@ export function connectorColor(type) {
     hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
   }
   return `hsl(${hash % 360}, 65%, 55%)`;
+}
+
+/**
+ * Canonicalize a connector type string (aliases + known casing).
+ * @param {string | null | undefined} type
+ * @returns {string | null}
+ */
+export function normalizeConnectorType(type) {
+  if (!type || type === "—") return null;
+  const trimmed = String(type).trim();
+  if (!trimmed) return null;
+  const lower = trimmed.toLowerCase();
+  const known = CONNECTOR_TYPES.find((t) => t.toLowerCase() === lower);
+  if (known) return known;
+  const alias = CONNECTOR_ALIASES[lower];
+  if (alias) return alias;
+  for (const [key, mapped] of Object.entries(CONNECTOR_ALIASES)) {
+    if (lower.includes(key)) return mapped;
+  }
+  return trimmed;
 }
 
 /**
@@ -137,13 +221,17 @@ export function normalizePortRow(raw) {
   const input = typeof raw?.input === "string" && raw.input.trim() ? raw.input.trim() : "—";
   const output = typeof raw?.output === "string" && raw.output.trim() ? raw.output.trim() : "—";
   const inputType =
-    typeof raw?.inputType === "string" && raw.inputType.trim()
-      ? raw.inputType.trim()
-      : inferConnectorTypeFromLabel(input);
+    normalizeConnectorType(
+      typeof raw?.inputType === "string" && raw.inputType.trim()
+        ? raw.inputType.trim()
+        : inferConnectorTypeFromLabel(input),
+    ) ?? undefined;
   const outputType =
-    typeof raw?.outputType === "string" && raw.outputType.trim()
-      ? raw.outputType.trim()
-      : inferConnectorTypeFromLabel(output);
+    normalizeConnectorType(
+      typeof raw?.outputType === "string" && raw.outputType.trim()
+        ? raw.outputType.trim()
+        : inferConnectorTypeFromLabel(output),
+    ) ?? undefined;
   /** @type {GearPortRow} */
   const row = { input, output, inputType, outputType };
   if (raw?.inputDivider === true) row.inputDivider = true;
@@ -205,6 +293,7 @@ export function normalizeGearEntry(raw) {
       : null;
 
   const note = typeof raw.note === "string" && raw.note.trim() ? raw.note.trim() : "";
+  const domain = raw.domain === "power" ? "power" : "signal";
 
   return {
     id,
@@ -216,6 +305,7 @@ export function normalizeGearEntry(raw) {
     category:
       typeof raw.category === "string" && raw.category.trim() ? raw.category.trim() : "Other",
     kind: raw.kind === "blank" ? "blank" : "premade",
+    domain,
     folderId,
     ...(note ? { note } : {}),
     ports: portsFromCatalogEntry(
@@ -247,6 +337,9 @@ export function serializeGearForCatalog(gear) {
   }
   if (typeof gear.note === "string" && gear.note.trim()) {
     entry.note = gear.note.trim();
+  }
+  if (gear.domain === "power") {
+    entry.domain = "power";
   }
   entry.ports = (gear.ports ?? []).map((raw) => {
     const row = normalizePortRow(raw);

@@ -1,5 +1,6 @@
 import { escapeXml } from "./shared/dom.js";
 import { createDoubleClickTracker } from "./shared/double-click.js";
+import { LED_WALLS_FOLDER_ID } from "./domain/led-signal-flow.js";
 import {
   BUILTIN_FOLDERS,
   BUILTIN_GEAR_PLACEMENTS,
@@ -14,13 +15,29 @@ import {
 
 const folderRenameClicks = createDoubleClickTracker();
 
+/** @param {string | null | undefined} folderId */
+function isLockedLibraryFolder(folderId) {
+  return Boolean(folderId && (isBuiltinFolderId(folderId) || folderId === LED_WALLS_FOLDER_ID));
+}
+
 /**
  * @param {import("./signal-flow-data.js").GearType} item
  * @param {number} depth
  * @param {string | null} folderId
  */
 function renderGearLeaf(item, depth, folderId) {
-  const movable = !isBuiltinGearId(item.id);
+  const isLedWall = typeof item.id === "string" && item.id.startsWith("led-wall:");
+  const movable = !isBuiltinGearId(item.id) && !isLedWall;
+  const editBtn = isLedWall
+    ? ""
+    : `<button
+          type="button"
+          class="sf-gear-leaf-edit"
+          draggable="false"
+          data-gear-id="${item.id}"
+          title="Edit gear"
+          aria-label="Edit ${escapeXml(item.label)}"
+        >✎</button>`;
   return `
     <div class="sf-gear-tree-leaf" style="--sf-tree-depth: ${depth}">
       <div
@@ -29,17 +46,10 @@ function renderGearLeaf(item, depth, folderId) {
         data-gear-type="${item.id}"
         data-folder-id="${folderId ?? ""}"
         data-movable="${movable ? "1" : "0"}"
-        title="${movable ? "Drag onto the canvas, or onto a folder to move" : "Drag onto the canvas"}"
+        title="${isLedWall ? "Drag onto the canvas (from LED Calculator)" : movable ? "Drag onto the canvas, or onto a folder to move" : "Drag onto the canvas"}"
       >
         <span class="sf-palette-label">${escapeXml(item.label)}</span>
-        <button
-          type="button"
-          class="sf-gear-leaf-edit"
-          draggable="false"
-          data-gear-id="${item.id}"
-          title="Edit gear"
-          aria-label="Edit ${escapeXml(item.label)}"
-        >✎</button>
+        ${editBtn}
       </div>
     </div>`;
 }
@@ -86,7 +96,7 @@ function renderFolderNode(ctx) {
   const isRenaming = renamingFolderId === folder.id;
   const isLibraryRoot = folder.id === "fld-library";
   const childDepth = isLibraryRoot ? depth : depth + 1;
-  const canRename = !isBuiltinFolderId(folder.id);
+  const canRename = !isLockedLibraryFolder(folder.id);
   const hasContent = childFolders.length > 0 || gear.length > 0;
 
   const childHtml = childFolders
@@ -236,7 +246,7 @@ export function renderPremadeGearBrowser({
       ${noResults ? `<p class="sf-gear-tree-empty">No gear matches "${escapeXml(searchQuery.trim())}"</p>` : ""}
     </div>`;
 
-  const canDeleteFolder = Boolean(activeFolderId && !isBuiltinFolderId(activeFolderId));
+  const canDeleteFolder = Boolean(activeFolderId && !isLockedLibraryFolder(activeFolderId));
 
   container.innerHTML = `
     <div class="sf-gear-browser">
@@ -332,7 +342,7 @@ export function renderPremadeGearBrowser({
       const id = button.dataset.folderId ?? null;
       if (
         id &&
-        !isBuiltinFolderId(id) &&
+        !isLockedLibraryFolder(id) &&
         onBeginRenameFolder &&
         folderRenameClicks.tap(id, e)
       ) {
@@ -340,7 +350,7 @@ export function renderPremadeGearBrowser({
         onBeginRenameFolder(id);
         return;
       }
-      if (!id || isBuiltinFolderId(id)) folderRenameClicks.reset();
+      if (!id || isLockedLibraryFolder(id)) folderRenameClicks.reset();
       onSelectFolder(id);
     });
   });
@@ -420,13 +430,15 @@ export function renderPremadeGearBrowser({
   });
 
   container.querySelector("#sf-delete-folder")?.addEventListener("click", () => {
-    if (!activeFolderId || isBuiltinFolderId(activeFolderId)) return;
+    if (!activeFolderId || isLockedLibraryFolder(activeFolderId)) return;
     onDeleteFolder(activeFolderId);
   });
 
   container.querySelector("#sf-new-folder")?.addEventListener("click", () => {
-    const name = nextUniqueFolderName(activeFolderId, allFolders);
-    const folder = createGearFolder(name, activeFolderId, allFolders);
+    const parentId =
+      activeFolderId && !isLockedLibraryFolder(activeFolderId) ? activeFolderId : null;
+    const name = nextUniqueFolderName(parentId, allFolders);
+    const folder = createGearFolder(name, parentId, allFolders);
     if (!folder) return;
     onCreateFolder(folder);
   });
