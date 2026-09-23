@@ -43,6 +43,7 @@ import "./elements/base.js";
 import {
   normalizeCableCardScale,
 } from "./elements/cable-cards.js";
+import "./elements/gear-list-tables.js";
 import "./elements/groundplan-diagram.js";
 import "./elements/led-spec-table.js";
 import "./elements/led-wiring.js";
@@ -72,6 +73,7 @@ import { createSceneEditor } from "./scene-editor.js";
 import "./sheets/cable-runs.js";
 import "./sheets/cover.js";
 import "./sheets/custom-plate.js";
+import "./sheets/gear-list.js";
 import "./sheets/led-wall-spec.js";
 import "./sheets/raster.js";
 import "./sheets/signal-flow.js";
@@ -97,7 +99,7 @@ import {
   prepareTitleBlockLogo,
 } from "./state.js";
 import { titleBlockFrame } from "./title-block-layout.js";
-import { refreshSheetBindings, resetSheetLayout, syncSheetsFromSources } from "./sync.js";
+import { refreshSheetBindings, resetSheetLayout, syncSheetsFromSources, listSheetGenerateCandidates } from "./sync.js";
 
 export { emptyPaperworkState };
 
@@ -127,6 +129,7 @@ function siteExportsFromPlan(plan) {
     contentMaps: source.contentMaps ?? null,
     cable: source.cable ?? null,
     labor: source.labor ?? null,
+    gearList: null,
   };
 }
 
@@ -142,6 +145,7 @@ function collectSiteExports() {
     contentMaps: getCalculatorExport("contentMaps"),
     cable: getCalculatorExport("cable"),
     labor: getCalculatorExport("labor"),
+    gearList: getCalculatorExport("gearList"),
   };
 }
 
@@ -166,12 +170,17 @@ function collectShowRoomBundles() {
   }
   return show.rooms.map((room) => {
     const live = room.id === doc.activeRoomId;
+    const base = live
+      ? collectSiteExports()
+      : siteExportsFromPlan(/** @type {Record<string, unknown>} */ (room.plan));
     return {
       roomId: room.id,
       roomName: room.name?.trim() || "Room",
-      siteExports: live
-        ? collectSiteExports()
-        : siteExportsFromPlan(/** @type {Record<string, unknown>} */ (room.plan)),
+      // Gear list is show-scoped — always attach the live show export.
+      siteExports: {
+        ...base,
+        gearList: getCalculatorExport("gearList") ?? base.gearList ?? null,
+      },
     };
   });
 }
@@ -269,6 +278,30 @@ export function initPaperworkComposer() {
     ),
     exportOrderConfirm: /** @type {HTMLButtonElement|null} */ (
       document.getElementById("pw-export-order-confirm")
+    ),
+    generateModal: /** @type {HTMLElement|null} */ (
+      document.getElementById("pw-generate-modal")
+    ),
+    generateList: /** @type {HTMLElement|null} */ (
+      document.getElementById("pw-generate-list")
+    ),
+    generateClose: /** @type {HTMLButtonElement|null} */ (
+      document.getElementById("pw-generate-close")
+    ),
+    generateCancel: /** @type {HTMLButtonElement|null} */ (
+      document.getElementById("pw-generate-cancel")
+    ),
+    generateConfirm: /** @type {HTMLButtonElement|null} */ (
+      document.getElementById("pw-generate-confirm")
+    ),
+    generateSelectAll: /** @type {HTMLButtonElement|null} */ (
+      document.getElementById("pw-generate-select-all")
+    ),
+    generateSelectNew: /** @type {HTMLButtonElement|null} */ (
+      document.getElementById("pw-generate-select-new")
+    ),
+    generateSelectNone: /** @type {HTMLButtonElement|null} */ (
+      document.getElementById("pw-generate-select-none")
     ),
   };
 
@@ -1741,37 +1774,94 @@ export function initPaperworkComposer() {
     return state.sheets.some((s) => !s.manual && s.typeId !== "custom-plate");
   }
 
-  function generatePacket() {
-    if (!generatedSheetsExist()) {
-      recordBefore("paperwork", "generate");
-      syncGeneratedSheets("merge");
-      syncSharedTitleBlock();
-      scene.fitArtboard();
-      render();
-      setStatus(
-        `Generated ${state.sheets.length} sheet${state.sheets.length === 1 ? "" : "s"} from all rooms in this show.`
-      );
+  /** @type {{ key: string, title: string, typeId: string, roomId: string | null, roomName: string | null, exists: boolean }[]} */
+  let generateCandidates = [];
+  /** @type {Set<string>} */
+  let generateSelectedKeys = new Set();
+
+  function closeGenerateModal() {
+    if (els.generateModal) els.generateModal.hidden = true;
+    els.generatePacketBtn?.focus();
+  }
+
+  function renderGenerateList() {
+    if (!els.generateList) return;
+    if (!generateCandidates.length) {
+      els.generateList.innerHTML =
+        `<li class="pw-generate-empty">No calculator sheets available to generate.</li>`;
+      if (els.generateConfirm) els.generateConfirm.disabled = true;
       return;
     }
-    const choice = window.prompt(
-      "Generated sheets already exist.\n\nType:\n  skip — keep existing layouts, add missing sheets\n  replace — rebuild generated sheet layouts (blank plates untouched)\n  cancel — do nothing",
-      "skip"
+    if (els.generateConfirm) els.generateConfirm.disabled = generateSelectedKeys.size === 0;
+    els.generateList.innerHTML = generateCandidates
+      .map((candidate) => {
+        const checked = generateSelectedKeys.has(candidate.key);
+        const badge = candidate.exists ? "Update" : "New";
+        return `
+          <li class="pw-generate-row${candidate.exists ? "" : " is-new"}">
+            <input
+              type="checkbox"
+              data-generate-key="${escapeXml(candidate.key)}"
+              ${checked ? "checked" : ""}
+              aria-label="${escapeXml(candidate.title)}"
+            />
+            <span class="pw-generate-row-title">${escapeXml(candidate.title)}</span>
+            <span class="pw-generate-badge${candidate.exists ? "" : " is-new"}">${badge}</span>
+          </li>`;
+      })
+      .join("");
+  }
+
+  function openGenerateModal() {
+    const rooms = collectShowRoomBundles();
+    generateCandidates = listSheetGenerateCandidates(state, rooms);
+    generateSelectedKeys = new Set(
+      generateCandidates.filter((c) => !c.exists).map((c) => c.key)
     );
-    if (!choice || choice.toLowerCase() === "cancel") {
-      setStatus("Generate cancelled.");
+    // First generate (nothing exists yet): select everything.
+    if (generateCandidates.length && generateCandidates.every((c) => !c.exists)) {
+      generateSelectedKeys = new Set(generateCandidates.map((c) => c.key));
+    }
+    renderGenerateList();
+    if (els.generateModal) els.generateModal.hidden = false;
+    els.generateConfirm?.focus();
+  }
+
+  function confirmGenerateSelection() {
+    if (!generateSelectedKeys.size) {
+      setStatus("Select at least one sheet to generate.");
       return;
     }
+    const rooms = collectShowRoomBundles();
+    const selected = [...generateSelectedKeys];
+    const creating = generateCandidates.filter(
+      (c) => selected.includes(c.key) && !c.exists
+    ).length;
+    const updating = generateCandidates.filter(
+      (c) => selected.includes(c.key) && c.exists
+    ).length;
     recordBefore("paperwork", "generate");
-    const mode = choice.toLowerCase().startsWith("replace") ? "replace" : "add-missing";
-    syncGeneratedSheets(mode);
+    syncSheetsFromSources(state, rooms, { selectedKeys: selected });
+    for (const sheet of state.sheets) {
+      refreshSheetBindings(sheet, siteExportsForSheet(sheet), state.identity);
+    }
     syncSharedTitleBlock();
     scene.fitArtboard();
+    closeGenerateModal();
     render();
+    /** @type {string[]} */
+    const parts = [];
+    if (creating) parts.push(`${creating} new`);
+    if (updating) parts.push(`${updating} regenerated`);
     setStatus(
-      `Generated packet updated (${mode}) — ${state.sheets.length} sheet${
-        state.sheets.length === 1 ? "" : "s"
-      }.`
+      `Generated ${parts.join(", ") || "0"} sheet${selected.length === 1 ? "" : "s"} · ${
+        state.sheets.length
+      } total.`
     );
+  }
+
+  function generatePacket() {
+    openGenerateModal();
   }
 
   function updateLinkedElements() {
@@ -1865,6 +1955,48 @@ export function initPaperworkComposer() {
   });
 
   els.generatePacketBtn?.addEventListener("click", generatePacket);
+  els.generateClose?.addEventListener("click", () => {
+    closeGenerateModal();
+    setStatus("Generate cancelled.");
+  });
+  els.generateCancel?.addEventListener("click", () => {
+    closeGenerateModal();
+    setStatus("Generate cancelled.");
+  });
+  els.generateConfirm?.addEventListener("click", () => {
+    confirmGenerateSelection();
+  });
+  els.generateModal?.addEventListener("click", (e) => {
+    if (e.target === els.generateModal) {
+      closeGenerateModal();
+      setStatus("Generate cancelled.");
+    }
+  });
+  els.generateSelectAll?.addEventListener("click", () => {
+    generateSelectedKeys = new Set(generateCandidates.map((c) => c.key));
+    renderGenerateList();
+  });
+  els.generateSelectNew?.addEventListener("click", () => {
+    generateSelectedKeys = new Set(
+      generateCandidates.filter((c) => !c.exists).map((c) => c.key)
+    );
+    renderGenerateList();
+  });
+  els.generateSelectNone?.addEventListener("click", () => {
+    generateSelectedKeys = new Set();
+    renderGenerateList();
+  });
+  els.generateList?.addEventListener("change", (e) => {
+    const input = e.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== "checkbox") return;
+    const key = input.getAttribute("data-generate-key");
+    if (!key) return;
+    if (input.checked) generateSelectedKeys.add(key);
+    else generateSelectedKeys.delete(key);
+    if (els.generateConfirm) {
+      els.generateConfirm.disabled = generateSelectedKeys.size === 0;
+    }
+  });
   els.updateLinkedBtn?.addEventListener("click", updateLinkedElements);
   els.drawTools?.addEventListener("click", (e) => {
     const button = /** @type {HTMLElement} */ (e.target).closest?.("[data-draw-tool]");
@@ -2129,6 +2261,11 @@ export function initPaperworkComposer() {
   });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
+    if (els.generateModal && !els.generateModal.hidden) {
+      closeGenerateModal();
+      setStatus("Generate cancelled.");
+      return;
+    }
     if (!els.exportOrderModal || els.exportOrderModal.hidden) return;
     closeExportOrderModal();
     setStatus("Export cancelled.");

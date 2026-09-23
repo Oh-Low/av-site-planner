@@ -20,6 +20,7 @@ import {
  *   level: "section" | "subsection",
  *   source: "auto" | "manual",
  *   sourceKey: string | null,
+ *   included: boolean,
  * }} GearListHeader
  *
  * @typedef {{
@@ -35,6 +36,7 @@ import {
  *   notes: string,
  *   source: "auto" | "manual",
  *   sourceKey: string | null,
+ *   included: boolean,
  * }} GearListItem
  *
  * @typedef {GearListHeader | GearListItem} GearListRow
@@ -43,6 +45,7 @@ import {
  *   totalOnly: boolean,
  *   roomFilter: string,
  *   placeFilter: string,
+ *   searchQuery: string,
  * }} GearListSettings
  *
  * @typedef {{
@@ -93,15 +96,24 @@ import {
  * @typedef {{
  *   places?: GearListPlace[],
  *   roomName?: string,
+ *   roomId?: string,
  * }} GearListLocationContext
  */
 
 /** Sentinel filter value for items with no room / place. */
 export const GEAR_LIST_FILTER_UNASSIGNED = "__unassigned__";
 
+/**
+ * Whether a row is included in paperwork (missing/undefined counts as included).
+ * @param {{ included?: boolean } | null | undefined} row
+ */
+export function isGearListRowIncluded(row) {
+  return row?.included !== false;
+}
+
 /** @returns {GearListSettings} */
 export function emptyGearListSettings() {
-  return { totalOnly: false, roomFilter: "", placeFilter: "" };
+  return { totalOnly: false, roomFilter: "", placeFilter: "", searchQuery: "" };
 }
 
 /**
@@ -123,6 +135,7 @@ export function normalizeGearListSettings(raw) {
     totalOnly: Boolean(r.totalOnly),
     roomFilter: normalizeFilterValue(r.roomFilter),
     placeFilter: normalizeFilterValue(r.placeFilter),
+    searchQuery: typeof r.searchQuery === "string" ? r.searchQuery : "",
   };
 }
 
@@ -138,6 +151,7 @@ export function emptyGearListState() {
         level: "section",
         source: "manual",
         sourceKey: null,
+        included: true,
       },
       {
         id: uid("glh"),
@@ -146,6 +160,7 @@ export function emptyGearListState() {
         level: "section",
         source: "manual",
         sourceKey: null,
+        included: true,
       },
       {
         id: uid("glh"),
@@ -154,6 +169,7 @@ export function emptyGearListState() {
         level: "section",
         source: "manual",
         sourceKey: null,
+        included: true,
       },
     ],
   };
@@ -180,6 +196,7 @@ function normalizeRow(raw) {
       level,
       source,
       sourceKey: source === "auto" ? sourceKey : sourceKey,
+      included: r.included !== false,
     };
   }
   if (r.kind !== "item") return null;
@@ -208,6 +225,7 @@ function normalizeRow(raw) {
     notes,
     source,
     sourceKey,
+    included: r.included !== false,
   };
 }
 
@@ -370,6 +388,158 @@ export function filterGearListRowsByLocation(rows, roomFilter, placeFilter) {
 }
 
 /**
+ * Case-insensitive fuzzy match: each whitespace token must appear as a
+ * substring, or as an in-order character subsequence (typo-tolerant).
+ * @param {string | null | undefined} haystack
+ * @param {string | null | undefined} query
+ */
+export function fuzzyTextMatch(haystack, query) {
+  const text = String(haystack ?? "").toLowerCase();
+  const q = String(query ?? "").trim().toLowerCase();
+  if (!q) return true;
+  const tokens = q.split(/\s+/).filter(Boolean);
+  return tokens.every((token) => {
+    if (text.includes(token)) return true;
+    let from = 0;
+    for (const ch of token) {
+      const at = text.indexOf(ch, from);
+      if (at === -1) return false;
+      from = at + 1;
+    }
+    return true;
+  });
+}
+
+/**
+ * Flatten visible row fields into one searchable string (tests / debugging).
+ * @param {GearListRow} row
+ */
+export function gearListRowSearchText(row) {
+  return gearListRowSearchFields(row).join(" ");
+}
+
+/**
+ * @param {GearListRow} row
+ * @returns {string[]}
+ */
+function gearListRowSearchFields(row) {
+  if (row.kind === "header") return [String(row.label ?? "")];
+  /** @type {string[]} */
+  const parts = [
+    row.label,
+    row.detail,
+    row.notes,
+    row.room,
+    row.place,
+    row.category,
+    row.source === "auto" ? "auto" : "manual",
+    String(row.qty ?? ""),
+  ];
+  if (row.length != null) parts.push(String(row.length));
+  return parts.filter((p) => typeof p === "string" && p.trim());
+}
+
+/**
+ * Fuzzy match against any individual row field (not the joined blob),
+ * so scattered characters across columns cannot false-positive.
+ * @param {GearListRow} row
+ * @param {string | null | undefined} query
+ */
+export function gearListRowMatchesSearch(row, query) {
+  const q = typeof query === "string" ? query.trim() : "";
+  if (!q) return true;
+  const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const fields = gearListRowSearchFields(row);
+  return tokens.every((token) => fields.some((field) => fuzzyTextMatch(field, token)));
+}
+
+/**
+ * Keep headers that match or still have matching children; drop empty groups.
+ * A matching header includes all of its child items.
+ * @param {GearListRow[]} rows
+ * @param {string | null | undefined} query
+ * @returns {GearListRow[]}
+ */
+export function filterGearListRowsBySearch(rows, query) {
+  const q = typeof query === "string" ? query.trim() : "";
+  if (!q) return rows;
+
+  /**
+   * @param {GearListRow} row
+   */
+  const matches = (row) => gearListRowMatchesSearch(row, q);
+
+  /** @type {GearListRow[]} */
+  const out = [];
+  let i = 0;
+  while (i < rows.length) {
+    const row = rows[i];
+    if (row.kind === "header" && row.level === "section") {
+      const sectionMatches = matches(row);
+      i += 1;
+      /** @type {GearListRow[]} */
+      const body = [];
+      while (i < rows.length) {
+        const next = rows[i];
+        if (next.kind === "header" && next.level === "section") break;
+        if (next.kind === "header" && next.level === "subsection") {
+          const subMatches = sectionMatches || matches(next);
+          i += 1;
+          /** @type {GearListItem[]} */
+          const items = [];
+          while (i < rows.length && rows[i].kind === "item") {
+            const item = /** @type {GearListItem} */ (rows[i]);
+            if (subMatches || matches(item)) items.push(item);
+            i += 1;
+          }
+          if (items.length) {
+            body.push(next);
+            body.push(...items);
+          }
+          continue;
+        }
+        if (next.kind === "item") {
+          if (sectionMatches || matches(next)) body.push(next);
+          i += 1;
+          continue;
+        }
+        i += 1;
+      }
+      if (body.length) {
+        out.push(row);
+        out.push(...body);
+      } else if (sectionMatches) {
+        out.push(row);
+      }
+      continue;
+    }
+    if (row.kind === "item") {
+      if (matches(row)) out.push(row);
+      i += 1;
+      continue;
+    }
+    if (row.kind === "header" && row.level === "subsection") {
+      const subMatches = matches(row);
+      i += 1;
+      /** @type {GearListItem[]} */
+      const items = [];
+      while (i < rows.length && rows[i].kind === "item") {
+        const item = /** @type {GearListItem} */ (rows[i]);
+        if (subMatches || matches(item)) items.push(item);
+        i += 1;
+      }
+      if (items.length) {
+        out.push(row);
+        out.push(...items);
+      }
+      continue;
+    }
+    i += 1;
+  }
+  return out;
+}
+
+/**
  * Apply Total only: drop subsections and merge like items within each section.
  * @param {GearListRow[]} rows
  * @returns {GearListRow[]}
@@ -445,20 +615,125 @@ export function gearListFilterOptions(state, extra = {}) {
 }
 
 /**
- * Rows for UI: optional room/place filters, then optional Total only condensation.
+ * Rows for UI: room/place filters, then search, then optional Total only.
  * @param {GearListState | null | undefined} state
  * @returns {GearListRow[]}
  */
 export function gearListRowsForDisplay(state) {
   const rows = Array.isArray(state?.rows) ? state.rows : [];
   const settings = normalizeGearListSettings(state?.settings);
-  const filtered = filterGearListRowsByLocation(
+  const byLocation = filterGearListRowsByLocation(
     rows,
     settings.roomFilter,
     settings.placeFilter
   );
+  const filtered = filterGearListRowsBySearch(byLocation, settings.searchQuery);
   if (!settings.totalOnly) return filtered;
   return applyTotalOnlyView(filtered);
+}
+
+/**
+ * Drop rows excluded from paperwork. Hiding a top-level section header
+ * removes that whole section (header + following rows until the next section).
+ * @param {GearListRow[]} rows
+ * @returns {GearListRow[]}
+ */
+export function filterGearListRowsForPaperwork(rows) {
+  /** @type {GearListRow[]} */
+  const out = [];
+  let i = 0;
+  while (i < (rows?.length ?? 0)) {
+    const row = rows[i];
+    if (row.kind === "header" && row.level === "section" && !isGearListRowIncluded(row)) {
+      i += 1;
+      while (i < rows.length) {
+        const next = rows[i];
+        if (next.kind === "header" && next.level === "section") break;
+        i += 1;
+      }
+      continue;
+    }
+    if (!isGearListRowIncluded(row)) {
+      i += 1;
+      continue;
+    }
+    out.push(row);
+    i += 1;
+  }
+  return out;
+}
+
+/**
+ * Rows for paperwork sheets: full gear list minus eyeball-excluded rows /
+ * sections. Calculator filters (room, place, search) and Total only do not apply.
+ * @param {GearListState | null | undefined} state
+ * @returns {GearListRow[]}
+ */
+export function gearListRowsForPaperwork(state) {
+  const rows = Array.isArray(state?.rows) ? state.rows : [];
+  return filterGearListRowsForPaperwork(rows);
+}
+
+/**
+ * Split display rows into top-level section columns (LED / Signal Flow / Cables / …).
+ * Empty sections are omitted. Unknown section labels keep their heading text.
+ * @param {GearListRow[]} rows
+ * @returns {{ id: string, title: string, rows: GearListRow[] }[]}
+ */
+export function partitionGearListSections(rows) {
+  /** @type {{ id: string, title: string, rows: GearListRow[] }[]} */
+  const sections = [];
+  /** @type {{ id: string, title: string, rows: GearListRow[] } | null} */
+  let current = null;
+
+  for (const row of rows ?? []) {
+    if (row.kind === "header" && row.level === "section") {
+      const title = compactGearListSectionTitle(row.label);
+      current = {
+        id: slugGearListSectionId(title),
+        title,
+        rows: [],
+      };
+      sections.push(current);
+      continue;
+    }
+    if (!current) {
+      current = { id: "other", title: "Other", rows: [] };
+      sections.push(current);
+    }
+    current.rows.push(row);
+  }
+
+  return sections.filter((section) =>
+    section.rows.some(
+      (row) =>
+        row.kind === "item" ||
+        (row.kind === "header" && row.level === "subsection")
+    )
+  );
+}
+
+/**
+ * @param {string | null | undefined} label
+ */
+function compactGearListSectionTitle(label) {
+  const raw = typeof label === "string" ? label.trim() : "";
+  if (!raw) return "Other";
+  if (/^led$/i.test(raw)) return "LED";
+  if (/signal\s*flow/i.test(raw)) return "Signal Flow";
+  if (/^cables?$/i.test(raw)) return "Cables";
+  return raw;
+}
+
+/**
+ * @param {string} title
+ */
+function slugGearListSectionId(title) {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "other";
 }
 
 /**
@@ -474,6 +749,9 @@ export function updateGearListSettings(state, patch) {
     if ("totalOnly" in patch) next.totalOnly = Boolean(patch.totalOnly);
     if ("roomFilter" in patch) next.roomFilter = normalizeFilterValue(patch.roomFilter);
     if ("placeFilter" in patch) next.placeFilter = normalizeFilterValue(patch.placeFilter);
+    if ("searchQuery" in patch) {
+      next.searchQuery = typeof patch.searchQuery === "string" ? patch.searchQuery : "";
+    }
   }
   return {
     rows: state.rows ?? [],
@@ -496,12 +774,88 @@ function placeNameFromId(places, placeId) {
 /**
  * Normalize optional location context for auto imports.
  * @param {GearListLocationContext | null | undefined} ctx
- * @returns {{ places: GearListPlace[], roomName: string }}
+ * @returns {{ places: GearListPlace[], roomName: string, roomId: string }}
  */
 function locationContext(ctx) {
   return {
     places: Array.isArray(ctx?.places) ? ctx.places : [],
     roomName: typeof ctx?.roomName === "string" ? ctx.roomName.trim() : "",
+    roomId: typeof ctx?.roomId === "string" ? ctx.roomId.trim() : "",
+  };
+}
+
+/**
+ * Prefix an auto sourceKey with the room id so multi-room sync stays unique.
+ * @param {string} roomId
+ * @param {string} key
+ */
+export function scopedGearListSourceKey(roomId, key) {
+  const id = typeof roomId === "string" ? roomId.trim() : "";
+  const bare = typeof key === "string" ? key : "";
+  if (!id || !bare) return bare;
+  if (bare.startsWith(`room:${id}|`)) return bare;
+  return `room:${id}|${bare}`;
+}
+
+/**
+ * Room id embedded in a scoped auto sourceKey (empty when unscoped / legacy).
+ * @param {string | null | undefined} sourceKey
+ */
+export function roomIdFromGearListSourceKey(sourceKey) {
+  const key = typeof sourceKey === "string" ? sourceKey : "";
+  const match = /^room:([^|]+)\|/.exec(key);
+  return match?.[1] ?? "";
+}
+
+/**
+ * Strip room scope prefix for matching within a room's Signal Flow graph.
+ * @param {string | null | undefined} sourceKey
+ */
+export function unscopedGearListSourceKey(sourceKey) {
+  const key = typeof sourceKey === "string" ? sourceKey : "";
+  return key.replace(/^room:[^|]+\|/, "");
+}
+
+/**
+ * @param {string} roomId
+ * @param {GearListItem[]} items
+ * @returns {GearListItem[]}
+ */
+export function scopeGearListItems(roomId, items) {
+  return (items ?? []).map((item) => ({
+    ...item,
+    sourceKey: item.sourceKey
+      ? scopedGearListSourceKey(roomId, item.sourceKey)
+      : item.sourceKey,
+  }));
+}
+
+/**
+ * @param {string} roomId
+ * @param {GearListCableSection[]} sections
+ * @returns {GearListCableSection[]}
+ */
+export function scopeGearListCableSections(roomId, sections) {
+  return (sections ?? []).map((section) => ({
+    header: {
+      ...section.header,
+      sourceKey: section.header.sourceKey
+        ? scopedGearListSourceKey(roomId, section.header.sourceKey)
+        : section.header.sourceKey,
+    },
+    items: scopeGearListItems(roomId, section.items),
+  }));
+}
+
+/**
+ * @param {string} roomId
+ * @param {GearListCablePlan} plan
+ * @returns {GearListCablePlan}
+ */
+export function scopeGearListCablePlan(roomId, plan) {
+  return {
+    sections: scopeGearListCableSections(roomId, plan?.sections ?? []),
+    looseItems: scopeGearListItems(roomId, plan?.looseItems ?? []),
   };
 }
 
@@ -510,6 +864,7 @@ function locationContext(ctx) {
  * Instances that share the same type, name, and place collapse into one line
  * with a summed quantity. Renamed instances / different places stay separate.
  * LED wall nodes are skipped — they use {@link autoLedWallSectionsFromLed}.
+ * Lines keep caller room order (Shows tab), then place within each room (no extra sections).
  * @param {GearListSfNode[]} nodes
  * @param {GearListLocationContext} [ctx]
  * @returns {GearListItem[]}
@@ -560,6 +915,45 @@ export function autoGearFromSignalFlow(nodes, ctx) {
       sourceKey: `sf-gear:${groupKey}`,
     });
   }
+  return sortGearListItemsByRoomPlace(out);
+}
+
+/**
+ * Sort gear items by place (then label) within each room.
+ * Room groups keep first-seen order so callers can pass items already
+ * concatenated in Shows-tab room order.
+ * @param {GearListItem[]} items
+ * @returns {GearListItem[]}
+ */
+export function sortGearListItemsByRoomPlace(items) {
+  const collator = { sensitivity: /** @type {const} */ ("base") };
+  /**
+   * @param {string | null | undefined} value
+   */
+  function placeKey(value) {
+    const t = typeof value === "string" ? value.trim() : "";
+    return t || "\uffff";
+  }
+
+  /** @type {Map<string, GearListItem[]>} */
+  const byRoom = new Map();
+  for (const item of items ?? []) {
+    const room = typeof item.room === "string" ? item.room.trim() : "";
+    const group = byRoom.get(room);
+    if (group) group.push(item);
+    else byRoom.set(room, [item]);
+  }
+
+  /** @type {GearListItem[]} */
+  const out = [];
+  for (const group of byRoom.values()) {
+    group.sort((a, b) => {
+      const placeCmp = placeKey(a.place).localeCompare(placeKey(b.place), undefined, collator);
+      if (placeCmp !== 0) return placeCmp;
+      return (a.label ?? "").localeCompare(b.label ?? "", undefined, collator);
+    });
+    out.push(...group);
+  }
   return out;
 }
 
@@ -576,7 +970,7 @@ function isLedWallGearListNode(node) {
  * @param {string | null | undefined} sourceKey
  */
 export function gearListSourceKeyLinksToSignalFlow(sourceKey) {
-  const key = typeof sourceKey === "string" ? sourceKey : "";
+  const key = unscopedGearListSourceKey(sourceKey);
   return key.startsWith("sf-gear:") || key.startsWith("led-wall:");
 }
 
@@ -587,7 +981,7 @@ export function gearListSourceKeyLinksToSignalFlow(sourceKey) {
  * @returns {string[]}
  */
 export function nodeIdsForGearListSourceKey(nodes, sourceKey) {
-  const key = typeof sourceKey === "string" ? sourceKey : "";
+  const key = unscopedGearListSourceKey(sourceKey);
   if (key.startsWith("sf-gear:")) {
     const rest = key.slice("sf-gear:".length);
     const parts = rest.split("\0");
@@ -923,7 +1317,7 @@ export function autoCablePlanFromCableCards(data) {
       header: {
         id: uid("glh"),
         kind: "header",
-        label: "Other",
+        label: roomName ? `Other — ${roomName}` : "Other",
         level: "subsection",
         source: "auto",
         sourceKey: "cable-other",
@@ -933,6 +1327,32 @@ export function autoCablePlanFromCableCards(data) {
   }
 
   return { sections, looseItems: [] };
+}
+
+/**
+ * True when a cable subsection is the place-local "Other" bucket.
+ * @param {GearListCableSection | null | undefined} section
+ */
+export function isGearListCableOtherSection(section) {
+  const key = typeof section?.header?.sourceKey === "string" ? section.header.sourceKey : "";
+  if (key === "cable-other" || /(^|\|)cable-other$/.test(key)) return true;
+  const label = typeof section?.header?.label === "string" ? section.header.label.trim() : "";
+  return /^other\b/i.test(label);
+}
+
+/**
+ * Keep route subsections ahead of trailing "Other" buckets (multi-room sync).
+ * @param {GearListCablePlan} plan
+ * @returns {GearListCablePlan}
+ */
+export function orderGearListCablePlan(plan) {
+  const sections = Array.isArray(plan?.sections) ? plan.sections : [];
+  const routes = sections.filter((section) => !isGearListCableOtherSection(section));
+  const others = sections.filter((section) => isGearListCableOtherSection(section));
+  return {
+    sections: [...routes, ...others],
+    looseItems: Array.isArray(plan?.looseItems) ? plan.looseItems : [],
+  };
 }
 
 /**
@@ -1062,19 +1482,25 @@ export function flattenManualCables(cableState) {
  */
 export function syncGearListRows(state, autoGear, autoCablesOrPlan, ledSections = []) {
   /** @type {GearListCablePlan} */
-  const plan = Array.isArray(autoCablesOrPlan)
-    ? { sections: [], looseItems: autoCablesOrPlan }
-    : autoCablesOrPlan ?? { sections: [], looseItems: [] };
+  const plan = orderGearListCablePlan(
+    Array.isArray(autoCablesOrPlan)
+      ? { sections: [], looseItems: autoCablesOrPlan }
+      : autoCablesOrPlan ?? { sections: [], looseItems: [] }
+  );
 
   /** @type {Map<string, string>} */
   const notesByKey = new Map();
+  /** @type {Map<string, boolean>} */
+  const includedByKey = new Map();
   /** @type {Map<string, string>} */
   const idByKey = new Map();
   for (const row of state.rows ?? []) {
     if (row.kind === "item" && row.source === "auto" && row.sourceKey) {
       notesByKey.set(row.sourceKey, row.notes ?? "");
+      includedByKey.set(row.sourceKey, isGearListRowIncluded(row));
       idByKey.set(row.sourceKey, row.id);
     } else if (row.kind === "header" && row.source === "auto" && row.sourceKey) {
+      includedByKey.set(row.sourceKey, isGearListRowIncluded(row));
       idByKey.set(row.sourceKey, row.id);
     }
   }
@@ -1085,13 +1511,21 @@ export function syncGearListRows(state, autoGear, autoCablesOrPlan, ledSections 
    */
   function adopt(live) {
     const id = (live.sourceKey && idByKey.get(live.sourceKey)) || live.id;
+    const included =
+      live.sourceKey && includedByKey.has(live.sourceKey)
+        ? Boolean(includedByKey.get(live.sourceKey))
+        : isGearListRowIncluded(live);
     if (live.kind === "header") {
-      return { ...live, id };
+      return { ...live, id, included };
     }
     return {
       ...live,
       id,
-      notes: (live.sourceKey && notesByKey.get(live.sourceKey)) || "",
+      notes:
+        live.sourceKey && notesByKey.has(live.sourceKey)
+          ? /** @type {string} */ (notesByKey.get(live.sourceKey))
+          : "",
+      included,
     };
   }
 
@@ -1105,11 +1539,15 @@ export function syncGearListRows(state, autoGear, autoCablesOrPlan, ledSections 
         ...row,
         source: row.source ?? "manual",
         sourceKey: row.sourceKey ?? null,
+        included: isGearListRowIncluded(row),
       });
       continue;
     }
     if (row.source === "auto") continue;
-    next.push(row);
+    next.push({
+      ...row,
+      included: isGearListRowIncluded(row),
+    });
   }
 
   ensureDefaultSections(next);
@@ -1124,17 +1562,21 @@ export function syncGearListRows(state, autoGear, autoCablesOrPlan, ledSections 
 
   insertMissing(
     next,
-    autoGear.map((g) => /** @type {GearListItem} */ (adopt(g))),
+    sortGearListItemsByRoomPlace(
+      autoGear.map((g) => /** @type {GearListItem} */ (adopt(g)))
+    ),
     ["signal flow", "gear"]
   );
 
+  /** @type {GearListRow[]} */
+  const cableBlock = [];
   for (const section of plan.sections) {
-    const block = [
-      /** @type {GearListHeader} */ (adopt(section.header)),
-      ...section.items.map((item) => /** @type {GearListItem} */ (adopt(item))),
-    ];
-    insertMissing(next, block, ["cable"]);
+    cableBlock.push(/** @type {GearListHeader} */ (adopt(section.header)));
+    for (const item of section.items) {
+      cableBlock.push(/** @type {GearListItem} */ (adopt(item)));
+    }
   }
+  insertMissing(next, cableBlock, ["cable"]);
 
   insertMissing(
     next,
@@ -1285,6 +1727,7 @@ export function addGearListHeader(state, label, index, level = "section") {
     level: level === "subsection" ? /** @type {const} */ ("subsection") : /** @type {const} */ ("section"),
     source: /** @type {const} */ ("manual"),
     sourceKey: null,
+    included: true,
   };
   const rows = [...state.rows];
   const at = typeof index === "number" ? Math.max(0, Math.min(rows.length, index)) : rows.length;
@@ -1313,6 +1756,7 @@ export function addManualGearListItem(state, fields, index) {
     notes: fields.notes ?? "",
     source: /** @type {const} */ ("manual"),
     sourceKey: null,
+    included: true,
   };
   const rows = [...state.rows];
   const at = typeof index === "number" ? Math.max(0, Math.min(rows.length, index)) : rows.length;
@@ -1396,6 +1840,8 @@ export function updateGearListRow(state, rowId, patch) {
             patch.level === "subsection" || patch.level === "section"
               ? patch.level
               : row.level,
+          included:
+            typeof patch.included === "boolean" ? patch.included : isGearListRowIncluded(row),
         };
       }
       return {
@@ -1420,6 +1866,8 @@ export function updateGearListRow(state, rowId, patch) {
           patch.category === "cable" || patch.category === "gear"
             ? patch.category
             : row.category,
+        included:
+          typeof patch.included === "boolean" ? patch.included : isGearListRowIncluded(row),
       };
     })
   );

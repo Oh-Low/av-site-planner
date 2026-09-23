@@ -11,6 +11,16 @@ import { resolvePaper } from "./paper-sizes.js";
  * }} RoomExportBundle
  */
 
+/** Sheet types generated once per show (not per room). */
+const SHOW_SCOPED_SHEET_TYPES = ["cover", "gear-list"];
+
+/**
+ * @param {string} typeId
+ */
+function isShowScopedSheetType(typeId) {
+  return SHOW_SCOPED_SHEET_TYPES.includes(typeId);
+}
+
 /**
  * Pull live calculator exports and rebuild sheet instances while preserving
  * overrides, notes, include flags, order, and custom element layouts for
@@ -21,10 +31,20 @@ import { resolvePaper } from "./paper-sizes.js";
  *
  * @param {import("./state.js").PaperworkState} state
  * @param {Record<string, unknown> | RoomExportBundle[]} siteExportsOrRooms
- * @param {{ mode?: "merge" | "add-missing" | "replace" }} [options]
+ * @param {{
+ *   mode?: "merge" | "add-missing" | "replace",
+ *   selectedKeys?: Iterable<string> | null,
+ * }} [options]
+ *   When `selectedKeys` is set, only those sync keys are created or rebuilt;
+ *   other existing generated sheets are kept as-is and unlisted seeds are skipped.
  */
 export function syncSheetsFromSources(state, siteExportsOrRooms, options = {}) {
   const mode = options.mode ?? "merge";
+  const selectedKeys = options.selectedKeys
+    ? new Set(
+        [...options.selectedKeys].filter((key) => typeof key === "string" && key)
+      )
+    : null;
   const page = resolvePaper(state.paper.size, state.paper.orientation);
   const rooms = normalizeRoomBundles(siteExportsOrRooms);
 
@@ -38,74 +58,83 @@ export function syncSheetsFromSources(state, siteExportsOrRooms, options = {}) {
       .map((s) => [sheetSyncKey(s), s])
   );
 
+  /**
+   * @param {string} key
+   * @param {boolean} exists
+   */
+  function shouldTouch(key, exists) {
+    if (selectedKeys) return selectedKeys.has(key);
+    if (exists) return mode === "replace";
+    return mode === "merge" || mode === "add-missing" || mode === "replace";
+  }
+
   /** @type {import("./state.js").SheetInstance[]} */
   const next = [];
   let order = 0;
 
-  // Show-level cover once (not per room).
-  {
-    const coverType = getSheetType("cover");
-    if (coverType) {
-      for (const seed of coverType.expand({})) {
-        const key = showSheetKey(seed.typeId, seed.sourceKey);
-        const prev = existing.get(key);
-        if (prev) {
-          if (mode === "replace") {
-            const elements = coverType.defaultElements(
-              seed,
-              rooms[0]?.siteExports ?? {},
-              page,
-              state.identity
-            );
-            stampIdentityIntoElements(elements, state.identity);
-            next.push({
-              ...prev,
-              roomId: null,
-              title: prev.title || seed.title,
-              order: order++,
-              elements,
-            });
-          } else {
-            next.push({
-              ...prev,
-              roomId: null,
-              title: prev.title || seed.title,
-              order: order++,
-            });
-          }
-          existing.delete(key);
-        } else if (mode === "merge" || mode === "add-missing" || mode === "replace") {
-          const elements = coverType.defaultElements(
+  // Show-scoped sheets once (cover, gear list, …) — not per room.
+  for (const typeId of SHOW_SCOPED_SHEET_TYPES) {
+    const sheetType = getSheetType(typeId);
+    if (!sheetType) continue;
+    for (const seed of sheetType.expand(rooms[0]?.siteExports ?? {})) {
+      const key = showSheetKey(seed.typeId, seed.sourceKey);
+      const prev = existing.get(key);
+      if (prev) {
+        if (shouldTouch(key, true)) {
+          const elements = sheetType.defaultElements(
             seed,
             rooms[0]?.siteExports ?? {},
             page,
             state.identity
           );
           stampIdentityIntoElements(elements, state.identity);
-          next.push(
-            normalizeSheet(
-              {
-                id: uid("sheet"),
-                typeId: seed.typeId,
-                sourceKey: seed.sourceKey,
-                roomId: null,
-                title: seed.title,
-                included: true,
-                order: order++,
-                notes: "",
-                elements,
-              },
-              order
-            )
-          );
+          next.push({
+            ...prev,
+            roomId: null,
+            title: prev.title || seed.title,
+            order: order++,
+            elements,
+          });
+        } else {
+          next.push({
+            ...prev,
+            roomId: null,
+            title: prev.title || seed.title,
+            order: order++,
+          });
         }
+        existing.delete(key);
+      } else if (shouldTouch(key, false)) {
+        const elements = sheetType.defaultElements(
+          seed,
+          rooms[0]?.siteExports ?? {},
+          page,
+          state.identity
+        );
+        stampIdentityIntoElements(elements, state.identity);
+        next.push(
+          normalizeSheet(
+            {
+              id: uid("sheet"),
+              typeId: seed.typeId,
+              sourceKey: seed.sourceKey,
+              roomId: null,
+              title: seed.title,
+              included: true,
+              order: order++,
+              notes: "",
+              elements,
+            },
+            order
+          )
+        );
       }
     }
   }
 
   for (const room of rooms) {
     for (const type of listSheetTypes()) {
-      if (type.id === "cover") continue;
+      if (isShowScopedSheetType(type.id)) continue;
       const seeds = type.expand(room.siteExports);
       for (const seed of seeds) {
         const key = roomSheetKey(room.roomId, seed.typeId, seed.sourceKey);
@@ -114,7 +143,7 @@ export function syncSheetsFromSources(state, siteExportsOrRooms, options = {}) {
         const prev = existing.get(key);
         if (prev) {
           migrateSourceElements(prev);
-          if (mode === "replace") {
+          if (shouldTouch(key, true)) {
             const elements = type.defaultElements(
               displaySeed,
               room.siteExports,
@@ -138,7 +167,7 @@ export function syncSheetsFromSources(state, siteExportsOrRooms, options = {}) {
             });
           }
           existing.delete(key);
-        } else if (mode === "merge" || mode === "add-missing" || mode === "replace") {
+        } else if (shouldTouch(key, false)) {
           const elements = type.defaultElements(
             displaySeed,
             room.siteExports,
@@ -189,12 +218,106 @@ export function syncSheetsFromSources(state, siteExportsOrRooms, options = {}) {
     });
   }
 
-  state.sheets = next;
+  // Keep the user's sheet list order (drag-reorder in the Sheets panel).
+  // Brand-new sheets append after existing ones, in generation order.
+  const prevOrderById = new Map(
+    (state.sheets ?? []).map((sheet, index) => [
+      sheet.id,
+      typeof sheet.order === "number" && Number.isFinite(sheet.order)
+        ? sheet.order
+        : index,
+    ])
+  );
+  const ranked = next.map((sheet, index) => ({ sheet, index }));
+  ranked.sort((a, b) => {
+    const aHad = prevOrderById.has(a.sheet.id);
+    const bHad = prevOrderById.has(b.sheet.id);
+    if (aHad && bHad) {
+      return (
+        /** @type {number} */ (prevOrderById.get(a.sheet.id)) -
+        /** @type {number} */ (prevOrderById.get(b.sheet.id))
+      );
+    }
+    if (aHad !== bHad) return aHad ? -1 : 1;
+    return a.index - b.index;
+  });
+  state.sheets = ranked.map(({ sheet }, index) => {
+    sheet.order = index;
+    return sheet;
+  });
   if (!state.sheets.some((s) => s.id === state.activeSheetId)) {
     state.activeSheetId = state.sheets[0]?.id ?? null;
   }
   state.selectedElementId = null;
   state.selectedDecorationId = null;
+}
+
+/**
+ * Prospective generated sheets for the Generate dialog (cover + per-room seeds).
+ * @param {import("./state.js").PaperworkState} state
+ * @param {Record<string, unknown> | RoomExportBundle[]} siteExportsOrRooms
+ * @returns {{
+ *   key: string,
+ *   title: string,
+ *   typeId: string,
+ *   roomId: string | null,
+ *   roomName: string | null,
+ *   exists: boolean,
+ * }[]}
+ */
+export function listSheetGenerateCandidates(state, siteExportsOrRooms) {
+  const rooms = normalizeRoomBundles(siteExportsOrRooms);
+  /** @type {Set<string>} */
+  const existingKeys = new Set(
+    (state.sheets ?? [])
+      .filter((sheet) => sheet.manual !== true && sheet.typeId !== "custom-plate")
+      .map((sheet) => sheetSyncKey(sheet))
+  );
+
+  /** @type {{
+   *   key: string,
+   *   title: string,
+   *   typeId: string,
+   *   roomId: string | null,
+   *   roomName: string | null,
+   *   exists: boolean,
+   * }[]} */
+  const candidates = [];
+
+  for (const typeId of SHOW_SCOPED_SHEET_TYPES) {
+    const sheetType = getSheetType(typeId);
+    if (!sheetType) continue;
+    for (const seed of sheetType.expand(rooms[0]?.siteExports ?? {})) {
+      const key = showSheetKey(seed.typeId, seed.sourceKey);
+      candidates.push({
+        key,
+        title: seed.title,
+        typeId: seed.typeId,
+        roomId: null,
+        roomName: null,
+        exists: existingKeys.has(key),
+      });
+    }
+  }
+
+  for (const room of rooms) {
+    for (const type of listSheetTypes()) {
+      if (isShowScopedSheetType(type.id)) continue;
+      for (const seed of type.expand(room.siteExports)) {
+        const key = roomSheetKey(room.roomId, seed.typeId, seed.sourceKey);
+        candidates.push({
+          key,
+          title: `${room.roomName} — ${seed.title}`,
+          typeId: seed.typeId,
+          roomId: room.roomId,
+          roomName: room.roomName,
+          exists: existingKeys.has(key),
+        });
+      }
+    }
+  }
+
+  return candidates;
 }
 
 /**
@@ -243,7 +366,7 @@ function showSheetKey(typeId, sourceKey) {
 
 /** @param {import("./state.js").SheetInstance} sheet */
 function sheetSyncKey(sheet) {
-  if (sheet.typeId === "cover") {
+  if (isShowScopedSheetType(sheet.typeId)) {
     return showSheetKey(sheet.typeId, sheet.sourceKey);
   }
   const roomId = typeof sheet.roomId === "string" && sheet.roomId ? sheet.roomId : "room";

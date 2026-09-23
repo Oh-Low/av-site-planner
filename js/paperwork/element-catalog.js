@@ -3,6 +3,7 @@ import { listLedWalls } from "./led-spec-data.js";
 import {
   createCableCardsElement,
   createGroundplanDiagramElement,
+  createGearListTablesElement,
   createLedSpecificationElement,
   createLedWiringElement,
   createRasterElement,
@@ -13,6 +14,7 @@ import {
 export {
   createCableCardsElement,
   createGroundplanDiagramElement,
+  createGearListTablesElement,
   createLedSpecificationElement,
   createLedWiringElement,
   createRasterElement,
@@ -364,6 +366,21 @@ export function listAddableElements(siteExports, page) {
         }),
     });
   }
+
+  items.push({
+    id: "gear-list:tables",
+    label: "Gear list tables",
+    group: "Gear list",
+    calculator: "Gear List",
+    family: "Tables",
+    w: Math.min(16, page.widthIn - 1),
+    h: Math.min(10, page.heightIn - 2.25),
+    create: () =>
+      createGearListTablesElement({
+        w: Math.min(16, page.widthIn - 1),
+        h: Math.min(10, page.heightIn - 2.25),
+      }),
+  });
 
   return items;
 }

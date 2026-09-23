@@ -15,10 +15,12 @@ import {
   findActiveShow,
   normalizeShowDocument,
   normalizeRoomPlan,
+  readActiveShowGearList,
   readActiveShowPaperwork,
   setActiveRoom,
   stampShowDocument,
   writeActiveRoomPlan,
+  writeActiveShowGearList,
   writeActiveShowPaperwork,
 } from "./site-state.js";
 import {
@@ -95,8 +97,8 @@ export function applyRoomPlanToCalculators(instances, plan) {
 
   for (const plugin of CALCULATOR_PLUGINS) {
     const key = plugin.meta.stateKey;
-    // Paperwork is show-scoped — loaded separately via readActiveShowPaperwork.
-    if (key === "paperwork") continue;
+    // Paperwork + gear list are show-scoped — loaded separately.
+    if (key === "paperwork" || key === "gearList") continue;
     const fallback = plugin.meta.emptyState?.() ?? {};
     try {
       let section = normalized[key] ?? fallback;
@@ -123,8 +125,8 @@ export function applyRoomPlanToCalculators(instances, plan) {
  * @param {Record<string, { exportState?: () => object, flushFormToState?: () => void } | null>} instances
  */
 export function flushActiveRoomFromCalculators(instances) {
-  // Persist show-scoped paperwork from the live composer before rebuilding the
-  // room plan (room plans no longer carry a paperwork section).
+  // Persist show-scoped paperwork + gear list before rebuilding the room plan
+  // (room plans no longer carry those sections).
   try {
     const livePaperwork = instances.paperwork?.exportState?.();
     if (livePaperwork && typeof livePaperwork === "object") {
@@ -132,6 +134,20 @@ export function flushActiveRoomFromCalculators(instances) {
     }
   } catch (error) {
     console.error("Failed to export show paperwork:", error);
+  }
+  try {
+    // Keep auto rows current before snapshotting for show-scoped persist.
+    if (typeof instances.gearList?.syncNow === "function") {
+      instances.gearList.syncNow();
+    } else {
+      instances.gearList?.refresh?.({ renderUi: false });
+    }
+    const liveGearList = instances.gearList?.exportState?.();
+    if (liveGearList && typeof liveGearList === "object") {
+      writeActiveShowGearList(ensureShowDoc(), liveGearList);
+    }
+  } catch (error) {
+    console.error("Failed to export show gear list:", error);
   }
   const plan = buildRoomPlanFromCalculators(instances);
   writeActiveRoomPlan(ensureShowDoc(), plan);
@@ -152,6 +168,13 @@ export function loadActiveRoomIntoCalculators(instances) {
   } catch (error) {
     console.error("Failed to import show paperwork:", error);
   }
+  const gearList = readActiveShowGearList(ensureShowDoc()) ?? {};
+  try {
+    instances.gearList?.importState?.(gearList);
+  } catch (error) {
+    console.error("Failed to import show gear list:", error);
+  }
+  instances.gearList?.refresh?.();
 }
 
 /**
@@ -195,6 +218,8 @@ export function switchActiveRoom(instances, showId, roomId) {
 export function schedulePersist(instances) {
   if (suppressAutosave) return;
   onDirtyChange?.(true);
+  // Live-update gear list auto rows when other tools change (debounced).
+  instances?.gearList?.scheduleLiveSync?.();
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     persistTimer = null;

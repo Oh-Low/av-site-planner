@@ -10,22 +10,141 @@ import {
   classifyLedLineJumpers,
   emptyGearListState,
   flattenManualCables,
+  fuzzyTextMatch,
+  gearListRowSearchText,
   gearListRowsForDisplay,
   gearListSourceKeyLinksToSignalFlow,
+  isGearListCableOtherSection,
   ledWallNeighborJumperCount,
   ledWallTileGridSize,
   nodeIdsForGearListSourceKey,
+  orderGearListCablePlan,
+  partitionGearListSections,
+  roomIdFromGearListSourceKey,
+  scopeGearListCablePlan,
+  scopeGearListItems,
   summarizeLedMapJumpers,
   moveGearListRow,
   normalizeGearListState,
   removeGearListRow,
   reorderGearListRow,
   syncGearListRows,
+  unscopedGearListSourceKey,
   updateGearListRow,
   updateGearListSettings,
+  filterGearListRowsForPaperwork,
+  gearListRowsForPaperwork,
+  isGearListRowIncluded,
 } from "../js/domain/gear-list.js";
 
 describe("gear list domain", () => {
+  it("partitions gear list rows into LED / Signal Flow / Cables columns", () => {
+    const sections = partitionGearListSections([
+      {
+        id: "h1",
+        kind: "header",
+        label: "LED",
+        level: "section",
+        source: "manual",
+        sourceKey: null,
+      },
+      {
+        id: "a",
+        kind: "item",
+        category: "gear",
+        label: "Tile",
+        detail: "",
+        qty: 4,
+        length: null,
+        room: "",
+        place: "",
+        notes: "",
+        source: "auto",
+        sourceKey: "x",
+      },
+      {
+        id: "h2",
+        kind: "header",
+        label: "Signal Flow gear",
+        level: "section",
+        source: "manual",
+        sourceKey: null,
+      },
+      {
+        id: "b",
+        kind: "item",
+        category: "gear",
+        label: "Switcher",
+        detail: "",
+        qty: 1,
+        length: null,
+        room: "",
+        place: "",
+        notes: "",
+        source: "manual",
+        sourceKey: null,
+      },
+      {
+        id: "h3",
+        kind: "header",
+        label: "Cables",
+        level: "section",
+        source: "manual",
+        sourceKey: null,
+      },
+      {
+        id: "h3b",
+        kind: "header",
+        label: "FOH → Stage + 10 m",
+        level: "subsection",
+        source: "auto",
+        sourceKey: "cable-route:r1",
+      },
+      {
+        id: "c",
+        kind: "item",
+        category: "cable",
+        label: "HDMI",
+        detail: "",
+        qty: 2,
+        length: 25,
+        room: "",
+        place: "",
+        notes: "",
+        source: "auto",
+        sourceKey: "y",
+      },
+      {
+        id: "h4",
+        kind: "header",
+        label: "Soft goods",
+        level: "section",
+        source: "manual",
+        sourceKey: null,
+      },
+      {
+        id: "d",
+        kind: "item",
+        category: "gear",
+        label: "Drape",
+        detail: "",
+        qty: 3,
+        length: null,
+        room: "",
+        place: "",
+        notes: "",
+        source: "manual",
+        sourceKey: null,
+      },
+    ]);
+    assert.deepEqual(
+      sections.map((s) => s.title),
+      ["LED", "Signal Flow", "Cables", "Soft goods"]
+    );
+    assert.equal(sections[2].rows[0].kind, "header");
+    assert.equal(sections[2].rows[1].label, "HDMI");
+  });
+
   it("starts with LED, Signal Flow, and Cables section headers", () => {
     const state = emptyGearListState();
     assert.equal(state.rows.length, 3);
@@ -205,6 +324,89 @@ describe("gear list domain", () => {
     assert.equal(other.items.length, 1);
     assert.equal(other.items[0].label, "XLR");
     assert.equal(plan.looseItems.length, 0);
+  });
+
+  it("keeps multi-room route subsections ahead of Other buckets", () => {
+    const room1 = autoCablePlanFromCableCards({
+      roomName: "Ballroom A",
+      routeCards: [
+        {
+          id: "r-a",
+          title: "FOH → Stage",
+          lengthLabel: "10 m",
+          rows: [
+            {
+              connectionId: "c1",
+              cableLabel: "HDMI",
+              fromDevice: "A",
+              toDevice: "B",
+              amount: 1,
+            },
+          ],
+        },
+      ],
+      placeCards: [
+        {
+          id: "p-a",
+          title: "FOH",
+          rows: [
+            {
+              connectionId: "c2",
+              cableLabel: "XLR",
+              fromDevice: "Mic",
+              toDevice: "Desk",
+              amount: 1,
+            },
+          ],
+        },
+      ],
+    });
+    const room2 = autoCablePlanFromCableCards({
+      roomName: "Ballroom B",
+      routeCards: [
+        {
+          id: "r-b",
+          title: "Control → Stage",
+          lengthLabel: "25 m",
+          rows: [
+            {
+              connectionId: "c3",
+              cableLabel: "SDI",
+              fromDevice: "C",
+              toDevice: "D",
+              amount: 1,
+            },
+          ],
+        },
+      ],
+      placeCards: [],
+    });
+    assert.equal(room1.sections[1].header.label, "Other — Ballroom A");
+    assert.equal(isGearListCableOtherSection(room1.sections[1]), true);
+
+    const merged = orderGearListCablePlan({
+      sections: [...room1.sections, ...room2.sections],
+      looseItems: [],
+    });
+    assert.deepEqual(
+      merged.sections.map((s) => s.header.label),
+      ["FOH → Stage + 10 m", "Control → Stage + 25 m", "Other — Ballroom A"]
+    );
+
+    let state = emptyGearListState();
+    state = syncGearListRows(state, [], merged, []);
+    const cableIdx = state.rows.findIndex(
+      (r) => r.kind === "header" && r.level === "section" && /cable/i.test(r.label)
+    );
+    const underCable = state.rows
+      .slice(cableIdx + 1)
+      .filter((r) => r.kind === "header" && r.level === "subsection")
+      .map((r) => r.label);
+    assert.deepEqual(underCable, [
+      "FOH → Stage + 10 m",
+      "Control → Stage + 25 m",
+      "Other — Ballroom A",
+    ]);
   });
 
   it("builds flat auto cable rows from cable calculator cards (legacy helper)", () => {
@@ -390,6 +592,182 @@ describe("gear list domain", () => {
     assert.equal(custom.rows[1].kind === "item" ? custom.rows[1].qty : 0, 1);
   });
 
+  it("defaults included to true and preserves false through normalize", () => {
+    const state = normalizeGearListState({
+      rows: [
+        { id: "h1", kind: "header", label: "LED" },
+        { id: "i1", kind: "item", label: "Lamp", included: false },
+        { id: "i2", kind: "item", label: "Cable", category: "cable", included: true },
+      ],
+    });
+    assert.equal(isGearListRowIncluded(state.rows[0]), true);
+    assert.equal(state.rows[0].included, true);
+    assert.equal(state.rows[1].included, false);
+    assert.equal(state.rows[2].included, true);
+  });
+
+  it("filters eyeball-excluded rows and whole sections from paperwork", () => {
+    const rows = [
+      {
+        id: "h-led",
+        kind: "header",
+        label: "LED",
+        level: "section",
+        source: "manual",
+        sourceKey: null,
+        included: false,
+      },
+      {
+        id: "led-item",
+        kind: "item",
+        category: "gear",
+        label: "Tile",
+        detail: "",
+        qty: 10,
+        length: null,
+        room: "",
+        place: "",
+        notes: "",
+        source: "manual",
+        sourceKey: null,
+        included: true,
+      },
+      {
+        id: "h-sf",
+        kind: "header",
+        label: "Signal Flow gear",
+        level: "section",
+        source: "manual",
+        sourceKey: null,
+        included: true,
+      },
+      {
+        id: "sw",
+        kind: "item",
+        category: "gear",
+        label: "Switcher",
+        detail: "",
+        qty: 1,
+        length: null,
+        room: "",
+        place: "",
+        notes: "",
+        source: "manual",
+        sourceKey: null,
+        included: false,
+      },
+      {
+        id: "mtx",
+        kind: "item",
+        category: "gear",
+        label: "Matrix",
+        detail: "",
+        qty: 1,
+        length: null,
+        room: "",
+        place: "",
+        notes: "",
+        source: "manual",
+        sourceKey: null,
+        included: true,
+      },
+    ];
+    const filtered = filterGearListRowsForPaperwork(rows);
+    assert.equal(
+      filtered.some((r) => r.id === "h-led" || r.id === "led-item"),
+      false
+    );
+    assert.equal(filtered.some((r) => r.id === "sw"), false);
+    assert.ok(filtered.some((r) => r.id === "h-sf"));
+    assert.ok(filtered.some((r) => r.id === "mtx"));
+
+    const paperwork = gearListRowsForPaperwork({
+      rows,
+      settings: {
+        totalOnly: true,
+        roomFilter: "Ballroom A",
+        placeFilter: "FOH",
+        searchQuery: "Switcher",
+      },
+    });
+    // Filters / search / totalOnly are calculator-only — paperwork ignores them
+    assert.ok(paperwork.some((r) => r.id === "mtx"));
+    assert.equal(paperwork.some((r) => r.id === "sw"), false);
+    assert.equal(paperwork.some((r) => r.id === "led-item"), false);
+  });
+
+  it("preserves included flags across sync for auto rows", () => {
+    let state = emptyGearListState();
+    const gear = autoGearFromSignalFlow([
+      { id: "n1", name: "Switcher", typeId: "switcher" },
+    ]);
+    state = syncGearListRows(state, gear, { sections: [], looseItems: [] });
+    const auto = state.rows.find((r) => r.kind === "item" && r.label === "Switcher");
+    assert.ok(auto);
+    state = updateGearListRow(state, auto.id, { included: false, notes: "FOH only" });
+    state = syncGearListRows(
+      state,
+      autoGearFromSignalFlow([{ id: "n1", name: "Switcher", typeId: "switcher" }]),
+      { sections: [], looseItems: [] }
+    );
+    const again = state.rows.find((r) => r.kind === "item" && r.label === "Switcher");
+    assert.ok(again);
+    assert.equal(again.included, false);
+    assert.equal(again.kind === "item" ? again.notes : "", "FOH only");
+  });
+
+  it("orders Signal Flow gear by show room order then place without new sections", () => {
+    const places = [
+      { id: "p-stage", name: "Stage" },
+      { id: "p-foh", name: "FOH" },
+      { id: "p-ctrl", name: "Control" },
+    ];
+    const gearB = autoGearFromSignalFlow(
+      [
+        { id: "1", name: "Switcher", typeId: "switcher", placeId: "p-stage" },
+        { id: "2", name: "Display", typeId: "display", placeId: "p-foh" },
+        { id: "3", name: "Matrix", typeId: "matrix", placeId: "p-foh" },
+      ],
+      { places, roomName: "Ballroom B" }
+    );
+    const gearA = autoGearFromSignalFlow(
+      [
+        { id: "4", name: "Amp", typeId: "amp", placeId: "p-ctrl" },
+        { id: "5", name: "Speaker", typeId: "speaker", placeId: "p-stage" },
+      ],
+      { places, roomName: "Ballroom A" }
+    );
+    // Within one room: place then label
+    assert.deepEqual(
+      gearB.map((g) => `${g.place}:${g.label}`),
+      ["FOH:Display", "FOH:Matrix", "Stage:Switcher"]
+    );
+
+    // Concatenate in Shows-tab order (B before A) — must not alphabeticalize rooms.
+    let state = emptyGearListState();
+    state = syncGearListRows(state, [...gearB, ...gearA], { sections: [], looseItems: [] });
+    const sfItems = state.rows.filter(
+      (r) => r.kind === "item" && r.source === "auto" && r.category === "gear"
+    );
+    assert.deepEqual(
+      sfItems.map((r) => `${r.room}|${r.place}|${r.label}`),
+      [
+        "Ballroom B|FOH|Display",
+        "Ballroom B|FOH|Matrix",
+        "Ballroom B|Stage|Switcher",
+        "Ballroom A|Control|Amp",
+        "Ballroom A|Stage|Speaker",
+      ]
+    );
+    // Still only the default section headers — no room/place subsections.
+    const autoHeaders = state.rows.filter((r) => r.kind === "header" && r.source === "auto");
+    assert.equal(autoHeaders.length, 0);
+    const sectionLabels = state.rows
+      .filter((r) => r.kind === "header" && r.level === "section")
+      .map((r) => r.label);
+    assert.deepEqual(sectionLabels, ["LED", "Signal Flow gear", "Cables"]);
+  });
+
   it("skips LED wall nodes in Signal Flow gear import", () => {
     const gear = autoGearFromSignalFlow([
       { id: "n1", name: "Matrix", typeId: "matrix" },
@@ -427,6 +805,136 @@ describe("gear list domain", () => {
     assert.deepEqual(nodeIdsForGearListSourceKey(nodes, "led-wall:w1:tiles"), ["w"]);
     assert.equal(gearListSourceKeyLinksToSignalFlow(fohDisplay.sourceKey), true);
     assert.equal(gearListSourceKeyLinksToSignalFlow("cable:route:x:Cat6|150"), false);
+  });
+
+  it("scopes auto sourceKeys by room and still resolves SF ids", () => {
+    const nodes = [
+      { id: "a", typeId: "display", name: "Display", placeId: "p1" },
+      { id: "b", typeId: "display", name: "Display", placeId: "p1" },
+    ];
+    const gear = autoGearFromSignalFlow(nodes, {
+      places: [{ id: "p1", name: "FOH" }],
+      roomName: "Ballroom A",
+    });
+    const scoped = scopeGearListItems("room-1", gear);
+    assert.equal(scoped[0].sourceKey, `room:room-1|${gear[0].sourceKey}`);
+    assert.equal(roomIdFromGearListSourceKey(scoped[0].sourceKey), "room-1");
+    assert.equal(unscopedGearListSourceKey(scoped[0].sourceKey), gear[0].sourceKey);
+    assert.equal(gearListSourceKeyLinksToSignalFlow(scoped[0].sourceKey), true);
+    assert.deepEqual(nodeIdsForGearListSourceKey(nodes, scoped[0].sourceKey).sort(), [
+      "a",
+      "b",
+    ]);
+    const plan = scopeGearListCablePlan("room-2", {
+      sections: [
+        {
+          header: {
+            id: "h1",
+            kind: "header",
+            label: "Other",
+            level: "subsection",
+            source: "auto",
+            sourceKey: "cable-other",
+          },
+          items: [],
+        },
+      ],
+      looseItems: [],
+    });
+    assert.equal(plan.sections[0].header.sourceKey, "room:room-2|cable-other");
+  });
+
+  it("fuzzy-matches row fields and keeps ancestor headers", () => {
+    assert.equal(fuzzyTextMatch("Short Ethercon", "ethrcon"), true);
+    assert.equal(fuzzyTextMatch("Short Ethercon", "power"), false);
+    assert.equal(fuzzyTextMatch("FOH Display", "foh disp"), true);
+
+    let state = emptyGearListState();
+    state = {
+      ...state,
+      rows: [
+        state.rows[0],
+        {
+          id: "sub",
+          kind: "header",
+          label: "LED - Wall A",
+          level: "subsection",
+          source: "auto",
+          sourceKey: "led-wall:w1:header",
+        },
+        {
+          id: "a",
+          kind: "item",
+          category: "gear",
+          label: "NovaStar processor",
+          detail: "",
+          qty: 1,
+          length: null,
+          room: "Ballroom A",
+          place: "FOH",
+          notes: "spare",
+          source: "auto",
+          sourceKey: "sf-gear:a",
+        },
+        {
+          id: "b",
+          kind: "item",
+          category: "cable",
+          label: "HDMI",
+          detail: "12 m",
+          qty: 2,
+          length: 25,
+          room: "Ballroom A",
+          place: "Stage",
+          notes: "",
+          source: "auto",
+          sourceKey: "cable:1",
+        },
+        state.rows[1],
+        {
+          id: "c",
+          kind: "item",
+          category: "gear",
+          label: "Switcher",
+          detail: "",
+          qty: 1,
+          length: null,
+          room: "Ballroom B",
+          place: "Control",
+          notes: "",
+          source: "manual",
+          sourceKey: null,
+        },
+      ],
+    };
+
+    state = updateGearListSettings(state, { searchQuery: "nvstar" });
+    let view = gearListRowsForDisplay(state);
+    assert.equal(view.some((r) => r.kind === "item" && r.id === "a"), true);
+    assert.equal(view.some((r) => r.kind === "item" && r.id === "b"), false);
+    assert.equal(view.some((r) => r.kind === "header" && r.label === "LED"), true);
+    assert.equal(view.some((r) => r.kind === "header" && r.label === "LED - Wall A"), true);
+    assert.equal(view.some((r) => r.kind === "header" && /signal flow/i.test(r.label)), false);
+
+    state = updateGearListSettings(state, { searchQuery: "stage" });
+    view = gearListRowsForDisplay(state);
+    assert.equal(view.some((r) => r.id === "b"), true);
+    assert.equal(view.some((r) => r.id === "a"), false);
+
+    assert.match(gearListRowSearchText(/** @type {import("../js/domain/gear-list.js").GearListItem} */ ({
+      id: "x",
+      kind: "item",
+      category: "cable",
+      label: "Cat6",
+      detail: "riser",
+      qty: 4,
+      length: 100,
+      room: "Hall",
+      place: "Deck",
+      notes: "labeled",
+      source: "auto",
+      sourceKey: "k",
+    })), /Cat6.*riser.*labeled.*Hall.*Deck.*100/i);
   });
 
   it("filters by room or place before Total only condensation", () => {

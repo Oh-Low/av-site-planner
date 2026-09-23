@@ -119,3 +119,22 @@ export function createCableCardsElement(frame = {}) {
     ...frame,
   });
 }
+
+/**
+ * @param {Partial<import("./state.js").PageElement>} [frame]
+ */
+export function createGearListTablesElement(frame = {}) {
+  const { content: frameContent, ...rest } = frame;
+  return createElement({
+    type: "gearListTables",
+    x: 0.4,
+    y: 1.25,
+    w: 16,
+    h: 9,
+    ...rest,
+    content: {
+      fontSize: 7,
+      ...(frameContent && typeof frameContent === "object" ? frameContent : {}),
+    },
+  });
+}

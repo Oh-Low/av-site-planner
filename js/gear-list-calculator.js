@@ -4,7 +4,7 @@
  * Row reorder uses HTML5 drag (ghost follows cursor), same pattern as the Signal Flow gear library.
  */
 
-import { getCalculatorExport, getCalculatorInstance } from "./calculator-instances.js";
+import { getCalculatorExport, getCalculatorInstance, getCalculatorInstances } from "./calculator-instances.js";
 import {
   buildPlaceCards,
   buildRouteCards,
@@ -23,16 +23,25 @@ import {
   gearListFilterOptions,
   gearListRowsForDisplay,
   gearListSourceKeyLinksToSignalFlow,
+  isGearListRowIncluded,
   normalizeGearListState,
   removeGearListRow,
   reorderGearListRow,
+  roomIdFromGearListSourceKey,
+  scopeGearListCablePlan,
+  scopeGearListCableSections,
+  scopeGearListItems,
   syncGearListRows,
   updateGearListRow,
   updateGearListSettings,
 } from "./domain/gear-list.js";
 import { placesFromSiteExports } from "./domain/places.js";
 import { escapeXml } from "./shared/dom.js";
-import { getActiveRoom, getActiveShow } from "./show-document-runtime.js";
+import {
+  getActiveRoom,
+  getActiveShow,
+  switchActiveRoom,
+} from "./show-document-runtime.js";
 import { recordBefore } from "./undo-runtime.js";
 
 export {
@@ -48,7 +57,9 @@ export {
   GEAR_LIST_FILTER_UNASSIGNED,
   gearListFilterOptions,
   gearListRowsForDisplay,
+  gearListRowsForPaperwork,
   gearListSourceKeyLinksToSignalFlow,
+  isGearListRowIncluded,
   ledTileTypeLabel,
   ledWallNeighborJumperCount,
   ledWallTileGridSize,
@@ -65,12 +76,43 @@ export {
 
 const ROW_MIME = "text/x-gear-list-row";
 
+const EYE_OPEN =
+  '<svg class="gear-list-eye-icon gear-list-eye-icon--open" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8s2.5-4 7-4 7 4 7 4-2.5 4-7 4-7-4-7-4z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" /><circle cx="8" cy="8" r="1.75" fill="none" stroke="currentColor" stroke-width="1.25" /></svg>';
+const EYE_CLOSED =
+  '<svg class="gear-list-eye-icon gear-list-eye-icon--closed" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8s2.5-4 7-4 7 4 7 4-2.5 4-7 4-7-4-7-4z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" /><circle cx="8" cy="8" r="1.75" fill="none" stroke="currentColor" stroke-width="1.25" /><path d="M2.5 13.5 13.5 2.5" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" /></svg>';
+
+/**
+ * @param {import("./domain/gear-list.js").GearListRow} row
+ * @param {{ totalOnly?: boolean }} [opts]
+ */
+function visibilityToggleHtml(row) {
+  const included = isGearListRowIncluded(row);
+  const isSection = row.kind === "header" && row.level === "section";
+  const hideLabel = isSection
+    ? "Hide section from paperwork"
+    : "Hide from paperwork";
+  const showLabel = isSection
+    ? "Include section in paperwork"
+    : "Include in paperwork";
+  return `<button
+    type="button"
+    class="btn btn-secondary gear-list-visibility"
+    draggable="false"
+    data-action="toggle-included"
+    aria-pressed="${included ? "true" : "false"}"
+    aria-label="${included ? hideLabel : showLabel}"
+    title="${included ? "Included in paperwork" : "Hidden from paperwork"}"
+  >${EYE_OPEN}${EYE_CLOSED}</button>`;
+}
+
 /**
  * @param {import("./domain/gear-list.js").GearListRow} row
  * @param {{ totalOnly?: boolean }} [opts]
  */
 function renderRow(row, opts = {}) {
   const totalOnly = Boolean(opts.totalOnly);
+  const included = isGearListRowIncluded(row);
+  const excludedClass = included ? "" : " is-excluded";
   if (row.kind === "header") {
     const level = row.level === "subsection" ? "subsection" : "section";
     const levelClass =
@@ -78,7 +120,7 @@ function renderRow(row, opts = {}) {
     const auto = row.source === "auto";
     return `
       <li
-        class="gear-list-row gear-list-row--header ${levelClass}"
+        class="gear-list-row gear-list-row--header ${levelClass}${excludedClass}"
         draggable="${totalOnly ? "false" : "true"}"
         data-row-id="${escapeXml(row.id)}"
         data-kind="header"
@@ -98,6 +140,7 @@ function renderRow(row, opts = {}) {
           />
         </div>
         <div class="gear-list-row-actions">
+          ${visibilityToggleHtml(row)}
           ${
             auto || totalOnly
               ? ""
@@ -132,7 +175,7 @@ function renderRow(row, opts = {}) {
 
   return `
     <li
-      class="gear-list-row gear-list-row--item"
+      class="gear-list-row gear-list-row--item${excludedClass}"
       draggable="${totalOnly ? "false" : "true"}"
       data-row-id="${escapeXml(row.id)}"
       data-kind="item"
@@ -204,6 +247,7 @@ function renderRow(row, opts = {}) {
         ${sourceBadge}
       </div>
       <div class="gear-list-row-actions">
+        ${visibilityToggleHtml(row)}
         ${
           auto || totalOnly
             ? ""
@@ -263,16 +307,22 @@ export function initGearListCalculator() {
     document.getElementById("gear-list-setting-total-only")
   );
   const roomFilterSelect = /** @type {HTMLSelectElement | null} */ (
-    document.getElementById("gear-list-setting-room-filter")
+    document.getElementById("gear-list-room-filter")
   );
   const placeFilterSelect = /** @type {HTMLSelectElement | null} */ (
-    document.getElementById("gear-list-setting-place-filter")
+    document.getElementById("gear-list-place-filter")
+  );
+  const searchInput = /** @type {HTMLInputElement | null} */ (
+    document.getElementById("gear-list-search")
   );
 
   /** @type {import("./domain/gear-list.js").GearListState} */
   let localState = emptyGearListState();
   /** @type {string | null} */
   let dragRowId = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let liveSyncTimer = null;
+  const LIVE_SYNC_MS = 350;
 
   function setStatus(message) {
     if (statusEl) statusEl.textContent = message;
@@ -302,7 +352,65 @@ export function initGearListCalculator() {
     return { gear, cable, headers };
   }
 
-  function pullUpstream() {
+  function pullUpstreamFromSnapshot(room, snapshot) {
+    const places = placesFromSiteExports({
+      places: snapshot.places,
+      signalFlow: snapshot.signalFlow ?? undefined,
+    });
+    const sf = snapshot.signalFlow && typeof snapshot.signalFlow === "object"
+      ? snapshot.signalFlow
+      : {};
+    const nodes = Array.isArray(sf.nodes) ? sf.nodes : [];
+    const connections = Array.isArray(sf.connections) ? sf.connections : [];
+    const customGearTypes = Array.isArray(sf.customGearTypes) ? sf.customGearTypes : [];
+    const gp =
+      snapshot.groundplan && typeof snapshot.groundplan === "object"
+        ? snapshot.groundplan
+        : {};
+    const routes = Array.isArray(gp.cableRoutes) ? gp.cableRoutes : [];
+    const cableState = normalizeCableState(snapshot.cable ?? {});
+    const roomName = typeof room.name === "string" ? room.name.trim() : "";
+    const roomId = typeof room.id === "string" ? room.id.trim() : "";
+
+    const routeCards = buildRouteCards({
+      places,
+      nodes,
+      connections,
+      customGearTypes,
+      routes,
+      scale: gp.scale ?? null,
+    });
+    const placeCards = buildPlaceCards({
+      places,
+      nodes,
+      connections,
+      customGearTypes,
+    });
+
+    const locationCtx = { places, roomName, roomId, nodes };
+    const autoGear = scopeGearListItems(roomId, autoGearFromSignalFlow(nodes, locationCtx));
+    const ledSections = scopeGearListCableSections(
+      roomId,
+      autoLedWallSectionsFromLed(
+        /** @type {{ grids?: object[] } | null} */ (snapshot.led ?? null),
+        locationCtx
+      )
+    );
+    const cablePlan = scopeGearListCablePlan(
+      roomId,
+      autoCablePlanFromCableCards({
+        routeCards,
+        placeCards,
+        manualsByRoute: cableState.routes ?? {},
+        manualsByPlace: cableState.places ?? {},
+        placeLengths: cableState.placeLengths ?? {},
+        roomName,
+      })
+    );
+    return { autoGear, cablePlan, ledSections, places };
+  }
+
+  function pullUpstreamLive(room) {
     // Ensure cable cards have current derived data before we peek manuals/lengths.
     getCalculatorInstance("cable")?.refresh?.();
 
@@ -317,58 +425,170 @@ export function initGearListCalculator() {
       scale?: object | null,
     } | null} */ (getCalculatorExport("groundplan"));
     const cableRaw = getCalculatorExport("cable");
-    const cableState = normalizeCableState(cableRaw ?? {});
-
-    const places = placesFromSiteExports({ signalFlow: sf ?? undefined });
-    const nodes = Array.isArray(sf?.nodes) ? sf.nodes : [];
-    const connections = Array.isArray(sf?.connections) ? sf.connections : [];
-    const customGearTypes = Array.isArray(sf?.customGearTypes) ? sf.customGearTypes : [];
-    const routes = Array.isArray(gp?.cableRoutes) ? gp.cableRoutes : [];
-    const roomName = getActiveRoom()?.name?.trim() || "";
-
-    const routeCards = buildRouteCards({
-      places,
-      nodes,
-      connections,
-      customGearTypes,
-      routes,
-      scale: gp?.scale ?? null,
-    });
-    const placeCards = buildPlaceCards({
-      places,
-      nodes,
-      connections,
-      customGearTypes,
-    });
-
-    const locationCtx = { places, roomName, nodes };
-    const autoGear = autoGearFromSignalFlow(nodes, locationCtx);
     const led = getCalculatorExport("led");
-    const ledSections = autoLedWallSectionsFromLed(
-      /** @type {{ grids?: object[] } | null} */ (led),
-      locationCtx
-    );
-    const cablePlan = autoCablePlanFromCableCards({
-      routeCards,
-      placeCards,
-      manualsByRoute: cableState.routes ?? {},
-      manualsByPlace: cableState.places ?? {},
-      placeLengths: cableState.placeLengths ?? {},
-      roomName,
+
+    return pullUpstreamFromSnapshot(room, {
+      places: placesFromSiteExports({ signalFlow: sf ?? undefined }),
+      signalFlow: sf ?? {},
+      groundplan: gp ?? {},
+      cable: cableRaw ?? {},
+      led: led ?? {},
     });
+  }
+
+  function pullUpstream() {
+    const show = getActiveShow();
+    const activeRoom = getActiveRoom();
+    const rooms = show?.rooms ?? (activeRoom ? [activeRoom] : []);
+
+    /** @type {import("./domain/gear-list.js").GearListItem[]} */
+    const autoGear = [];
+    /** @type {import("./domain/gear-list.js").GearListCableSection[]} */
+    const ledSections = [];
+    /** @type {import("./domain/gear-list.js").GearListCablePlan} */
+    const cablePlan = { sections: [], looseItems: [] };
+
+    for (const room of rooms) {
+      if (!room?.id) continue;
+      const slice =
+        activeRoom && room.id === activeRoom.id
+          ? pullUpstreamLive(room)
+          : pullUpstreamFromSnapshot(room, room.plan ?? {});
+      autoGear.push(...slice.autoGear);
+      ledSections.push(...slice.ledSections);
+      cablePlan.sections.push(...slice.cablePlan.sections);
+      cablePlan.looseItems.push(...slice.cablePlan.looseItems);
+    }
+
     return { autoGear, cablePlan, ledSections };
   }
 
+  function collectShowPlaces() {
+    const show = getActiveShow();
+    const activeRoom = getActiveRoom();
+    /** @type {Map<string, { id: string, name: string }>} */
+    const byId = new Map();
+    for (const room of show?.rooms ?? []) {
+      if (!room?.id) continue;
+      /** @type {{ id: string, name: string }[]} */
+      let places = [];
+      if (activeRoom && room.id === activeRoom.id) {
+        const sf = /** @type {{ places?: { id: string, name: string }[] } | null} */ (
+          getCalculatorExport("signalFlow")
+        );
+        places = placesFromSiteExports({ signalFlow: sf ?? undefined });
+      } else {
+        places = placesFromSiteExports({
+          places: room.plan?.places,
+          signalFlow: room.plan?.signalFlow,
+        });
+      }
+      for (const place of places) {
+        if (place?.id) byId.set(place.id, place);
+      }
+    }
+    return [...byId.values()];
+  }
+
   function syncFromUpstream() {
+    // Commit typed-but-unblurred fields first — notes only fire `change` on blur,
+    // and autosave/live sync would otherwise rebuild auto rows without them.
+    flushPendingEdits();
     const { autoGear, cablePlan, ledSections } = pullUpstream();
     localState = syncGearListRows(localState, autoGear, cablePlan, ledSections);
   }
 
-  function populateFilterSelects() {
-    const sf = /** @type {{ places?: { id: string, name: string }[] } | null} */ (
-      getCalculatorExport("signalFlow")
+  /**
+   * Push in-progress input values into localState before sync/render.
+   * Without this, a re-render or upstream sync drops notes still sitting in the DOM.
+   */
+  function flushPendingEdits() {
+    if (!listEl) return;
+    for (const row of listEl.querySelectorAll(".gear-list-row[data-row-id]")) {
+      if (!(row instanceof HTMLElement)) continue;
+      const rowId = row.getAttribute("data-row-id");
+      if (!rowId) continue;
+      const existing = localState.rows.find((r) => r.id === rowId);
+      if (!existing) continue;
+      /** @type {Record<string, unknown>} */
+      const patch = {};
+      for (const fieldEl of row.querySelectorAll("[data-field]")) {
+        if (!(fieldEl instanceof HTMLInputElement || fieldEl instanceof HTMLSelectElement)) {
+          continue;
+        }
+        const field = fieldEl.getAttribute("data-field");
+        if (!field) continue;
+        if (field === "qty") {
+          if (existing.kind !== "item") continue;
+          const qty = Number(fieldEl.value);
+          if (existing.qty !== qty) patch.qty = qty;
+        } else if (field === "length") {
+          if (existing.kind !== "item") continue;
+          const length = normalizeCableLength(fieldEl.value, null);
+          if (existing.length !== length) patch.length = length;
+        } else if (
+          field === "label" ||
+          field === "detail" ||
+          field === "notes" ||
+          field === "room" ||
+          field === "place"
+        ) {
+          const value = fieldEl.value;
+          if (existing.kind === "header") {
+            if (field === "label" && existing.label !== value) patch.label = value;
+            continue;
+          }
+          if (existing[field] !== value) patch[field] = value;
+        }
+      }
+      if (Object.keys(patch).length) {
+        localState = updateGearListRow(localState, rowId, patch);
+      }
+    }
+  }
+
+  /** @returns {boolean} */
+  function isGearListVisible() {
+    const panel = document.getElementById("gear-list");
+    return Boolean(panel && !panel.hidden);
+  }
+
+  /** True when focus is inside the gear list UI (typing / interacting). */
+  function isGearListEditing() {
+    const active = document.activeElement;
+    return Boolean(
+      active instanceof Element && active.closest(".gear-list-calculator, #gear-list")
     );
-    const places = placesFromSiteExports({ signalFlow: sf ?? undefined });
+  }
+
+  /**
+   * Pull auto rows from SF / Cable / LED. Re-render when the gear list is
+   * visible and the user is not mid-edit in it.
+   * @param {{ renderUi?: boolean }} [opts]
+   */
+  function refresh(opts = {}) {
+    const renderUi = opts.renderUi !== false;
+    syncFromUpstream();
+    if (renderUi) render();
+  }
+
+  /**
+   * Debounced sync after upstream edits elsewhere in the document.
+   * Skips while the user is editing the gear list itself.
+   */
+  function scheduleLiveSync() {
+    if (isGearListEditing()) return;
+    if (liveSyncTimer) clearTimeout(liveSyncTimer);
+    liveSyncTimer = setTimeout(() => {
+      liveSyncTimer = null;
+      if (isGearListEditing()) return;
+      syncFromUpstream();
+      if (isGearListVisible()) render();
+    }, LIVE_SYNC_MS);
+  }
+
+  function populateFilterSelects() {
+    const places = collectShowPlaces();
     const show = getActiveShow();
     const roomNames = (show?.rooms ?? []).map((r) => r.name);
     const opts = gearListFilterOptions(localState, {
@@ -415,7 +635,7 @@ export function initGearListCalculator() {
       roomFilterSelect,
       opts.rooms,
       opts.hasUnassignedRoom,
-      "All rooms",
+      "Room",
       "Unassigned",
       localState.settings?.roomFilter ?? ""
     );
@@ -423,22 +643,42 @@ export function initGearListCalculator() {
       placeFilterSelect,
       opts.places,
       opts.hasUnassignedPlace,
-      "All places",
+      "Place",
       "Unassigned",
       localState.settings?.placeFilter ?? ""
+    );
+    roomFilterSelect?.classList.toggle(
+      "is-filtered",
+      Boolean(localState.settings?.roomFilter)
+    );
+    placeFilterSelect?.classList.toggle(
+      "is-filtered",
+      Boolean(localState.settings?.placeFilter)
     );
   }
 
   function render() {
     if (!listEl) return;
-    const settings = localState.settings ?? { totalOnly: false, roomFilter: "", placeFilter: "" };
+    flushPendingEdits();
+    const settings = localState.settings ?? {
+      totalOnly: false,
+      roomFilter: "",
+      placeFilter: "",
+      searchQuery: "",
+    };
     const totalOnly = Boolean(settings.totalOnly);
     rootEl?.classList.toggle("is-total-only", totalOnly);
     if (totalOnlyInput) totalOnlyInput.checked = totalOnly;
+    if (searchInput && searchInput.value !== (settings.searchQuery ?? "")) {
+      searchInput.value = settings.searchQuery ?? "";
+    }
     populateFilterSelects();
     const displayRows = gearListRowsForDisplay(localState);
     if (!displayRows.length) {
-      listEl.innerHTML = `<li class="gear-list-empty">No gear yet. Add gear from Signal Flow, or add a manual line.</li>`;
+      const searching = Boolean((settings.searchQuery ?? "").trim());
+      listEl.innerHTML = searching
+        ? `<li class="gear-list-empty">No rows match your search.</li>`
+        : `<li class="gear-list-empty">No gear yet. Add gear from Signal Flow, or add a manual line.</li>`;
     } else {
       listEl.innerHTML = displayRows.map((row) => renderRow(row, { totalOnly })).join("");
     }
@@ -449,20 +689,7 @@ export function initGearListCalculator() {
     /** @type {string[]} */
     const tags = [];
     if (totalOnly) tags.push("Total only");
-    if (settings.roomFilter) {
-      tags.push(
-        settings.roomFilter === GEAR_LIST_FILTER_UNASSIGNED
-          ? "Room: Unassigned"
-          : `Room: ${settings.roomFilter}`
-      );
-    }
-    if (settings.placeFilter) {
-      tags.push(
-        settings.placeFilter === GEAR_LIST_FILTER_UNASSIGNED
-          ? "Place: Unassigned"
-          : `Place: ${settings.placeFilter}`
-      );
-    }
+    if ((settings.searchQuery ?? "").trim()) tags.push("Search");
     const mode = tags.length ? ` · ${tags.join(" · ")}` : "";
     setStatus(
       `${gear} gear · ${cable} cable${cable === 1 ? "" : "s"} · ${headers} heading${headers === 1 ? "" : "s"}${mode}`
@@ -470,7 +697,6 @@ export function initGearListCalculator() {
   }
 
   function openSettings() {
-    populateFilterSelects();
     if (totalOnlyInput) totalOnlyInput.checked = Boolean(localState.settings?.totalOnly);
     settingsModal?.removeAttribute("hidden");
     totalOnlyInput?.focus();
@@ -479,11 +705,6 @@ export function initGearListCalculator() {
   function closeSettings() {
     settingsModal?.setAttribute("hidden", "");
     settingsBtn?.focus();
-  }
-
-  function refresh() {
-    syncFromUpstream();
-    render();
   }
 
   /** @param {string} rowId */
@@ -521,11 +742,37 @@ export function initGearListCalculator() {
       const sourceKey =
         item && item.kind === "item" && item.source === "auto" ? item.sourceKey : null;
       if (!gearListSourceKeyLinksToSignalFlow(sourceKey)) return;
+
+      const targetRoomId = roomIdFromGearListSourceKey(sourceKey);
+      const show = getActiveShow();
+      const activeRoom = getActiveRoom();
+      if (
+        targetRoomId &&
+        show?.id &&
+        activeRoom?.id !== targetRoomId &&
+        show.rooms.some((r) => r.id === targetRoomId)
+      ) {
+        switchActiveRoom(getCalculatorInstances() ?? {}, show.id, targetRoomId);
+      }
+
       const tab = document.querySelector('.tab[data-tab="signal-flow"]');
       if (tab instanceof HTMLElement) tab.click();
       requestAnimationFrame(() => {
         getCalculatorInstance("signalFlow")?.selectByGearListSourceKey?.(sourceKey);
       });
+      return;
+    }
+
+    if (target.closest('[data-action="toggle-included"]')) {
+      event.preventDefault();
+      event.stopPropagation();
+      const item = localState.rows.find((r) => r.id === rowId);
+      if (!item) return;
+      recordBefore("gearList", "toggle-paperwork");
+      localState = updateGearListRow(localState, rowId, {
+        included: !isGearListRowIncluded(item),
+      });
+      render();
       return;
     }
 
@@ -698,6 +945,18 @@ export function initGearListCalculator() {
     });
     render();
   });
+  searchInput?.addEventListener("input", () => {
+    localState = updateGearListSettings(localState, {
+      searchQuery: searchInput.value,
+    });
+    render();
+  });
+  searchInput?.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !searchInput.value) return;
+    event.preventDefault();
+    localState = updateGearListSettings(localState, { searchQuery: "" });
+    render();
+  });
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     if (!settingsModal || settingsModal.hasAttribute("hidden")) return;
@@ -723,7 +982,14 @@ export function initGearListCalculator() {
     refresh();
   }
 
-  return { exportState, importState, refresh };
+  /**
+   * Sync auto rows from upstream without re-rendering (for persist / peeks).
+   */
+  function syncNow() {
+    syncFromUpstream();
+  }
+
+  return { exportState, importState, refresh, syncNow, scheduleLiveSync };
 }
 
 export const calculatorPlugin = {

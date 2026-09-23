@@ -30,6 +30,8 @@ Canonical contract. Source of truth in code: `js/site-state.js`, `js/domain/show
     {
       "id": "show-1",
       "name": "Tour 2026",
+      "gearList": { },
+      "paperwork": { },
       "rooms": [
         {
           "id": "room-1",
@@ -71,10 +73,8 @@ Each room’s `plan` matches the former single-file site plan body (without the 
   "groundplan": { },
   "contentMaps": { },
   "cable": { },
-  "gearList": { },
   "labor": { },
-  "rigging": { },
-  "paperwork": { }
+  "rigging": { }
 }
 ```
 
@@ -83,9 +83,11 @@ Each room’s `plan` matches the former single-file site plan body (without the 
 | `places` | No | Venues for this room — lifted from legacy `signalFlow.places` |
 | `led` | **Yes** | `requiredForSave`; must have `grids` array |
 | `projector` | **Yes** | `requiredForSave`; must have ≥1 screen |
-| `signalFlow` … `paperwork` | No | Filled from `emptyState()` when omitted on migrate |
+| `signalFlow` … `rigging` | No | Filled from `emptyState()` when omitted on migrate |
 
-Registry order: led → projector → signalFlow → groundplan → contentMaps → cable → gearList → labor → rigging → paperwork.
+**Show-scoped (not in room plan):** `paperwork` and `gearList` live on `shows[]` (same pattern). Legacy room-plan copies are hoisted on normalize.
+
+Registry order (room plan sections): led → projector → signalFlow → groundplan → contentMaps → cable → labor → rigging. Show-scoped plugins: gearList → paperwork.
 
 Legacy single-file v2 documents also carried `formatVersion`, `app`, `exportedAt`, `activeTab` at the root; those move to the v3 envelope on migrate.
 
@@ -168,7 +170,9 @@ Nodes may include optional measured `layout: { w, h, inColW, outColW, portTop, p
 
 **emptyState / validate:** domain cable helpers; auto-derived cables are never stored. Optional `placeLengths` maps place id → standard stock length (`5|10|15|25|50|100|150|200`). Manual cables may include `length`.
 
-### `gearList` — optional
+### `gearList` — show-scoped (optional)
+
+Stored on `shows[].gearList`, not inside `rooms[].plan`. Aggregates auto rows from **every room** in the show (room-scoped `sourceKey`s like `room:<id>|sf-gear:…`); settings filters (`roomFilter` / `placeFilter` / `totalOnly`) narrow the view.
 
 **emptyState / validate:** `js/domain/gear-list.js`. Ordered `rows` of `header` | `item`. Headers have `level: "section" | "subsection"` and optional auto `source` / `sourceKey`. Each cable route syncs as an auto subsection labeled `[route] + [length]`; place-local cables sync under a trailing **Other** subsection. Auto items are re-derived from Signal Flow nodes and Cable Calculator cards on refresh; only order, notes, manual headers, and manual items are authoritative in the file.
 
@@ -208,7 +212,9 @@ Nodes may include optional measured `layout: { w, h, inColW, outColW, portTop, p
 
 World units are inches. Connections are mates only (no drawn wires). LED import is not stored yet.
 
-### `paperwork` — optional
+### `paperwork` — show-scoped (optional)
+
+Stored on `shows[].paperwork`, not inside `rooms[].plan`.
 
 **emptyState / validate:** `js/domain/paperwork.js`.
 

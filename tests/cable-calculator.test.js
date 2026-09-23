@@ -151,6 +151,83 @@ describe("cable calculator cards", () => {
     assert.equal(matched[0].id, "c1");
   });
 
+  it("includes power connections with types from the power-mode port table", () => {
+    const powerNodes = [
+      {
+        id: "distro",
+        typeId: "blank",
+        name: "Soca breakout",
+        placeId: "p-a",
+        gearOverride: {
+          ports: [
+            { input: "Fiber In", output: "Fiber Out", inputType: "Fiber", outputType: "Fiber" },
+            { input: "—", output: "Soca Out", outputType: "Soca" },
+          ],
+        },
+      },
+      {
+        id: "cvt",
+        typeId: "blank",
+        name: "Novastar CVT",
+        placeId: "p-b",
+        gearOverride: {
+          ports: [
+            { input: "Fiber In", output: "—", inputType: "Fiber" },
+            { input: "Power In", output: "—", inputType: "Edison" },
+          ],
+        },
+      },
+    ];
+    // Power wire at remapped power-table row 0 (first power ports), not signal Fiber row.
+    const powerConn = {
+      id: "c-power",
+      fromNodeId: "distro",
+      fromRow: 0,
+      fromCol: "output",
+      toNodeId: "cvt",
+      toRow: 0,
+      toCol: "input",
+      power: true,
+    };
+    const signalConn = {
+      id: "c-fiber",
+      fromNodeId: "distro",
+      fromRow: 0,
+      fromCol: "output",
+      toNodeId: "cvt",
+      toRow: 0,
+      toCol: "input",
+    };
+
+    assert.equal(inferCableType(powerConn, powerNodes, []), "Soca");
+    assert.equal(inferCableType(signalConn, powerNodes, []), "Fiber");
+
+    const route = {
+      id: "r1",
+      fromPlaceId: "p-a",
+      toPlaceId: "p-b",
+      points: [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+      ],
+    };
+    const cards = buildRouteCards({
+      places,
+      nodes: powerNodes,
+      connections: [powerConn, signalConn],
+      customGearTypes: [],
+      routes: [route],
+      scale: null,
+    });
+    assert.equal(cards[0].rows.length, 2);
+    const powerRow = cards[0].rows.find((r) => r.connectionId === "c-power");
+    const signalRow = cards[0].rows.find((r) => r.connectionId === "c-fiber");
+    assert.equal(powerRow?.cableLabel, "Soca");
+    assert.equal(powerRow?.power, true);
+    assert.equal(signalRow?.cableLabel, "Fiber");
+    assert.equal(signalRow?.power, false);
+  });
+
   it("builds place cards with local cables only", () => {
     const cards = buildPlaceCards({ places, nodes, connections, customGearTypes: [] });
     const foh = cards.find((c) => c.id === "p-a");

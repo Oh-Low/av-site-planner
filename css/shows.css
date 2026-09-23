@@ -61,6 +61,10 @@
   cursor: grab;
 }
 
+.shows-list .grid-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
 .shows-list .shows-list-item {
   display: flex;
   align-items: center;
@@ -69,6 +73,9 @@
   margin-bottom: 0;
   padding: 0.35rem 0.4rem 0.35rem 0.55rem;
   box-sizing: border-box;
+}
+
+.shows-list .shows-list-item:not([draggable="true"]) {
   cursor: pointer;
 }
 

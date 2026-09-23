@@ -58,7 +58,7 @@
       <div class="shows-layout">
         <div class="shows-column">
           <h2>Shows</h2>
-          <p class="shows-column-hint">A show groups rooms for one event.</p>
+          <p class="shows-column-hint">A show groups rooms for one event. Drag to reorder. Double-click to rename.</p>
           <div class="resource-toolbar">
             <div class="resource-toolbar-group">
               <button type="button" class="btn btn-icon" id="shows-show-add" aria-label="Add show" title="Add show">+</button>
@@ -1055,17 +1055,36 @@
           </div>
         </header>
         <div class="gear-list-toolbar">
-          <button type="button" class="btn btn-primary" id="gear-list-add-gear">Add gear</button>
-          <button type="button" class="btn btn-secondary" id="gear-list-add-header">Add section</button>
-          <button type="button" class="btn btn-secondary" id="gear-list-add-subsection">Add subsection</button>
-          <button type="button" class="btn btn-secondary" id="gear-list-sync">Sync from tools</button>
+          <input
+            type="search"
+            id="gear-list-search"
+            class="gear-list-search"
+            placeholder="Search name, room, place, notes…"
+            aria-label="Search gear list"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div class="gear-list-toolbar-actions">
+            <button type="button" class="btn btn-primary" id="gear-list-add-gear">Add gear</button>
+            <button type="button" class="btn btn-secondary" id="gear-list-add-header">Add section</button>
+            <button type="button" class="btn btn-secondary" id="gear-list-add-subsection">Add subsection</button>
+            <button type="button" class="btn btn-secondary" id="gear-list-sync">Sync from tools</button>
+          </div>
         </div>
         <div class="gear-list-body">
-          <div class="gear-list-table-head" aria-hidden="true">
+          <div class="gear-list-table-head">
             <span>Qty</span>
             <span>Name</span>
-            <span class="gear-list-col-room">Room</span>
-            <span class="gear-list-col-place">Place</span>
+            <span class="gear-list-col-room">
+              <select id="gear-list-room-filter" class="gear-list-col-filter" aria-label="Filter by room">
+                <option value="">Room</option>
+              </select>
+            </span>
+            <span class="gear-list-col-place">
+              <select id="gear-list-place-filter" class="gear-list-col-filter" aria-label="Filter by place">
+                <option value="">Place</option>
+              </select>
+            </span>
             <span>Len</span>
             <span>Detail</span>
             <span>Notes</span>
@@ -1360,6 +1379,28 @@
     </div>
   </div>
 
+  <div id="pw-generate-modal" class="pw-export-order-modal" hidden>
+    <div class="pw-export-order-dialog pw-generate-dialog" role="dialog" aria-modal="true" aria-labelledby="pw-generate-title">
+      <div class="pw-export-order-header">
+        <h3 id="pw-generate-title">Generate sheets</h3>
+        <button type="button" class="pw-export-order-close" id="pw-generate-close" aria-label="Close">×</button>
+      </div>
+      <p class="pw-export-order-hint">
+        Choose which sheets to create or regenerate from the calculators. Unchecked existing sheets keep their current layouts.
+      </p>
+      <div class="pw-generate-toolbar">
+        <button type="button" class="btn btn-secondary btn-sm" id="pw-generate-select-all">Select all</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="pw-generate-select-new">New only</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="pw-generate-select-none">Clear</button>
+      </div>
+      <ul id="pw-generate-list" class="pw-generate-list" role="list"></ul>
+      <div class="pw-export-order-footer">
+        <button type="button" class="btn btn-secondary" id="pw-generate-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="pw-generate-confirm">Generate</button>
+      </div>
+    </div>
+  </div>
+
   <div id="pw-export-order-modal" class="pw-export-order-modal" hidden>
     <div class="pw-export-order-dialog" role="dialog" aria-modal="true" aria-labelledby="pw-export-order-title">
       <div class="pw-export-order-header">
@@ -1388,18 +1429,6 @@
             <strong>Total only</strong>
             <span class="gear-list-settings-hint">Combine matching items across room, place, and notes. Hide subsections.</span>
           </span>
-        </label>
-        <label class="gear-list-settings-field">
-          <span class="gear-list-settings-field-label">Filter by room</span>
-          <select id="gear-list-setting-room-filter" class="field-input" aria-label="Filter by room">
-            <option value="">All rooms</option>
-          </select>
-        </label>
-        <label class="gear-list-settings-field">
-          <span class="gear-list-settings-field-label">Filter by place</span>
-          <select id="gear-list-setting-place-filter" class="field-input" aria-label="Filter by place">
-            <option value="">All places</option>
-          </select>
         </label>
       </div>
       <div class="export-scope-footer">

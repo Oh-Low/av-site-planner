@@ -31,10 +31,10 @@ All live tools (including Groundplan) register with `init` and boot via `initCal
 | `groundplan` | `exportState`, `importState` | Resolves places lazily via `getCalculatorInstance("signalFlow")` (optional inject still supported). |
 | `contentMaps` | `exportState`, `importState` | Peeks LED/projector via `getCalculatorExport`. No `validateState` on meta. |
 | `cable` | `exportState`, `importState`, `refresh` | `refresh` rebuilds derived cards from SF + groundplan. App/tab show should call it. |
-| `gearList` | `exportState`, `importState`, `refresh` | Syncs auto rows from SF nodes + Cable Calculator cards; manual rows and headers are local. |
+| `gearList` | `exportState`, `importState`, `refresh`, `syncNow`, `scheduleLiveSync` | **Show-scoped.** Syncs auto rows from every room’s SF + Cable + LED (live for active room, plan for others). `scheduleLiveSync` debounces after other-tool edits; `syncNow` refreshes state before persist without forcing a UI re-render. Room/place filters stay local. Per-row eyeball (`included`) hides lines/sections from paperwork. |
 | `labor` | `exportState`, `importState` | Pure-ish; state is small. |
 | `rigging` | `exportState`, `importState` | Scaled symbol assembly; mates in data only (no drawn links). Loads via equal-share solver. |
-| `paperwork` | `exportState`, `importState` | Peeks all calculators via `getCalculatorExport` / site export collection for Generate/Update. |
+| `paperwork` | `exportState`, `importState` | **Show-scoped.** Peeks all calculators via `getCalculatorExport` / site export collection for Generate/Update. |
 
 ---
 

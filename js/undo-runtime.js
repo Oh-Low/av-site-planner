@@ -42,6 +42,19 @@ export function restoreSection(stateKey, snapshot) {
     if (stateKey === "signalFlow" || stateKey === "groundplan") {
       getCalculatorInstance("cable")?.refresh?.();
     }
+    if (
+      stateKey === "signalFlow" ||
+      stateKey === "groundplan" ||
+      stateKey === "led" ||
+      stateKey === "cable"
+    ) {
+      const gearList = getCalculatorInstance("gearList");
+      if (typeof gearList?.scheduleLiveSync === "function") {
+        gearList.scheduleLiveSync();
+      } else {
+        gearList?.refresh?.();
+      }
+    }
   });
   markDirty?.(true);
 }

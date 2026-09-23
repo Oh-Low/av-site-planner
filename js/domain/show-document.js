@@ -17,6 +17,7 @@ export const SHOW_DOCUMENT_VERSION = 3;
  *   name: string,
  *   rooms: Room[],
  *   paperwork?: Record<string, unknown> | null,
+ *   gearList?: Record<string, unknown> | null,
  * }} Show
  * @typedef {{ id: string, name: string, plan: RoomPlan }} RoomTemplate
  *
@@ -106,13 +107,27 @@ export function normalizeShow(raw, fallbackPlan, fallbackName = "Show") {
       }
     }
   }
-  // Paperwork lives on the show; drop nested copies from room plans.
+  if (data.gearList && typeof data.gearList === "object") {
+    show.gearList = /** @type {Record<string, unknown>} */ (deepClone(data.gearList));
+  } else {
+    // Hoist legacy per-room gear list onto the show once.
+    for (const room of rooms) {
+      const plan = room.plan;
+      const gl = plan && typeof plan === "object" ? plan.gearList : null;
+      if (gl && typeof gl === "object") {
+        show.gearList = /** @type {Record<string, unknown>} */ (deepClone(gl));
+        break;
+      }
+    }
+  }
+  // Paperwork + gear list live on the show; drop nested copies from room plans.
   for (const room of show.rooms) {
-    if (room.plan && typeof room.plan === "object" && "paperwork" in room.plan) {
-      const { paperwork: _removed, ...rest } = /** @type {Record<string, unknown>} */ (
-        room.plan
-      );
-      room.plan = /** @type {RoomPlan} */ (rest);
+    if (room.plan && typeof room.plan === "object") {
+      const plan = /** @type {Record<string, unknown>} */ (room.plan);
+      if ("paperwork" in plan || "gearList" in plan) {
+        const { paperwork: _pw, gearList: _gl, ...rest } = plan;
+        room.plan = /** @type {RoomPlan} */ (rest);
+      }
     }
   }
   return show;
@@ -186,6 +201,37 @@ export function readActiveShowPaperwork(doc) {
     const pw = room.plan?.paperwork;
     if (pw && typeof pw === "object") {
       return /** @type {Record<string, unknown>} */ (deepClone(pw));
+    }
+  }
+  return null;
+}
+
+/**
+ * @param {ShowDocument} doc
+ * @param {Record<string, unknown> | null | undefined} gearList
+ */
+export function writeActiveShowGearList(doc, gearList) {
+  const show = doc.shows.find((s) => s.id === doc.activeShowId);
+  if (!show) return false;
+  show.gearList = gearList && typeof gearList === "object" ? deepClone(gearList) : null;
+  return true;
+}
+
+/**
+ * @param {ShowDocument} doc
+ * @returns {Record<string, unknown> | null}
+ */
+export function readActiveShowGearList(doc) {
+  const show = findActiveShow(doc);
+  if (!show) return null;
+  if (show.gearList && typeof show.gearList === "object") {
+    return /** @type {Record<string, unknown>} */ (deepClone(show.gearList));
+  }
+  // Legacy fallback: first room plan that still carries gearList.
+  for (const room of show.rooms) {
+    const gl = room.plan?.gearList;
+    if (gl && typeof gl === "object") {
+      return /** @type {Record<string, unknown>} */ (deepClone(gl));
     }
   }
   return null;
@@ -297,6 +343,7 @@ export function duplicateShow(doc, showId) {
       plan: deepClone(room.plan),
     })),
     paperwork: show.paperwork ? deepClone(show.paperwork) : null,
+    gearList: show.gearList ? deepClone(show.gearList) : null,
   };
   doc.shows.push(copy);
   doc.activeShowId = copy.id;
@@ -402,6 +449,17 @@ function reorderListItem(list, fromId, toId, place) {
 function clampInsertIndex(index, length) {
   if (typeof index !== "number" || !Number.isFinite(index)) return length;
   return Math.max(0, Math.min(length, Math.floor(index)));
+}
+
+/**
+ * Reorder a show in the document.
+ * @param {ShowDocument} doc
+ * @param {string} showId
+ * @param {string} targetShowId
+ * @param {"before" | "after"} place
+ */
+export function reorderShow(doc, showId, targetShowId, place) {
+  return reorderListItem(doc.shows, showId, targetShowId, place);
 }
 
 /**

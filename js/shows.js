@@ -19,6 +19,7 @@ import {
   renameShow,
   renameTemplate,
   reorderRoom,
+  reorderShow,
   reorderTemplate,
   saveRoomAsTemplate,
 } from "./site-state.js";
@@ -30,6 +31,7 @@ import {
   switchActiveRoom,
 } from "./show-document-runtime.js";
 
+const DRAG_SHOW = "application/x-av-show";
 const DRAG_ROOM = "application/x-av-show-room";
 const DRAG_TEMPLATE = "application/x-av-show-template";
 
@@ -65,7 +67,7 @@ export function initShowsManager(options) {
 
   /** @type {string | null} */
   let selectedTemplateId = null;
-  /** @type {{ kind: "room" | "template", id: string } | null} */
+  /** @type {{ kind: "show" | "room" | "template", id: string } | null} */
   let activeDrag = null;
   let suppressNextClick = false;
   /** @type {{ kind: "show" | "room" | "template", id: string } | null} */
@@ -150,10 +152,12 @@ export function initShowsManager(options) {
     listEl.innerHTML = items
       .map((item) => {
         const selected = item.id === selectedId ? " selected" : "";
-        const dragAttr = draggable ? ` draggable="true" title="Drag to reorder or copy"` : "";
+        const dragAttr = draggable
+          ? ` draggable="true" title="Drag to reorder"`
+          : "";
         const rowClass = withDelete ? " grid-item shows-list-item" : " grid-item";
         const deleteBtn = withDelete
-          ? `<button type="button" class="btn btn-icon btn-icon-danger shows-item-delete" data-delete-kind="${deleteKind}" data-delete-id="${escapeXml(
+          ? `<button type="button" class="btn btn-icon btn-icon-danger shows-item-delete" draggable="false" data-delete-kind="${deleteKind}" data-delete-id="${escapeXml(
               item.id
             )}" aria-label="Delete ${escapeXml(item.name)}" title="Delete" ${
               deleteDisabled ? "disabled" : ""
@@ -174,7 +178,7 @@ export function initShowsManager(options) {
   }
 
   function clearDropIndicators() {
-    for (const list of [els.roomList, els.templateList]) {
+    for (const list of [els.showList, els.roomList, els.templateList]) {
       list?.classList.remove("is-drop-target");
       list
         ?.querySelectorAll(".is-dragging, .is-drop-before, .is-drop-after")
@@ -185,32 +189,57 @@ export function initShowsManager(options) {
   }
 
   /**
+   * Pick an insert gap from cursor Y (same approach as gear list): before the
+   * first row whose midpoint is below the pointer, otherwise after the last.
+   * Skips the dragged row so drops insert between neighbors.
    * @param {HTMLElement} listEl
    * @param {string} itemAttr
    * @param {DragEvent} e
+   * @param {string | null} draggingId
    * @returns {{ targetId: string | null, place: "before" | "after", insertIndex: number }}
    */
-  function dropPlacement(listEl, itemAttr, e) {
-    const items = [...listEl.querySelectorAll(`.grid-item[${itemAttr}]`)];
-    const row = e.target instanceof Element ? e.target.closest(`.grid-item[${itemAttr}]`) : null;
-    if (row instanceof HTMLElement) {
-      const targetId = row.getAttribute(itemAttr);
-      const rect = row.getBoundingClientRect();
-      const before = e.clientY < rect.top + rect.height / 2;
-      const index = items.indexOf(row);
-      return {
-        targetId,
-        place: before ? "before" : "after",
-        insertIndex: before ? index : index + 1,
-      };
+  function dropPlacement(listEl, itemAttr, e, draggingId) {
+    const items = [...listEl.querySelectorAll(`.grid-item[${itemAttr}]`)].filter(
+      (el) => el instanceof HTMLElement && el.getAttribute(itemAttr) !== draggingId
+    );
+    if (!items.length) {
+      return { targetId: null, place: "after", insertIndex: 0 };
     }
-    return { targetId: null, place: "after", insertIndex: items.length };
+
+    for (const row of items) {
+      const targetId = row.getAttribute(itemAttr);
+      if (!targetId) continue;
+      const rect = row.getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) {
+        const index = [...listEl.querySelectorAll(`.grid-item[${itemAttr}]`)].indexOf(row);
+        return {
+          targetId,
+          place: "before",
+          insertIndex: Math.max(0, index),
+        };
+      }
+    }
+    const last = items[items.length - 1];
+    const lastId = last.getAttribute(itemAttr);
+    const all = [...listEl.querySelectorAll(`.grid-item[${itemAttr}]`)];
+    return {
+      targetId: lastId,
+      place: "after",
+      insertIndex: all.length,
+    };
+  }
+
+  /** @param {EventTarget | null} target */
+  function isInteractiveDragBlocker(target) {
+    if (!(target instanceof Element)) return false;
+    return Boolean(target.closest("input, select, textarea, button, a, label"));
   }
 
   function render() {
     const d = doc();
     const show = d.shows.find((s) => s.id === d.activeShowId) ?? d.shows[0] ?? null;
     renderList(els.showList, d.shows, show?.id ?? null, "data-show-id", {
+      draggable: true,
       withDelete: true,
       deleteDisabled: d.shows.length <= 1,
       deleteKind: "show",
@@ -277,13 +306,24 @@ export function initShowsManager(options) {
 
   /**
    * @param {HTMLElement | null} listEl
-   * @param {"room" | "template"} kind
+   * @param {"show" | "room" | "template"} kind
    * @param {string} idAttr
    * @param {string} mime
    */
   function bindListDragSource(listEl, kind, idAttr, mime) {
+    // Match gear list: interactive controls must not start a drag.
+    listEl?.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (isInteractiveDragBlocker(event.target)) {
+          event.stopPropagation();
+        }
+      },
+      true
+    );
+
     listEl?.addEventListener("dragstart", (e) => {
-      if (e.target instanceof Element && e.target.closest(".shows-item-delete")) {
+      if (isInteractiveDragBlocker(e.target)) {
         e.preventDefault();
         return;
       }
@@ -302,7 +342,12 @@ export function initShowsManager(options) {
       item.classList.add("is-dragging");
       e.dataTransfer?.setData(mime, id);
       e.dataTransfer?.setData("text/plain", id);
-      if (e.dataTransfer) e.dataTransfer.effectAllowed = "copyMove";
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = kind === "show" ? "move" : "copyMove";
+        // Ghost follows the cursor (same feel as gear list / library chips).
+        const rect = item.getBoundingClientRect();
+        e.dataTransfer.setDragImage(item, e.clientX - rect.left, e.clientY - rect.top);
+      }
     });
 
     listEl?.addEventListener("dragend", () => {
@@ -314,10 +359,10 @@ export function initShowsManager(options) {
 
   /**
    * @param {HTMLElement | null} listEl
-   * @param {"room" | "template"} listKind
+   * @param {"show" | "room" | "template"} listKind
    * @param {string} idAttr
    * @param {(payload: {
-   *   drag: { kind: "room" | "template", id: string },
+   *   drag: { kind: "show" | "room" | "template", id: string },
    *   targetId: string | null,
    *   place: "before" | "after",
    *   insertIndex: number,
@@ -334,22 +379,28 @@ export function initShowsManager(options) {
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = sameList ? "move" : "copy";
       listEl.classList.add("is-drop-target");
-      const { targetId, place } = dropPlacement(listEl, idAttr, e);
+      const { targetId, place } = dropPlacement(listEl, idAttr, e, activeDrag.id);
       listEl
         .querySelectorAll(".is-drop-before, .is-drop-after")
         .forEach((el) => el.classList.remove("is-drop-before", "is-drop-after"));
-      if (targetId) {
+      if (targetId && targetId !== activeDrag.id) {
         const row = listEl.querySelector(`.grid-item[${idAttr}="${CSS.escape(targetId)}"]`);
         row?.classList.add(place === "before" ? "is-drop-before" : "is-drop-after");
       }
     });
 
     listEl?.addEventListener("dragleave", (e) => {
-      if (!(e.target instanceof Node) || !listEl.contains(e.relatedTarget)) {
+      if (!(e.target instanceof Node) || !listEl.contains(/** @type {Node | null} */ (e.relatedTarget))) {
         listEl.classList.remove("is-drop-target");
         listEl
           .querySelectorAll(".is-drop-before, .is-drop-after")
           .forEach((el) => el.classList.remove("is-drop-before", "is-drop-after"));
+        if (activeDrag) {
+          const row = listEl.querySelector(
+            `.grid-item[${idAttr}="${CSS.escape(activeDrag.id)}"]`
+          );
+          row?.classList.add("is-dragging");
+        }
       }
     });
 
@@ -362,7 +413,7 @@ export function initShowsManager(options) {
         (drag.kind === "template" && listKind === "room");
       if (!sameList && !crossCopy) return;
       e.preventDefault();
-      const placement = dropPlacement(listEl, idAttr, e);
+      const placement = dropPlacement(listEl, idAttr, e, drag.id);
       clearDropIndicators();
       onDrop({ drag, ...placement });
       activeDrag = null;
@@ -370,8 +421,17 @@ export function initShowsManager(options) {
     });
   }
 
+  bindListDragSource(els.showList, "show", "data-show-id", DRAG_SHOW);
   bindListDragSource(els.roomList, "room", "data-room-id", DRAG_ROOM);
   bindListDragSource(els.templateList, "template", "data-template-id", DRAG_TEMPLATE);
+
+  bindListDropTarget(els.showList, "show", "data-show-id", ({ drag, targetId, place }) => {
+    if (drag.kind !== "show") return;
+    if (!targetId || drag.id === targetId) return;
+    if (!reorderShow(doc(), drag.id, targetId, place)) return;
+    afterMutate();
+    status("Show order updated.");
+  });
 
   bindListDropTarget(els.roomList, "room", "data-room-id", ({ drag, targetId, place, insertIndex }) => {
     const showId = selectedShowId();
@@ -385,6 +445,7 @@ export function initShowsManager(options) {
       return;
     }
 
+    if (drag.kind !== "template") return;
     flushActiveRoomFromCalculators(calculators());
     const room = addTemplateToShow(doc(), showId, drag.id, undefined, insertIndex);
     if (!room) return;
@@ -408,6 +469,7 @@ export function initShowsManager(options) {
         return;
       }
 
+      if (drag.kind !== "room") return;
       const showId = selectedShowId();
       if (!showId) return;
       flushActiveRoomFromCalculators(calculators());
@@ -420,6 +482,11 @@ export function initShowsManager(options) {
   );
 
   els.showList?.addEventListener("click", (e) => {
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      e.preventDefault();
+      return;
+    }
     const target = /** @type {HTMLElement} */ (e.target);
     const deleteBtn = target.closest(".shows-item-delete");
     if (deleteBtn instanceof HTMLButtonElement) {

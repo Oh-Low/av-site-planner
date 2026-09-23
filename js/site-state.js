@@ -29,6 +29,8 @@ export {
   writeActiveRoomPlan,
   writeActiveShowPaperwork,
   readActiveShowPaperwork,
+  writeActiveShowGearList,
+  readActiveShowGearList,
   addShowWithEmptyRoom,
   removeShow,
   duplicateShow,
@@ -37,6 +39,7 @@ export {
   removeRoom,
   duplicateRoom,
   renameRoom,
+  reorderShow,
   reorderRoom,
   reorderTemplate,
   saveRoomAsTemplate,
@@ -137,13 +140,13 @@ export function validateSiteState(state) {
 }
 
 /** Section keys stored inside a room plan (resolved lazily to avoid import cycles).
- * Paperwork is show-scoped (see writeActiveShowPaperwork), not per-room.
+ * Paperwork and gear list are show-scoped, not per-room.
  */
 function roomPlanKeys() {
   return [
     "places",
     ...CALCULATOR_PLUGINS.map((plugin) => plugin.meta.stateKey).filter(
-      (key) => key !== "paperwork"
+      (key) => key !== "paperwork" && key !== "gearList"
     ),
   ];
 }

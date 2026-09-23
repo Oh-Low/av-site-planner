@@ -2,14 +2,18 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   addRoom,
+  addShowWithEmptyRoom,
   addTemplateToShow,
   documentForSingleShowExport,
   duplicateRoom,
   emptyShowDocument,
   normalizeShowDocument,
+  readActiveShowGearList,
   reorderRoom,
+  reorderShow,
   saveRoomAsTemplate,
   writeActiveRoomPlan,
+  writeActiveShowGearList,
   wrapV2PlanAsShowDocument,
 } from "../js/domain/show-document.js";
 import {
@@ -29,6 +33,42 @@ describe("show-document domain", () => {
     assert.equal(doc.activeShowId, doc.shows[0].id);
     assert.equal(doc.activeRoomId, doc.shows[0].rooms[0].id);
     assert.equal(doc.templates.length, 0);
+  });
+
+  it("hoists legacy room gearList onto the show and strips room plans", () => {
+    const plan = emptyRoomPlan();
+    plan.gearList = { rows: [{ id: "g1", kind: "header", label: "LED", level: "section" }] };
+    const doc = normalizeShowDocument(
+      {
+        formatVersion: 3,
+        app: "av-site-planner",
+        exportedAt: "2026-01-01T00:00:00.000Z",
+        activeShowId: "s1",
+        activeRoomId: "r1",
+        activeTab: "shows",
+        shows: [
+          {
+            id: "s1",
+            name: "Tour",
+            rooms: [{ id: "r1", name: "Main", plan }],
+          },
+        ],
+        templates: [],
+      },
+      normalizeRoomPlan,
+      emptyRoomPlan
+    );
+    assert.ok(doc.shows[0].gearList);
+    assert.equal(
+      /** @type {{ rows?: { id: string }[] }} */ (doc.shows[0].gearList).rows[0].id,
+      "g1"
+    );
+    assert.equal(doc.shows[0].rooms[0].plan.gearList, undefined);
+    assert.ok(!("gearList" in emptyRoomPlan()));
+
+    writeActiveShowGearList(doc, { rows: [], settings: { totalOnly: true, roomFilter: "", placeFilter: "" } });
+    const read = readActiveShowGearList(doc);
+    assert.equal(/** @type {{ settings?: { totalOnly?: boolean } }} */ (read)?.settings?.totalOnly, true);
   });
 
   it("writeActiveRoomPlan refuses mismatched activeRoomId (no rooms[0] fallback)", () => {
@@ -131,7 +171,7 @@ describe("show-document domain", () => {
     assert.equal(doc.templates.length, 1);
   });
 
-  it("reorderRoom and cross-list insert indexes", () => {
+  it("reorderShow, reorderRoom and cross-list insert indexes", () => {
     const doc = emptyShowDocument(emptyRoomPlan());
     const show = doc.shows[0];
     const a = show.rooms[0];
@@ -146,6 +186,18 @@ describe("show-document domain", () => {
     assert.deepEqual(
       show.rooms.map((r) => r.id),
       [c.id, a.id, b.id]
+    );
+
+    const show2 = addShowWithEmptyRoom(doc, emptyRoomPlan(), "Second");
+    const show3 = addShowWithEmptyRoom(doc, emptyRoomPlan(), "Third");
+    assert.deepEqual(
+      doc.shows.map((s) => s.id),
+      [show.id, show2.id, show3.id]
+    );
+    assert.equal(reorderShow(doc, show3.id, show.id, "before"), true);
+    assert.deepEqual(
+      doc.shows.map((s) => s.id),
+      [show3.id, show.id, show2.id]
     );
 
     const template = saveRoomAsTemplate(doc, show.id, a.id, "From A", 0);

@@ -9,6 +9,8 @@ import {
   normalizePortRow,
   resolveGearType,
 } from "../signal-flow-data.js";
+import { isPowerConnection } from "../signal-flow-gear-schema.js";
+import { gearForPowerMode, gearForSignalMode } from "./signal-flow-power.js";
 import { DEFAULT_PALETTE_COLOR, normalizeHexColor } from "../shared/color-palette.js";
 import { formatDistance, getMetersPerPixel, routeLengthMeters } from "../groundplan-units.js";
 import { uid } from "../shared/id.js";
@@ -26,13 +28,14 @@ import { uid } from "../shared/id.js";
  *   id: string,
  *   fromNodeId: string,
  *   fromRow: number,
- *   fromCol: "input" | "output",
+ *   fromCol: "input" | "output" | string,
  *   toNodeId: string,
  *   toRow: number,
- *   toCol: "input" | "output",
+ *   toCol: "input" | "output" | string,
+ *   power?: boolean,
  * }} CableConnection
  * @typedef {{ id: string, fromPlaceId: string, toPlaceId: string, points: { x: number, y: number, heightMeters?: number | null }[], color?: string }} CableRoute
- * @typedef {{ connectionId: string, cableLabel: string, fromDevice: string, toDevice: string, amount?: number, length?: number | null, fromNodeId?: string, toNodeId?: string }} CableRow
+ * @typedef {{ connectionId: string, cableLabel: string, fromDevice: string, toDevice: string, amount?: number, length?: number | null, fromNodeId?: string, toNodeId?: string, power?: boolean }} CableRow
  * @typedef {{ id: string, cableLabel: string, fromDevice: string, toDevice: string, amount: number, length: number | null }} ManualCable
  * @typedef {{ type: string, count: number, rows: CableRow[] }} CableTypeGroup
  * @typedef {{ id: string, title: string, lengthLabel: string, rows: CableRow[], emptyMessage: string, color?: string }} CableCard
@@ -334,38 +337,51 @@ function portConnectorType(port, col) {
 }
 
 /**
- * Cable type for a connection — same priority as Signal Flow wire coloring:
- * destination input → source input → source output → destination output.
+ * Cable type for a connection — mirrors Signal Flow wire coloring.
+ * Power wires use the power-mode port table; signal wires use the signal table.
  * @param {CableConnection} conn
  * @param {CableNode[]} nodes
  * @param {import("../signal-flow-data.js").GearType[]} customGearTypes
  * @returns {string}
  */
 export function inferCableType(conn, nodes, customGearTypes) {
-  /** @type {{ nodeId: string, row: number, col: "input" | "output" }[]} */
-  const candidates = [];
-  if (conn.toCol === "input") {
-    candidates.push({ nodeId: conn.toNodeId, row: conn.toRow, col: "input" });
-  }
-  if (conn.fromCol === "input") {
-    candidates.push({ nodeId: conn.fromNodeId, row: conn.fromRow, col: "input" });
-  }
-  if (conn.fromCol === "output") {
-    candidates.push({ nodeId: conn.fromNodeId, row: conn.fromRow, col: "output" });
-  }
-  if (conn.toCol === "output") {
-    candidates.push({ nodeId: conn.toNodeId, row: conn.toRow, col: "output" });
+  const forPower = isPowerConnection(conn);
+
+  /**
+   * @param {string} nodeId
+   * @param {number} row
+   * @param {"input" | "output"} col
+   */
+  const portType = (nodeId, row, col) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return null;
+    const base = resolveNodeGear(node, customGearTypes);
+    const gear = forPower ? gearForPowerMode(base) : gearForSignalMode(base);
+    const port = gear.ports?.[row];
+    return portConnectorType(port, col);
+  };
+
+  if (forPower) {
+    return (
+      (conn.fromCol === "output"
+        ? portType(conn.fromNodeId, conn.fromRow, "output")
+        : null) ||
+      (conn.toCol === "output" ? portType(conn.toNodeId, conn.toRow, "output") : null) ||
+      (conn.toCol === "input" || conn.toCol === "power"
+        ? portType(conn.toNodeId, conn.toRow, "input")
+        : null) ||
+      (conn.fromCol === "input" ? portType(conn.fromNodeId, conn.fromRow, "input") : null) ||
+      "Edison"
+    );
   }
 
-  for (const endpoint of candidates) {
-    const node = nodes.find((n) => n.id === endpoint.nodeId);
-    if (!node) continue;
-    const gear = resolveNodeGear(node, customGearTypes);
-    const port = gear.ports?.[endpoint.row];
-    const typed = portConnectorType(port, endpoint.col);
-    if (typed) return typed;
-  }
-  return "Cable";
+  return (
+    (conn.toCol === "input" ? portType(conn.toNodeId, conn.toRow, "input") : null) ||
+    (conn.fromCol === "input" ? portType(conn.fromNodeId, conn.fromRow, "input") : null) ||
+    (conn.fromCol === "output" ? portType(conn.fromNodeId, conn.fromRow, "output") : null) ||
+    (conn.toCol === "output" ? portType(conn.toNodeId, conn.toRow, "output") : null) ||
+    "Cable"
+  );
 }
 
 /** @deprecated Prefer inferCableType — kept for callers that still use port labels. */
@@ -391,6 +407,7 @@ function connectionToRow(conn, nodes, customGearTypes) {
     fromNodeId: fromNode.id,
     toNodeId: toNode.id,
     amount: 1,
+    power: isPowerConnection(conn),
   };
 }
 

@@ -31,6 +31,13 @@ export function isCableRunsSheet(sheet) {
 }
 
 /**
+ * @param {import("./state.js").SheetInstance} sheet
+ */
+export function isGearListSheet(sheet) {
+  return sheet.typeId === "gear-list";
+}
+
+/**
  * @param {string} typeId
  * @returns {string | null}
  */
@@ -44,6 +51,8 @@ export function sheetRoleLabel(typeId) {
       return "Cable Runs";
     case "signal-flow":
       return "Signal Flow";
+    case "gear-list":
+      return "Gear List";
     case "surface-map":
       return "Surface";
     case "raster-map":

@@ -10,6 +10,7 @@ export const FONT_SIZE_ELEMENT_TYPES = new Set([
   "groundplanDiagram",
   "ledWiringDiagram",
   "signalFlowDiagram",
+  "gearListTables",
   "text",
   "notes",
   "scopeSummary",
@@ -29,6 +30,8 @@ export function defaultFontSizePt(type) {
     case "detailTable":
     case "ledSpecificationTable":
       return 9;
+    case "gearListTables":
+      return 7;
     case "notes":
     case "scopeSummary":
       return 10;
