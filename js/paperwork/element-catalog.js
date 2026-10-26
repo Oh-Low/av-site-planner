@@ -6,6 +6,7 @@ import {
   createGearListTablesElement,
   createLedSpecificationElement,
   createLedWiringElement,
+  createPowerAllocationTableElement,
   createRasterElement,
   createSignalFlowDiagramElement,
   createSurfaceElement,
@@ -17,6 +18,7 @@ export {
   createGearListTablesElement,
   createLedSpecificationElement,
   createLedWiringElement,
+  createPowerAllocationTableElement,
   createRasterElement,
   createSignalFlowDiagramElement,
   createSurfaceElement,
@@ -377,6 +379,21 @@ export function listAddableElements(siteExports, page) {
     h: Math.min(10, page.heightIn - 2.25),
     create: () =>
       createGearListTablesElement({
+        w: Math.min(16, page.widthIn - 1),
+        h: Math.min(10, page.heightIn - 2.25),
+      }),
+  });
+
+  items.push({
+    id: "power-allocation:table",
+    label: "Power allocation table",
+    group: "Power",
+    calculator: "Signal Flow",
+    family: "Tables",
+    w: Math.min(16, page.widthIn - 1),
+    h: Math.min(10, page.heightIn - 2.25),
+    create: () =>
+      createPowerAllocationTableElement({
         w: Math.min(16, page.widthIn - 1),
         h: Math.min(10, page.heightIn - 2.25),
       }),

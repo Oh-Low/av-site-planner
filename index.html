@@ -28,6 +28,7 @@
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="content-maps">Content Maps</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="cable-calculator">Cable Calculator</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="gear-list">Gear List</button>
+      <button class="app-tab tab" role="tab" aria-selected="false" data-tab="power-allocation">Power Allocation</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="labor-calculator">Labor Calculator</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="rigging-calculator">Rigging Calculator</button>
       <button class="app-tab tab" role="tab" aria-selected="false" data-tab="paperwork-composer">Paperwork Composer</button>
@@ -1091,6 +1092,58 @@
             <span></span>
           </div>
           <ul id="gear-list-rows" class="gear-list-rows" aria-label="Gear list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="power-allocation" class="tab-panel" role="tabpanel" hidden>
+      <div class="gear-list-calculator power-alloc-calculator">
+        <header class="gear-list-calculator-header">
+          <div class="gear-list-calculator-heading">
+            <div>
+              <h2 class="gear-list-calculator-title">Power Allocation</h2>
+              <p class="gear-list-calculator-subtitle">
+                Devices fed by Signal Flow power wires. Sections total the devices inside them. An LED wall with power lines becomes a section, one row per circuit, so each leg can be X, Y, or Z. Edit a cell to override it. Hide a row to drop it from paperwork. Auto jumps to that device on the Power canvas.
+              </p>
+            </div>
+          </div>
+          <div class="gear-list-calculator-meta">
+            <p id="power-alloc-status" class="gear-list-calculator-status" role="status" aria-live="polite"></p>
+          </div>
+        </header>
+        <div class="gear-list-toolbar">
+          <input
+            type="search"
+            id="power-alloc-search"
+            class="gear-list-search"
+            placeholder="Search device, distro, phase, room…"
+            aria-label="Search power allocation"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div class="gear-list-toolbar-actions">
+            <button type="button" class="btn btn-primary" id="power-alloc-add">Add device</button>
+            <button type="button" class="btn btn-secondary" id="power-alloc-add-section">Add section</button>
+            <button type="button" class="btn btn-secondary" id="power-alloc-add-subsection">Add subsection</button>
+            <button type="button" class="btn btn-secondary" id="power-alloc-sync">Sync from Signal Flow</button>
+          </div>
+        </div>
+        <div class="gear-list-body">
+          <div class="gear-list-table-head">
+            <span class="gear-list-col-room">
+              <select id="power-alloc-room-filter" class="gear-list-col-filter" aria-label="Filter by room">
+                <option value="">Room</option>
+              </select>
+            </span>
+            <span>Device</span>
+            <span>Distro</span>
+            <span>Phase</span>
+            <span>Voltage</span>
+            <span>Wattage</span>
+            <span>Amps</span>
+            <span></span>
+          </div>
+          <ul id="power-alloc-rows" class="gear-list-rows" aria-label="Power allocation"></ul>
         </div>
       </div>
     </section>

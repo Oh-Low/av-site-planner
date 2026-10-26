@@ -2370,6 +2370,28 @@ export function initSignalFlow() {
     return ids.length;
   }
 
+  /**
+   * Frame one device on the Power canvas (power-allocation Auto jump).
+   * @param {string | null | undefined} nodeId
+   * @returns {number}
+   */
+  function selectPowerAllocationNode(nodeId) {
+    const id = typeof nodeId === "string" ? nodeId.trim() : "";
+    if (!id || !state.nodes.some((node) => node.id === id)) {
+      setStatus("No matching device on Signal Flow.");
+      return 0;
+    }
+    if (canvasView !== "power") setCanvasView("power");
+    setNodeSelection([id]);
+    selectedConnectionId = null;
+    render();
+    requestAnimationFrame(() => {
+      fitViewToNodeIds([id]);
+    });
+    setStatus("Selected device on Power from Power Allocation.");
+    return 1;
+  }
+
   /** Pan/zoom so every placed device fits in the viewport. */
   function fitViewToGear() {
     const visible = state.nodes.filter((n) => nodeVisibleOnCanvas(n));
@@ -2721,6 +2743,7 @@ export function initSignalFlow() {
     copySelection,
     pasteSelection,
     selectByGearListSourceKey,
+    selectPowerAllocationNode,
   };
 }
 

@@ -54,6 +54,17 @@ export function restoreSection(stateKey, snapshot) {
       } else {
         gearList?.refresh?.();
       }
+      const powerAllocation = getCalculatorInstance("powerAllocation");
+      if (
+        stateKey === "signalFlow" ||
+        stateKey === "led"
+      ) {
+        if (typeof powerAllocation?.scheduleLiveSync === "function") {
+          powerAllocation.scheduleLiveSync();
+        } else {
+          powerAllocation?.refresh?.();
+        }
+      }
     }
   });
   markDirty?.(true);

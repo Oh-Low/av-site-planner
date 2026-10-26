@@ -85,9 +85,9 @@ Each room’s `plan` matches the former single-file site plan body (without the 
 | `projector` | **Yes** | `requiredForSave`; must have ≥1 screen |
 | `signalFlow` … `rigging` | No | Filled from `emptyState()` when omitted on migrate |
 
-**Show-scoped (not in room plan):** `paperwork` and `gearList` live on `shows[]` (same pattern). Legacy room-plan copies are hoisted on normalize.
+**Show-scoped (not in room plan):** `paperwork`, `gearList`, and `powerAllocation` live on `shows[]` (same pattern). Legacy room-plan copies of paperwork and gear list are hoisted on normalize; nested `powerAllocation` is stripped.
 
-Registry order (room plan sections): led → projector → signalFlow → groundplan → contentMaps → cable → labor → rigging. Show-scoped plugins: gearList → paperwork.
+Registry order (room plan sections): led → projector → signalFlow → groundplan → contentMaps → cable → labor → rigging. Show-scoped plugins: gearList → powerAllocation → paperwork.
 
 Legacy single-file v2 documents also carried `formatVersion`, `app`, `exportedAt`, `activeTab` at the root; those move to the v3 envelope on migrate.
 
@@ -102,6 +102,7 @@ Legacy single-file v2 documents also carried `formatVersion`, `app`, `exportedAt
 | `labor.js` | Labor state + pay-tier math |
 | `cable.js` | Manual cable state + derived route/place cards |
 | `gear-list.js` | Ordered gear/cable list synced from SF + cable cards |
+| `power-allocation.js` | Power-load rows synced from Signal Flow power wires |
 | `led.js` | LED wall section deep normalize |
 | `projector.js` | Projector section deep normalize |
 | `groundplan.js` | Floor-plan section empty/validate |
@@ -175,6 +176,12 @@ Nodes may include optional measured `layout: { w, h, inColW, outColW, portTop, p
 Stored on `shows[].gearList`, not inside `rooms[].plan`. Aggregates auto rows from **every room** in the show (room-scoped `sourceKey`s like `room:<id>|sf-gear:…`); settings filters (`roomFilter` / `placeFilter` / `totalOnly`) narrow the view.
 
 **emptyState / validate:** `js/domain/gear-list.js`. Ordered `rows` of `header` | `item`. Headers have `level: "section" | "subsection"` and optional auto `source` / `sourceKey`. Each cable route syncs as an auto subsection labeled `[route] + [length]`; place-local cables sync under a trailing **Other** subsection. Auto items are re-derived from Signal Flow nodes and Cable Calculator cards on refresh; only order, notes, manual headers, and manual items are authoritative in the file.
+
+### `powerAllocation` — show-scoped (optional)
+
+Stored on `shows[].powerAllocation`, not inside `rooms[].plan`. One table for the show. Auto rows use `sourceKey` `pa:<roomId>:<nodeId>`. Per-field `overrides` keep edited device, distro, phase, voltage, wattage, and amperage across sync. `settings.searchQuery` and `settings.roomFilter` are calculator-only. `included: false` hides a row from that room’s paperwork sheet.
+
+**emptyState / validate:** `js/domain/power-allocation.js`.
 
 ### `labor` — optional
 

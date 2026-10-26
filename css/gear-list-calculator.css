@@ -184,6 +184,44 @@
   text-align: right;
 }
 
+.power-alloc-calculator .gear-list-table-head,
+.power-alloc-calculator .gear-list-row-main,
+.power-alloc-calculator .gear-list-row--header .gear-list-row-main {
+  grid-template-columns:
+    minmax(5.5rem, 0.7fr)
+    minmax(7rem, 1.15fr)
+    minmax(6rem, 0.9fr)
+    minmax(6.5rem, 0.9fr)
+    5.4rem
+    4.8rem
+    4.6rem
+    auto;
+}
+
+.power-alloc-calculator .gear-list-row--subsection .power-alloc-device {
+  padding-left: 0.85rem;
+}
+
+.power-alloc-calculator .power-alloc-total,
+.power-alloc-calculator .power-alloc-leg-totals {
+  font-size: 0.75rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.power-alloc-calculator .power-alloc-leg-totals {
+  font-size: 0.68rem;
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.power-alloc-calculator .field-input.is-override {
+  color: var(--accent, #5b7c99);
+  font-weight: 600;
+}
+
 .gear-list-col-filter {
   display: block;
   width: 100%;

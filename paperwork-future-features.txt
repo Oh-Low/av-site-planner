@@ -1,0 +1,33 @@
+Paperwork composer — future features
+====================================
+Deferred beyond the current UX overhaul v1.
+Do not implement these in the first pass unless explicitly pulled in.
+
+Editing & selection
+-------------------
+- [ ] Undo / redo for paperwork composer actions
+- [ ] Multi-select elements (move, align, delete, z-order as a group)
+
+Tools & drawing (later)
+-----------------------
+- [ ] Sticky drawing tools (stay on tool until another is chosen)
+- [ ] Keyboard shortcuts for tools (V select, T text, L line, etc.)
+- [ ] Snap / grid / guides
+- [ ] Additional tools beyond the v1 set (freehand, dimension/leader, pen/highlighter, image upload, polygon, etc.)
+- [ ] Drawings that attach/bind to live calculator elements (callouts pinned to groundplan, etc.)
+
+Catalog & placement (later)
+---------------------------
+- [ ] One catalog type entry with post-place instance picker (instead of one entry per instance)
+- [ ] Refuse drop when element does not fit (alternative to clamp-on-page)
+
+Sheets & packet (later)
+-----------------------
+- [ ] Sheet tree / blank-plate workflow redesign
+- [ ] Left-sidebar information architecture redesign
+- [ ] Remove redundant "Add element" dropdown if library fully replaces it
+
+Polish (later)
+--------------
+- [ ] Richer Generate packet conflict UI beyond Cancel / Skip existing & add missing / Replace generated
+- [ ] Toolbar density options (icons-only vs icons+labels) and narrow-width overflow patterns

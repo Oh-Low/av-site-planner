@@ -138,3 +138,22 @@ export function createGearListTablesElement(frame = {}) {
     },
   });
 }
+
+/**
+ * @param {Partial<import("./state.js").PageElement>} [frame]
+ */
+export function createPowerAllocationTableElement(frame = {}) {
+  const { content: frameContent, ...rest } = frame;
+  return createElement({
+    type: "powerAllocationTable",
+    x: 0.4,
+    y: 1.25,
+    w: 16,
+    h: 9,
+    ...rest,
+    content: {
+      fontSize: 8,
+      ...(frameContent && typeof frameContent === "object" ? frameContent : {}),
+    },
+  });
+}

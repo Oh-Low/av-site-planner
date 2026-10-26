@@ -45,6 +45,7 @@ import {
 } from "./elements/cable-cards.js";
 import "./elements/gear-list-tables.js";
 import "./elements/groundplan-diagram.js";
+import "./elements/power-allocation-table.js";
 import "./elements/led-spec-table.js";
 import "./elements/led-wiring.js";
 import "./elements/raster-diagram.js";
@@ -75,6 +76,7 @@ import "./sheets/cover.js";
 import "./sheets/custom-plate.js";
 import "./sheets/gear-list.js";
 import "./sheets/led-wall-spec.js";
+import "./sheets/power-allocation.js";
 import "./sheets/raster.js";
 import "./sheets/signal-flow.js";
 import "./sheets/surface.js";
@@ -130,6 +132,7 @@ function siteExportsFromPlan(plan) {
     cable: source.cable ?? null,
     labor: source.labor ?? null,
     gearList: null,
+    powerAllocation: null,
   };
 }
 
@@ -146,6 +149,21 @@ function collectSiteExports() {
     cable: getCalculatorExport("cable"),
     labor: getCalculatorExport("labor"),
     gearList: getCalculatorExport("gearList"),
+    powerAllocation: getCalculatorExport("powerAllocation"),
+  };
+}
+
+/**
+ * Gear list and power allocation are show-scoped. Room bundles and sheet
+ * renders always read the live calculator, even for a non-active room.
+ * @param {Record<string, unknown>} base
+ * @returns {Record<string, unknown>}
+ */
+function withShowScopedExports(base) {
+  return {
+    ...base,
+    gearList: getCalculatorExport("gearList") ?? base.gearList ?? null,
+    powerAllocation: getCalculatorExport("powerAllocation") ?? base.powerAllocation ?? null,
   };
 }
 
@@ -176,11 +194,7 @@ function collectShowRoomBundles() {
     return {
       roomId: room.id,
       roomName: room.name?.trim() || "Room",
-      // Gear list is show-scoped — always attach the live show export.
-      siteExports: {
-        ...base,
-        gearList: getCalculatorExport("gearList") ?? base.gearList ?? null,
-      },
+      siteExports: withShowScopedExports(base),
     };
   });
 }
@@ -197,7 +211,9 @@ function siteExportsForSheet(sheet) {
   const show = doc.shows.find((s) => s.id === doc.activeShowId) ?? doc.shows[0];
   const room = show?.rooms.find((r) => r.id === roomId);
   if (!room) return collectSiteExports();
-  return siteExportsFromPlan(/** @type {Record<string, unknown>} */ (room.plan));
+  return withShowScopedExports(
+    siteExportsFromPlan(/** @type {Record<string, unknown>} */ (room.plan))
+  );
 }
 
 export function initPaperworkComposer() {

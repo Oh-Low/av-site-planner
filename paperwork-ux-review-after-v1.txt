@@ -1,0 +1,65 @@
+Paperwork composer UX overhaul — review after v1
+================================================
+Items to revisit once the first version of the library + drawing toolbar ships.
+Captured from planning (2026-07-21).
+
+Instance catalog
+----------------
+- [ ] One catalog entry per source instance vs one type entry that opens a picker after place
+      (v1: one entry per instance)
+
+Sheets & packet structure
+-------------------------
+- [ ] Whether to keep, simplify, or replace the sheet tree / blank-plate workflow
+      (v1: leave sheet tree as-is)
+- [ ] Whether the left sidebar should stay paper settings + sheet tree only, or absorb more
+      (v1: left = paper settings + sheet tree + sheet title/notes + Generate packet / Update linked elements)
+
+Drawings & decorations
+----------------------
+- [ ] Packet-level decoration list vs per-sheet copies that sync
+      (v1: packet-level decoration list; same position on every sheet)
+- [ ] Page decorations only vs allowing drawings to attach/bind to live calculator elements
+      (v1: page decorations only)
+- [ ] Snap / grid / guides for drawing and placement
+      (v1: none — see future features)
+- [ ] Tool behavior: one-shot vs sticky tools
+      (v1: one-shot — see future features)
+- [ ] Keyboard shortcuts for tools
+      (v1: none — see future features)
+- [ ] Default z-order for packet-shared decorations: above vs below sheet elements
+      (v1: above sheet elements)
+- [ ] Per-sheet hide for shared decorations vs always all-or-nothing
+      (v1: shared with optional per-sheet hide)
+- [ ] Drop when element does not fit: clamp on page vs refuse drop
+      (v1: clamp on page)
+
+Chrome & add flows
+------------------
+- [ ] Whether to remove the inspector "Add element" dropdown once the right-hand library is solid
+      (v1: keep both)
+- [ ] Generate packet when sheets already exist: ask vs skip existing vs rebuild layouts
+      (v1: ask — Cancel / Skip existing & add missing / Replace generated sheets;
+           manual blank plates always untouched by Replace)
+- [ ] Right-panel daily-use IA (Inspector above Library in one collapsible column)
+- [ ] Generate packet vs Update linked elements: labels, placement, and failure states
+- [ ] Google Slides–like toolbar density: icons only vs icons + labels; overflow on narrow widths
+- [ ] Shared-decoration editing UX when the same object appears on every sheet
+
+Related docs
+------------
+- Future / deferred work: paperwork-future-features.txt
+
+Locked v1 decisions (summary)
+-----------------------------
+- Right panel: Inspector top, Library below; collapsible with >; viewport grows without jumping pan/zoom.
+- Left panel: paper settings, sheet tree, sheet title/notes; Generate packet + Update linked elements.
+- Update linked elements: all sheets; keep positions, sizes, crops, and other element parameters.
+- Library: by calculator, then by instance family; one entry per instance; hidden if unavailable; drag to page; ghost outline; drop at pointer; clamp on page.
+- Toolbar above viewport only; Google Slides–like; style strip (fill/stroke/weight/font) before and after draw.
+- Tools (extensible): Select, Text, Heading, Line, Polyline, Arrow, Rectangle, Ellipse, Bring forward, Send backward.
+- Text: single-click default box. Line/arrow: click-drag. Rect/ellipse: click-drag or click for default. Polyline: click vertices, double-click/Enter to finish.
+- Tools are one-shot (return to select). Pan/zoom unchanged while drawing (scroll zoom, right-drag pan).
+- Decorations: packet-level list; "Show on all sheets" (default off); can hide on specific sheets; shared edits update all; above sheet elements by default.
+- Auto sheets remain editable with these tools.
+- Print includes drawings. Undo/redo and multi-select deferred.

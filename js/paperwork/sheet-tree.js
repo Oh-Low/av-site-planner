@@ -38,6 +38,13 @@ export function isGearListSheet(sheet) {
 }
 
 /**
+ * @param {import("./state.js").SheetInstance} sheet
+ */
+export function isPowerAllocationSheet(sheet) {
+  return sheet.typeId === "power-allocation";
+}
+
+/**
  * @param {string} typeId
  * @returns {string | null}
  */
@@ -53,6 +60,8 @@ export function sheetRoleLabel(typeId) {
       return "Signal Flow";
     case "gear-list":
       return "Gear List";
+    case "power-allocation":
+      return "Power Allocation";
     case "surface-map":
       return "Surface";
     case "raster-map":

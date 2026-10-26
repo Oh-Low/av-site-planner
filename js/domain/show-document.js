@@ -18,6 +18,7 @@ export const SHOW_DOCUMENT_VERSION = 3;
  *   rooms: Room[],
  *   paperwork?: Record<string, unknown> | null,
  *   gearList?: Record<string, unknown> | null,
+ *   powerAllocation?: Record<string, unknown> | null,
  * }} Show
  * @typedef {{ id: string, name: string, plan: RoomPlan }} RoomTemplate
  *
@@ -120,12 +121,15 @@ export function normalizeShow(raw, fallbackPlan, fallbackName = "Show") {
       }
     }
   }
-  // Paperwork + gear list live on the show; drop nested copies from room plans.
+  if (data.powerAllocation && typeof data.powerAllocation === "object") {
+    show.powerAllocation = /** @type {Record<string, unknown>} */ (deepClone(data.powerAllocation));
+  }
+  // Paperwork, gear list, and power allocation live on the show.
   for (const room of show.rooms) {
     if (room.plan && typeof room.plan === "object") {
       const plan = /** @type {Record<string, unknown>} */ (room.plan);
-      if ("paperwork" in plan || "gearList" in plan) {
-        const { paperwork: _pw, gearList: _gl, ...rest } = plan;
+      if ("paperwork" in plan || "gearList" in plan || "powerAllocation" in plan) {
+        const { paperwork: _pw, gearList: _gl, powerAllocation: _pa, ...rest } = plan;
         room.plan = /** @type {RoomPlan} */ (rest);
       }
     }
@@ -215,6 +219,28 @@ export function writeActiveShowGearList(doc, gearList) {
   if (!show) return false;
   show.gearList = gearList && typeof gearList === "object" ? deepClone(gearList) : null;
   return true;
+}
+
+/**
+ * @param {ShowDocument} doc
+ * @param {Record<string, unknown> | null | undefined} powerAllocation
+ */
+export function writeActiveShowPowerAllocation(doc, powerAllocation) {
+  const show = doc.shows.find((s) => s.id === doc.activeShowId);
+  if (!show) return false;
+  show.powerAllocation =
+    powerAllocation && typeof powerAllocation === "object" ? deepClone(powerAllocation) : null;
+  return true;
+}
+
+/**
+ * @param {ShowDocument} doc
+ * @returns {Record<string, unknown> | null}
+ */
+export function readActiveShowPowerAllocation(doc) {
+  const show = findActiveShow(doc);
+  if (!show?.powerAllocation || typeof show.powerAllocation !== "object") return null;
+  return /** @type {Record<string, unknown>} */ (deepClone(show.powerAllocation));
 }
 
 /**
@@ -344,6 +370,7 @@ export function duplicateShow(doc, showId) {
     })),
     paperwork: show.paperwork ? deepClone(show.paperwork) : null,
     gearList: show.gearList ? deepClone(show.gearList) : null,
+    powerAllocation: show.powerAllocation ? deepClone(show.powerAllocation) : null,
   };
   doc.shows.push(copy);
   doc.activeShowId = copy.id;

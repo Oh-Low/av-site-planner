@@ -2619,3 +2619,166 @@ td.pw-editable.is-editing {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Power allocation — single-pane gear-list-style load schedule */
+.pw-el-power-alloc {
+  --pw-font-size: 8pt;
+  --pw-pa-phase: 3.2em;
+  --pw-pa-volt: 4.2em;
+  --pw-pa-watt: 4.2em;
+  --pw-pa-amp: 4.6em;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  color: #111;
+  font-family: "IBM Plex Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: var(--pw-font-size, 8pt);
+  line-height: 1.15;
+}
+
+.pw-el-power-alloc-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0.75rem;
+  border: 1.5px solid #111;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.pw-el-power-alloc-pane {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1.25px solid #111;
+  background: #fff;
+  overflow: hidden;
+}
+
+.pw-el-power-alloc-title {
+  flex: 0 0 auto;
+  padding: 0.08rem 0.18rem;
+  border-bottom: 1.25px solid #111;
+  font-size: 0.9em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: #f1f5f9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pw-el-power-alloc-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pw-pa-row {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.6fr)
+    minmax(0, 1.1fr)
+    var(--pw-pa-phase)
+    var(--pw-pa-volt)
+    var(--pw-pa-watt)
+    var(--pw-pa-amp);
+  column-gap: 0.22em;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.05rem 0.14rem;
+  border-bottom: 1px solid #e2e8f0;
+  align-items: start;
+}
+
+.pw-pa-row--section,
+.pw-pa-row--subsection {
+  font-weight: 700;
+  background: #f1f5f9;
+}
+
+.pw-pa-row--subsection {
+  font-weight: 650;
+  background: #f8fafc;
+}
+
+.pw-pa-row--subsection .pw-pa-device {
+  padding-left: 0.75em;
+}
+
+.pw-pa-row--head {
+  flex: 0 0 auto;
+  padding-top: 0.06rem;
+  padding-bottom: 0.06rem;
+  border-bottom-color: #cbd5e1;
+  background: #f8fafc;
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.pw-pa-device,
+.pw-pa-distro {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  word-break: break-word;
+}
+
+.pw-pa-phase,
+.pw-pa-volt,
+.pw-pa-watt,
+.pw-pa-amp {
+  min-width: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.pw-pa-phase {
+  text-align: center;
+  font-weight: 650;
+}
+
+.pw-pa-row--head .pw-pa-device,
+.pw-pa-row--head .pw-pa-distro,
+.pw-pa-row--head .pw-pa-phase,
+.pw-pa-row--head .pw-pa-volt,
+.pw-pa-row--head .pw-pa-watt,
+.pw-pa-row--head .pw-pa-amp {
+  font-weight: 700;
+  color: #64748b;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

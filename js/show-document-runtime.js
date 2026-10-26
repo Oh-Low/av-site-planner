@@ -17,11 +17,13 @@ import {
   normalizeRoomPlan,
   readActiveShowGearList,
   readActiveShowPaperwork,
+  readActiveShowPowerAllocation,
   setActiveRoom,
   stampShowDocument,
   writeActiveRoomPlan,
   writeActiveShowGearList,
   writeActiveShowPaperwork,
+  writeActiveShowPowerAllocation,
 } from "./site-state.js";
 import {
   loadShowDocumentFromIdb,
@@ -98,7 +100,7 @@ export function applyRoomPlanToCalculators(instances, plan) {
   for (const plugin of CALCULATOR_PLUGINS) {
     const key = plugin.meta.stateKey;
     // Paperwork + gear list are show-scoped — loaded separately.
-    if (key === "paperwork" || key === "gearList") continue;
+    if (key === "paperwork" || key === "gearList" || key === "powerAllocation") continue;
     const fallback = plugin.meta.emptyState?.() ?? {};
     try {
       let section = normalized[key] ?? fallback;
@@ -149,6 +151,19 @@ export function flushActiveRoomFromCalculators(instances) {
   } catch (error) {
     console.error("Failed to export show gear list:", error);
   }
+  try {
+    if (typeof instances.powerAllocation?.syncNow === "function") {
+      instances.powerAllocation.syncNow();
+    } else {
+      instances.powerAllocation?.refresh?.({ renderUi: false });
+    }
+    const livePower = instances.powerAllocation?.exportState?.();
+    if (livePower && typeof livePower === "object") {
+      writeActiveShowPowerAllocation(ensureShowDoc(), livePower);
+    }
+  } catch (error) {
+    console.error("Failed to export show power allocation:", error);
+  }
   const plan = buildRoomPlanFromCalculators(instances);
   writeActiveRoomPlan(ensureShowDoc(), plan);
   stampShowDocument(ensureShowDoc());
@@ -175,6 +190,13 @@ export function loadActiveRoomIntoCalculators(instances) {
     console.error("Failed to import show gear list:", error);
   }
   instances.gearList?.refresh?.();
+  const powerAllocation = readActiveShowPowerAllocation(ensureShowDoc()) ?? {};
+  try {
+    instances.powerAllocation?.importState?.(powerAllocation);
+  } catch (error) {
+    console.error("Failed to import show power allocation:", error);
+  }
+  instances.powerAllocation?.refresh?.();
 }
 
 /**
@@ -220,6 +242,7 @@ export function schedulePersist(instances) {
   onDirtyChange?.(true);
   // Live-update gear list auto rows when other tools change (debounced).
   instances?.gearList?.scheduleLiveSync?.();
+  instances?.powerAllocation?.scheduleLiveSync?.();
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     persistTimer = null;

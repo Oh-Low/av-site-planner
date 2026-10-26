@@ -31,6 +31,8 @@ export {
   readActiveShowPaperwork,
   writeActiveShowGearList,
   readActiveShowGearList,
+  writeActiveShowPowerAllocation,
+  readActiveShowPowerAllocation,
   addShowWithEmptyRoom,
   removeShow,
   duplicateShow,
@@ -146,7 +148,7 @@ function roomPlanKeys() {
   return [
     "places",
     ...CALCULATOR_PLUGINS.map((plugin) => plugin.meta.stateKey).filter(
-      (key) => key !== "paperwork" && key !== "gearList"
+      (key) => key !== "paperwork" && key !== "gearList" && key !== "powerAllocation"
     ),
   ];
 }

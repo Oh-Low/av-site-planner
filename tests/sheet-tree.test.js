@@ -33,6 +33,16 @@ describe("sheetListPresentation", () => {
     );
   });
 
+  it("formats room-scoped power allocation", () => {
+    assert.deepEqual(
+      sheetListPresentation({
+        typeId: "power-allocation",
+        title: "Ballroom — Power Allocation",
+      }),
+      { room: "Ballroom", detail: "Power Allocation" }
+    );
+  });
+
   it("sheetListTitle joins room and detail", () => {
     assert.equal(
       sheetListTitle({

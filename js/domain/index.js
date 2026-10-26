@@ -198,6 +198,8 @@ export {
   readActiveShowPaperwork,
   writeActiveShowGearList,
   readActiveShowGearList,
+  writeActiveShowPowerAllocation,
+  readActiveShowPowerAllocation,
   addShowWithEmptyRoom,
   removeShow,
   duplicateShow,
