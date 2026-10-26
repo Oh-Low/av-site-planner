@@ -117,7 +117,7 @@ export const CONNECTOR_COLORS = {
   "USB-C": "#a855f7",
   XLR: "#ec4899",
   ETH: "#06b6d4",
-  Fiber: "#eab308",
+  Fiber: "#6366f1",
   Edison: "#facc15",
   Soca: "#ef4444",
   Powercon: "#14b8a6",

@@ -36,7 +36,6 @@ const DESIGN = {
   nodeMinW: 160,
   colMinW: 80,
   headerH: 28,
-  placeH: 14,
   noteH: 24,
   colLabelH: 18,
   portRowH: 22,
@@ -67,7 +66,6 @@ function layoutMetrics(unitScale = 1) {
     nodeMinW: u(DESIGN.nodeMinW),
     colMinW: u(DESIGN.colMinW),
     headerH: u(DESIGN.headerH),
-    placeH: u(DESIGN.placeH),
     noteH: u(DESIGN.noteH),
     colLabelH: u(DESIGN.colLabelH),
     portRowH: u(DESIGN.portRowH),
@@ -197,18 +195,16 @@ function interactiveWorldBounds(nodes) {
 }
 
 /**
+ * Node chrome height. A place label is drawn inside the header, so it does
+ * not add height or move port anchors.
  * @param {object} gear
- * @param {string | null | undefined} placeId
- * @param {{ id: string, name: string }[]} places
  * @param {ReturnType<typeof layoutMetrics>} m
  */
-function nodeLayoutHeight(gear, placeId, places, m) {
+function nodeLayoutHeight(gear, m) {
   const ports = Array.isArray(gear?.ports) ? gear.ports : [];
-  const hasPlace = Boolean(placeId && places.some((p) => p.id === placeId));
   const hasNote = typeof gear?.note === "string" && gear.note.trim();
   return (
     m.headerH +
-    (hasPlace ? m.placeH : 0) +
     (hasNote ? m.noteH : 0) +
     m.colLabelH +
     Math.max(1, ports.length) * m.portRowH
@@ -351,10 +347,9 @@ function layoutSignalFlow(signalFlow) {
       portRowH = measured.portRowH;
     } else {
       cols = estimateNodeColumns(name, gear, m);
-      h = nodeLayoutHeight(gear, node.placeId, places, m);
+      h = nodeLayoutHeight(gear, m);
       portTop =
         m.headerH +
-        (hasPlace ? m.placeH : 0) +
         (hasNote ? m.noteH : 0) +
         m.colLabelH;
       portRowH = m.portRowH;
@@ -567,7 +562,7 @@ function buildNodeSvg(layout, places, m, colorByCableType) {
   const ports = Array.isArray(layout.gear.ports) ? layout.gear.ports : [];
   const nodeW = layout.w;
   const midX = layout.inColW;
-  const headerBottom = m.headerH + (layout.hasPlace ? m.placeH : 0);
+  const headerBottom = m.headerH;
   const noteTop = headerBottom;
   const colLabelTop = noteTop + (layout.hasNote ? m.noteH : 0);
 
@@ -580,14 +575,14 @@ function buildNodeSvg(layout, places, m, colorByCableType) {
       headerBottom - m.radius
     )}" fill="#f8fafc" stroke="none" />`,
     `<line x1="0" y1="${headerBottom}" x2="${nodeW}" y2="${headerBottom}" stroke="#cbd5e1" stroke-width="1" />`,
-    `<text x="${nodeW / 2}" y="${m.fs(18)}" text-anchor="middle" font-size="${m.fs(11)}" font-weight="600" fill="#0f172a" font-family="${FONT}">${escapeXml(
+    `<text x="${nodeW / 2}" y="${placeName ? m.fs(13) : m.fs(18)}" text-anchor="middle" font-size="${m.fs(11)}" font-weight="600" fill="#0f172a" font-family="${FONT}">${escapeXml(
       layout.name
     )}</text>`,
   ];
 
   if (placeName) {
     parts.push(
-      `<text x="${nodeW / 2}" y="${m.headerH + m.fs(10)}" text-anchor="middle" font-size="${m.fs(8)}" font-weight="600" letter-spacing="0.04em" fill="#64748b" font-family="${FONT}">${escapeXml(
+      `<text x="${nodeW / 2}" y="${m.headerH - m.fs(5)}" text-anchor="middle" font-size="${m.fs(8)}" font-weight="600" letter-spacing="0.04em" fill="#64748b" font-family="${FONT}">${escapeXml(
         placeName.toUpperCase()
       )}</text>`
     );

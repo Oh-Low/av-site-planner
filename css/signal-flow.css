@@ -157,13 +157,30 @@
   font: inherit;
 }
 
+/* Overlay the place on the existing header so assigning one does not grow
+   the node. Port anchors (and the wires that meet them) stay where they are. */
 .sf-node-place {
-  margin-top: 0.15rem;
-  font-size: 0.625rem;
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  bottom: 0.12rem;
+  margin: 0;
+  font-size: 0.6rem;
   font-weight: 600;
   letter-spacing: 0.03em;
+  line-height: 1;
+  text-align: center;
   text-transform: uppercase;
   color: var(--data-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.sf-node-header:has(.sf-node-place) .sf-node-name {
+  padding-top: 0.15rem;
+  padding-bottom: 0.75rem;
 }
 
 .sf-gear-search {

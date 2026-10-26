@@ -154,4 +154,29 @@ describe("layoutSignalFlow measured chrome", () => {
     assert.ok(a.portRowH > 0);
     assert.ok(a.portTop > 0);
   });
+
+  it("keeps node height and port anchors when a place is assigned", () => {
+    const gear = {
+      id: "switcher",
+      defaultName: "Switcher",
+      category: "Video",
+      ports: [{ input: "In", output: "Out", inputType: "HDMI", outputType: "HDMI" }],
+    };
+    const laid = layoutSignalFlow({
+      nodes: [
+        { id: "a", typeId: "switcher", name: "Switcher", x: 0, y: 0 },
+        { id: "b", typeId: "switcher", name: "Switcher", x: 240, y: 0, placeId: "foh" },
+      ],
+      connections: [],
+      customGearTypes: [gear],
+      places: [{ id: "foh", name: "FOH" }],
+    });
+    assert.ok(laid);
+    const a = laid.layouts.get("a");
+    const b = laid.layouts.get("b");
+    assert.ok(a && b);
+    assert.equal(b.h, a.h);
+    assert.equal(b.portTop, a.portTop);
+    assert.equal(b.hasPlace, true);
+  });
 });
